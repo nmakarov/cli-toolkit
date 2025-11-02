@@ -1,0 +1,13 @@
+{
+    "verbose": false,
+    "output": "/var/www/app/",
+    "format": "minified",
+    "timeout": 30000,
+    "debug": false,
+    "environment": "production",
+    "database": "postgresql://prod-db:5432/app",
+    "logging": {
+        "level": "error",
+        "file": "/var/log/app.log"
+    }
+}

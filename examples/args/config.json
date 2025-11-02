@@ -1,0 +1,9 @@
+{
+    "verbose": true,
+    "output": "dist/",
+    "format": "json",
+    "timeout": 10000,
+    "debug": false,
+    "author": "nmakarov",
+    "version": "1.0.0"
+}

@@ -1,0 +1,9 @@
+{
+    "verbose": true,
+    "output": "build/",
+    "format": "json",
+    "timeout": 5000,
+    "debug": true,
+    "environment": "local",
+    "database": "sqlite://local.db"
+}

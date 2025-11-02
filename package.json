@@ -1,0 +1,122 @@
+{
+  "name": "@nmakarov/cli-toolkit",
+  "version": "0.1.0",
+  "description": "A comprehensive toolkit for building CLI applications",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./args": {
+      "types": "./dist/args.d.ts",
+      "import": "./dist/args.js",
+      "require": "./dist/args.cjs"
+    },
+    "./params": {
+      "types": "./dist/params.d.ts",
+      "import": "./dist/params.js",
+      "require": "./dist/params.cjs"
+    },
+    "./init": {
+      "types": "./dist/init.d.ts",
+      "import": "./dist/init.js",
+      "require": "./dist/init.cjs"
+    },
+    "./screen": {
+      "types": "./dist/screen.d.ts",
+      "import": "./dist/screen.js",
+      "require": "./dist/screen.cjs"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js",
+      "require": "./dist/errors.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:coverage:open": "vitest --coverage && open coverage/index.html",
+    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts --coverage",
+    "test:args": "vitest run src/args/tests",
+    "test:args:ci": "vitest run src/args/tests/args.ci.test.ts --coverage",
+    "test:params": "vitest run src/params/tests",
+    "test:params:ci": "vitest run src/params/tests/params.ci.test.ts --coverage",
+    "test:errors": "vitest run src/errors/tests",
+    "test:errors:ci": "vitest run src/errors/tests/errors.ci.test.ts --coverage",
+    "test:screen": "vitest run src/screen/tests",
+    "test:screen:ci": "vitest run src/screen/tests/screen.ci.test.ts --coverage",
+    "test:logger": "vitest run src/logger/tests/logger.cli.test.ts",
+    "test:logger:ci": "vitest run src/logger/tests/logger.ci.test.ts --coverage",
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit",
+    "docs": "typedoc src/index.ts",
+    "prepublishOnly": "npm run test:ci && npm run build",
+    "release:patch": "npm version patch && npm publish --access public && git push --follow-tags",
+    "release:minor": "npm version minor && npm publish --access public && git push --follow-tags",
+    "release:major": "npm version major && npm publish --access public && git push --follow-tags"
+  },
+  "keywords": [
+    "cli",
+    "args",
+    "params",
+    "bootstrap",
+    "toolkit",
+    "typescript",
+    "terminal",
+    "ui",
+    "ink",
+    "react",
+    "screen",
+    "tui",
+    "interactive",
+    "menu",
+    "grid",
+    "navigation"
+  ],
+  "author": "nmakarov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nmakarov/cli-toolkit.git"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "@types/react": "^19.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^4.0.3",
+    "eslint": "^9.38.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typedoc": "^0.28.14",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.3"
+  },
+  "dependencies": {
+    "@types/joi": "^17.2.3",
+    "chalk": "^5.6.2",
+    "dotenv": "^17.2.3",
+    "joi": "^18.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "peerDependencies": {
+    "ink": "^4.0.0",
+    "react": "^18.0.0"
+  }
+}
