@@ -108,6 +108,7 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Logger bootstrap**: Initialize with a console-only fallback before swapping to the fully configured logger once params/config are available
 - **Feature tracking**: Update `FEATURES.md` alongside planning/implementation, capturing both status and noted challenges
 - **Script run command**: Place the `// Run with: ...` comment immediately after imports and before executable code in every runnable script
+- **Publishing workflow**: ALWAYS commit changes first (`git add . && git commit`), THEN use `npm run release:patch` (or `release:minor`/`release:major`). The release script requires a clean git working directory.
 
 ### Decision Rationale
 - **Why 4 spaces**: User preference, consistent with existing codebase, enforced via Prettier

@@ -1,490 +1,301 @@
 # @nmakarov/cli-toolkit
 
-A comprehensive TypeScript toolkit for building CLI applications with advanced argument parsing, configuration loading, environment management, and interactive terminal UI components.
+A comprehensive TypeScript toolkit for building professional CLI applications with argument parsing, parameter validation, interactive terminal UIs, and structured logging.
 
-## 🚀 Quick Start
+[![npm version](https://img.shields.io/npm/v/@nmakarov/cli-toolkit.svg)](https://www.npmjs.com/package/@nmakarov/cli-toolkit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Features
+
+- 🎯 **Args** - Powerful argument parser with config files, environment variables, and precedence rules
+- ✅ **Params** - Type-safe parameter validation with Joi schemas and cross-parameter references
+- 🖥️ **Screen** - Interactive terminal UIs with React/Ink (lists, menus, grids, navigation)
+- 📝 **Logger** - Structured logging with levels, progress tracking, and IPC routing
+- ⚡ **Errors** - Custom error classes for framework-specific error handling
+- 🕐 **Date/Time** - ISO8601 timestamps with timezone support and relative time expressions
+
+## Installation
 
 ```bash
 npm install @nmakarov/cli-toolkit
 ```
 
+## Requirements
+
+- **Node.js**: v20.0.0 or higher (recommended: v24+)
+- **For Screen module**: `ink` and `react` as peer dependencies
+
+```bash
+# Install peer dependencies for interactive UIs
+npm install ink react
+```
+
+## Quick Start
+
+### Args - Parse Command Line Arguments
+
 ```typescript
-// Argument parsing
-import { Args } from '@nmakarov/cli-toolkit';
+import { Args } from '@nmakarov/cli-toolkit/args';
 
 const args = new Args({
-  aliases: { 'v': 'verbose', 'd': 'debug' },
-  defaults: { timeout: 5000 }
+    aliases: { v: 'verbose', p: 'port' }
 });
 
-console.log(args.get('verbose')); // true if --verbose or -v passed
-console.log(args.hasCommand('build')); // true if 'build' command passed
+console.log(args.get('port'));      // Get value
+console.log(args.getCommands());    // Get commands
+console.log(args.getUnused());      // Get unused keys
+```
 
-// Interactive terminal UI
-import { showListScreen, buildBreadcrumb } from '@nmakarov/cli-toolkit/screen';
-import React, { createElement as h, Text, Box } from 'react';
+```bash
+node app.js --verbose --port=8080 build deploy
+```
+
+[📖 Full Args Documentation](docs/ARGS.md)
+
+### Params - Validate Parameters
+
+```typescript
+import { Params } from '@nmakarov/cli-toolkit/params';
+import { Args } from '@nmakarov/cli-toolkit/args';
+
+const args = new Args();
+const params = new Params({ args });
+
+const config = params.getAll({
+    name: 'string required',
+    port: 'number default 3000',
+    debug: 'boolean default false',
+    tags: 'array(string)',
+    startDate: 'edate'  // Enhanced date with relative time
+});
+
+console.log(config.name);       // Type-safe, validated
+console.log(config.port);       // Number (3000 if not provided)
+console.log(config.startDate);  // ISO8601 string
+```
+
+```bash
+node app.js --name="My App" --port=8080 --tags="api,web" --startDate="-7d"
+```
+
+[📖 Full Params Documentation](docs/PARAMS.md)
+
+### Screen - Interactive Terminal UIs
+
+```typescript
+import { showListScreen } from '@nmakarov/cli-toolkit/screen';
+import { createElement as h } from 'react';
+import { Text } from 'ink';
 
 const choice = await showListScreen({
-  title: buildBreadcrumb(["Main Menu"]),
-  items: [
-    { value: "build", title: "Build Project" },
-    { value: "test", title: "Run Tests" }
-  ],
-  onSelect: (item) => item.value,
-  footer: "↑↓ to navigate, enter to select, esc to exit"
+    title: "Main Menu",
+    items: [
+        { name: "Build", value: "build" },
+        { name: "Test", value: "test" },
+        { name: "Deploy", value: "deploy" }
+    ],
+    onSelect: (value) => value,
+    onEscape: () => null
 });
+
+console.log(`Selected: ${choice}`);
 ```
 
-## 📋 Precedence Order
+[📖 Full Screen Documentation](docs/SCREEN.md)
 
-**Short Version:** `overrides > CLI args > config files > env vars > defaults`
+### Logger - Structured Logging
 
-**Detailed:**
-1. **Overrides** (constructor config) - Highest precedence
-2. **CLI args** (command line) - `--verbose`, `-v`, `--key=value`
-3. **Config files** (loaded from files) - `config.json`, `config.local.json`
-4. **Environment variables** - `VERBOSE=true`, `KEY=value`
-5. **Defaults** (constructor config) - Lowest precedence
+```typescript
+import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
 
-## 🔧 Key Features
+const logger = new CliToolkitLogger({
+    prefix: 'APP',
+    timestamp: true,
+    progress: { withTimes: true }
+});
 
-### Argument Parsing
-- **Case-insensitive** argument parsing
-- **Environment-specific** configs and env vars
-- **Short flag bundling** (`-vsd` = `-v -s -d`)
-- **Negative flags** (`--no-debug`, `--not-verbose`)
-- **Config file loading** (JSON/JS with environment support)
-- **Dotenv integration** with environment-specific files
-- **Singleton pattern** support
+logger.info('Application started');
+logger.debug('Debug details', { config: true });
+logger.warn('Warning message');
+logger.error('Error occurred', new Error('Details'));
 
-### Terminal UI System
-- **Interactive lists** with custom rendering, sorting, and scrolling
-- **Multi-column layouts** with preview panes
-- **Breadcrumb navigation** for clear hierarchy
-- **Customizable UI elements** (text blocks, dividers, input fields)
-- **Keyboard navigation** with customizable key bindings
-- **Responsive design** that adapts to terminal width
+// Progress tracking with throttling
+for (let i = 1; i <= 100; i++) {
+    logger.progress('Processing', { prefix: 'task', count: i, total: 100 });
+}
 
-### Development
-- **TypeScript** with full type safety
-- **Clean builds** with no warnings
-- **Dual module support** (ESM/CJS)
-- **Comprehensive documentation**
-
-## 📖 Documentation
-
-- **[Complete Documentation](./docs/README.md)** - Full API reference and usage guide
-- **[API Reference](./docs/API.md)** - Complete API documentation
-- **[Screen System Guide](./docs/screen/README.md)** - Terminal UI components and patterns
-- **[Quick Reference](./docs/QUICK_REFERENCE.md)** - Cheat sheet for common patterns
-- **[Examples](./docs/EXAMPLES.md)** - Real-world usage examples
-
-## 🎯 Examples
-
-### Argument Parsing
-```bash
-# Basic usage
-npx tsx examples/args/show-args.ts --verbose --debug
-
-# Environment-specific
-npx tsx examples/args/show-args.ts --env=production
-
-# Config files
-npx tsx examples/args/show-args.ts --config=config.json
-
-# Short flags
-npx tsx examples/args/show-args.ts -vsd --output=file.txt
+logger.results({ processed: 100, errors: 0 });
 ```
 
-### Interactive Terminal UI
-```bash
-# Screen system examples
-npx tsx examples/screen/basic.ts
+[📖 Full Logger Documentation](docs/LOGGER.md)
 
-# Interactive argument runner
-npx tsx examples/args/show-args-runner.ts
+### Errors - Custom Error Classes
+
+```typescript
+import { ParamError, InitError, CriticalRequestError } from '@nmakarov/cli-toolkit/errors';
+
+// Throw framework-specific errors
+throw new ParamError('Invalid parameter: port must be a number');
+throw new InitError('Failed to initialize database connection');
+throw new CriticalRequestError('API endpoint unreachable');
 ```
 
-## 🛠️ Development
+## Module Overview
 
-### Prerequisites
-- **Node.js**: v20.0.0 or higher (recommended: v24+)
-- **npm**: v8.0.0 or higher
+| Module | Purpose | Import Path |
+|--------|---------|-------------|
+| **Args** | Parse CLI arguments with config/env support | `@nmakarov/cli-toolkit/args` |
+| **Params** | Type-safe parameter validation with Joi | `@nmakarov/cli-toolkit/params` |
+| **Screen** | Interactive terminal UIs with React/Ink | `@nmakarov/cli-toolkit/screen` |
+| **Logger** | Structured logging with progress tracking | `@nmakarov/cli-toolkit/logger` |
+| **Errors** | Custom error classes | `@nmakarov/cli-toolkit/errors` |
 
-### Setup
+## Examples
+
+Try the interactive example launcher:
+
 ```bash
+# Clone the repository
 git clone https://github.com/nmakarov/cli-toolkit.git
 cd cli-toolkit
+
+# Install dependencies
 npm install
+
+# Launch interactive examples
+npx tsx examples/example-runner.ts
 ```
 
-### Development Workflow
-
-#### Build
-```bash
-npm run build          # Build for production
-npm run dev            # Build in watch mode
-```
-
-#### Type Checking
-```bash
-npm run type-check     # TypeScript type checking
-```
-
-#### Linting
-```bash
-npm run lint           # ESLint checking
-```
-
-#### Testing
-```bash
-npm test               # Run entire vitest suite
-npm run test:watch     # Run tests in watch mode
-npm run test:ci        # Run *.ci.test.ts across components with coverage
-npm run test:args      # Run all Args component tests
-npm run test:args:ci   # Run Args CI tests with coverage
-npm run test:params    # Run all Params component tests
-npm run test:params:ci # Run Params CI tests with coverage
-npm run test:screen    # Run all Screen component tests
-npm run test:screen:ci # Run Screen CI tests with coverage
-```
-
-### Project Structure
-```
-├── src/                    # Source code
-│   ├── args/              # Args module implementation
-│   │   ├── index.ts       # Args class and helpers
-│   │   └── tests/         # Args component tests
-│   ├── args.ts            # Args export surface
-│   ├── params/            # Params module implementation
-│   │   ├── custom-types.ts# Joi custom types
-│   │   ├── index.ts       # Params class and helpers
-│   │   └── tests/         # Params component tests
-│   ├── params.ts          # Params export surface
-│   ├── screen/            # Screen system components
-│   │   ├── index.ts       # Screen exports
-│   │   ├── components.ts  # Layout components
-│   │   ├── ui-elements.ts # UI elements
-│   │   ├── list-components.ts # List components
-│   │   ├── screens.ts     # Screen functions
-│   │   ├── utils.ts       # Utilities
-│   │   ├── footer-builder.ts # Footer builder
-│   │   └── tests/         # Screen component tests
-│   └── index.ts           # Main exports
-├── dist/                   # Built files
-├── examples/               # Example scripts
-│   ├── args/              # Args-specific demos
-│   │   ├── functionality-examples.ts
-│   │   └── show-args-runner.ts
-│   │   └── show-args.ts
-│   ├── params/            # Params-specific demos
-│   │   └── show-params.ts
-│   └── screen/            # Screen system examples
-├── examples/example-runner.ts # Main interactive example launcher
-├── docs/                   # Documentation
-│   └── screen/            # Screen system docs
-├── legacy/                 # Legacy reference implementation
-└── package.json           # Package configuration
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Make your changes
-4. Run tests: `npm test`
-5. Run linting: `npm run lint`
-6. Build: `npm run build`
-7. Commit your changes: `git commit -m 'Add your feature'`
-8. Push to the branch: `git push origin feature/your-feature`
-9. Submit a pull request
-
-### Versioning
-
-This project follows [Semantic Versioning](https://semver.org/) (SemVer):
-
-- **MAJOR** (1.0.0): Breaking changes
-- **MINOR** (0.1.0): New features (backward compatible)
-- **PATCH** (0.0.1): Bug fixes (backward compatible)
-
-#### Version Commands
-```bash
-# Patch version (0.0.1 → 0.0.2)
-npm version patch
-
-# Minor version (0.0.1 → 0.1.0)
-npm version minor
-
-# Major version (0.0.1 → 1.0.0)
-npm version major
-
-# Pre-release versions
-npm version prerelease --preid=alpha    # 0.0.1 → 0.0.2-alpha.0
-npm version prerelease --preid=beta     # 0.0.1 → 0.0.2-beta.0
-npm version prerelease --preid=rc       # 0.0.1 → 0.0.2-rc.0
-```
-
-### Publishing
-
-#### Prerequisites
-```bash
-# Login to npm (if not already logged in)
-npm login
-
-# Verify you're logged in
-npm whoami
-```
-
-#### Publishing Process
-
-1. **Update version:**
-   ```bash
-   npm version patch    # or minor/major
-   ```
-
-2. **Build the project:**
-   ```bash
-   npm run build
-   ```
-
-3. **Run tests (when available):**
-   ```bash
-   npm test
-   ```
-
-4. **Publish to npm:**
-   ```bash
-   npm publish
-   ```
-
-5. **Push changes to git:**
-   ```bash
-   git push origin main --tags
-   ```
-
-#### Pre-release Publishing
-
-For testing or beta releases:
+Or run individual examples:
 
 ```bash
-# Create pre-release version
-npm version prerelease --preid=beta
+# Args examples
+npx tsx examples/args/show-args.ts --verbose --output=file.txt
+npx tsx examples/args/show-args-runner.ts  # Interactive
 
-# Publish pre-release
-npm publish --tag beta
+# Params examples
+npx tsx examples/params/show-params-defaults.ts --name="My App"
+npx tsx examples/params/time-params-playground.ts --startDate="2025-01-01T00:00:00Z" --endDate="@startDate+30d"
 
-# Install pre-release
-npm install @nmakarov/cli-toolkit@beta
+# Screen examples
+npx tsx examples/screen/basic.ts  # Interactive demo
+
+# Logger examples
+npx tsx examples/logger/basic.ts
 ```
 
-#### Updating Published Package
+## Documentation
+
+- **[Full Documentation](docs/README.md)** - Complete reference
+- **[Args Module](docs/ARGS.md)** - Argument parsing details
+- **[Params Module](docs/PARAMS.md)** - Parameter validation guide
+- **[Screen Module](docs/SCREEN.md)** - Terminal UI framework
+- **[Logger Module](docs/LOGGER.md)** - Logging capabilities
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Cheat sheet
+- **[Examples](docs/EXAMPLES.md)** - Code examples
+- **[API Reference](docs/API.md)** - Full API documentation
+- **[Deployment Guide](DEPLOYMENT.md)** - Publishing workflow
+
+## Testing
 
 ```bash
-# Update patch version
-npm version patch && npm publish
-
-# Update minor version  
-npm version minor && npm publish
-
-# Update major version
-npm version major && npm publish
+npm test               # Run all tests
+npm run test:ci        # Run CI smoke tests with coverage
+npm run test:args      # Test Args module
+npm run test:params    # Test Params module
+npm run test:screen    # Test Screen module
+npm run test:logger    # Test Logger module
+npm run test:coverage  # Generate coverage report
 ```
 
-#### Package Verification
+## Building
 
 ```bash
-# Check what will be published
-npm pack --dry-run
-
-# Verify package contents
-npm pack
-tar -tzf nmakarov-cli-toolkit-*.tgz
-
-# Test installation
-npm install ./nmakarov-cli-toolkit-*.tgz
+npm run build          # Build ESM and CommonJS outputs
+npm run dev            # Watch mode for development
 ```
 
-### Release Process
+## Key Concepts
 
-1. **Update version in `package.json`:**
-   ```bash
-   npm version patch    # or minor/major
-   ```
+### Precedence Order (Args & Params)
 
-2. **Update `CHANGELOG.md`** with new features/fixes
+Values are resolved in this order (highest to lowest priority):
 
-3. **Build and test:**
-   ```bash
-   npm run build
-   npm run test        # when tests are available
-   npm run lint
-   ```
+1. **Overrides** - Explicitly set overrides
+2. **Getters** - Registered getter functions
+3. **CLI Arguments** - Command-line flags and options
+4. **Environment Variables** - `.env` files and process.env
+5. **Config Files** - JSON/JS configuration files
+6. **Constructor Options** - Values passed to constructor
+7. **Defaults** - Default values from definitions
 
-4. **Publish:**
-   ```bash
-   npm publish
-   ```
+### Cross-Parameter References (Params)
 
-5. **Create GitHub release:**
-   ```bash
-   git push origin main --tags
-   # Then create release on GitHub with changelog
-   ```
-
-### Package Configuration
-
-The package is configured for dual module support (ESM/CJS):
-
-```json
-{
-  "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js", 
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
-    }
-  }
-}
-```
-
-### Troubleshooting
-
-#### Common Issues
-
-**"Package already exists":**
-```bash
-# Check current version
-npm view @nmakarov/cli-toolkit version
-
-# Update version if needed
-npm version patch
-```
-
-**"Not authorized":**
-```bash
-# Re-login to npm
-npm logout
-npm login
-```
-
-**"Invalid package name":**
-- Ensure package name matches `@nmakarov/cli-toolkit`
-- Check `package.json` name field
-
-**"Missing files":**
-```bash
-# Check files field in package.json
-npm pack --dry-run
-```
-
-## 🔧 Maintenance
-
-### Security Audits
-
-Regular security audits help keep the project secure:
+Calculate values based on other parameters:
 
 ```bash
-# Check for security vulnerabilities
-npm audit
-
-# Fix vulnerabilities automatically (if possible)
-npm audit fix
-
-# Force fix with potential breaking changes
-npm audit fix --force
+# endDate is calculated as 2 hours after startDate
+node app.js --startDate="2025-01-01T10:00:00Z" --endDate="@startDate+2h"
 ```
 
-### Dependency Updates
-
-Keep dependencies up to date:
+### Relative Time Expressions (Params)
 
 ```bash
-# Check for outdated packages
-npm outdated
-
-# Update specific packages
-npm install package-name@latest
-
-# Update all packages (use with caution)
-npm update
+node app.js --startDate="now"        # Current timestamp
+node app.js --startDate="-7d"        # 7 days ago
+node app.js --startDate="+2h"        # 2 hours from now
+node app.js --endDate="@start+30d"   # 30 days after start param
 ```
 
-### Security Update Strategy
+Supported units: `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks), `y` (years)
 
-When `npm audit` shows vulnerabilities:
+### ISO8601 Internal Representation
 
-1. **Check current status:**
-   ```bash
-   npm audit
-   npm outdated
-   ```
+All timestamps are stored internally as UTC ISO8601 strings:
+- **Format**: `YYYY-MM-DDTHH:mm:ss.sssZ`
+- **Example**: `2025-01-01T10:30:00.000Z`
+- **Benefits**: PostgreSQL compatible, JSON serializable, timezone unambiguous
 
-2. **Update packages individually (recommended):**
-   ```bash
-   # Update TypeScript first (usually safe)
-   npm install typescript@latest
-   
-   # Update build tools
-   npm install tsup@latest
-   npm install vitest@latest
-   
-   # Update other dev dependencies
-   npm install typedoc@latest
-   npm install @types/node@latest
-   ```
+## TypeScript Support
 
-3. **Handle peer dependency conflicts:**
-   ```bash
-   # If conflicts occur, use legacy peer deps
-   npm install package-name@latest --legacy-peer-deps
-   ```
+The toolkit is written in TypeScript with full type definitions:
 
-4. **Verify everything works:**
-   ```bash
-   npm run build
-   npm run type-check
-   npm run lint
-   npm audit  # Should show 0 vulnerabilities
-   ```
+```typescript
+import { Args } from '@nmakarov/cli-toolkit/args';
+import { Params } from '@nmakarov/cli-toolkit/params';
+import { showListScreen } from '@nmakarov/cli-toolkit/screen';
+import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
 
-### Common Update Issues
-
-#### Peer Dependency Conflicts
-```bash
-# Error: ERESOLVE could not resolve
-# Solution: Update conflicting packages first
-npm install typedoc@latest
-npm install tsup@latest
+// Full IntelliSense and type checking
+const args = new Args({ aliases: { v: 'verbose' } });
+const params = new Params({ args });
+const logger = new CliToolkitLogger({ prefix: 'APP' });
 ```
 
-#### Breaking Changes
-```bash
-# If updates break functionality, rollback
-git checkout -- package.json package-lock.json
-npm install
+## CommonJS Support
+
+All modules support both ESM and CommonJS:
+
+```javascript
+// ESM (TypeScript/Modern Node)
+import { Args } from '@nmakarov/cli-toolkit/args';
+
+// CommonJS (Traditional Node.js)
+const { Args } = require('@nmakarov/cli-toolkit/args');
 ```
 
-#### Package Resolution Issues
-```bash
-# Clear npm cache if needed
-npm cache clean --force
-rm -rf node_modules package-lock.json
-npm install
-```
+## Contributing
 
-### Maintenance Checklist
+Contributions are welcome! Please read the [development documentation](docs/README.md) for details.
 
-- [ ] Run `npm audit` monthly
-- [ ] Check `npm outdated` quarterly  
-- [ ] Update dependencies when security issues found
-- [ ] Test build after each update
-- [ ] Update documentation if APIs change
-- [ ] Create release notes for significant updates
+## License
 
-## 📄 License
+MIT © nmakarov
 
-MIT
+## Links
+
+- **GitHub**: https://github.com/nmakarov/cli-toolkit
+- **npm**: https://www.npmjs.com/package/@nmakarov/cli-toolkit
+- **Issues**: https://github.com/nmakarov/cli-toolkit/issues
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
+- **Feature Tracker**: [FEATURES.md](FEATURES.md)

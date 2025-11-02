@@ -47,7 +47,19 @@ Legend:
   - Challenges: keep docs synchronised with rapidly evolving scripts and commands.
 - ✅ Example folder reorganization (config/env files moved to component subdirectories)
   - Challenges: updating all path references in example scripts and documentation.
+- ✅ NPM package publication with automated release scripts
+  - Challenges: dual ESM/CJS support required chalk downgrade from v5 to v4; missing logger export caused CommonJS import failures; coordinating git tags, version bumps, and npm publish in single command.
 - 📝 Dependency cleanup: remove `@types/joi` (Joi provides its own types), address `source-map` deprecation warning
   - Challenges: ensuring type definitions work correctly after removing @types/joi, verifying no build issues from source-map update.
+
+## Time/Date Handling
+- ✅ ISO8601 internal representation (UTC strings like `2025-01-01T01:01:01Z`)
+  - Challenges: changing return type from Date to string required updating all tests and examples; ensuring timezone-aware parsing.
+- ✅ Cross-parameter references with `@paramName+offset` syntax for calculated timestamps
+  - Challenges: maintaining evaluation order, passing Joi context through validation chain, error handling for missing/invalid references.
+- ✅ Time params playground example with multiple display formats (ISO, date-only, human-readable, PST conversion)
+  - Challenges: balancing simplicity with timezone complexity without external libraries.
+- 📝 Comprehensive timezone support with named zones (PST, EST, etc.) and DST handling
+  - Challenges: deciding whether to use luxon/date-fns-tz vs native APIs, maintaining small bundle size.
 
 
