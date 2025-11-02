@@ -86,7 +86,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nmakarov/cli-toolkit.git"
+    "url": "git+https://github.com/nmakarov/cli-toolkit.git"
   },
   "files": [
     "dist/",

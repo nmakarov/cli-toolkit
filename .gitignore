@@ -48,3 +48,6 @@ pids/
 
 # Legacy files (not for publication)
 legacy/
+
+# npm pack artifacts
+*.tgz
