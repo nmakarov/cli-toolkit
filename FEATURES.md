@@ -47,5 +47,7 @@ Legend:
   - Challenges: keep docs synchronised with rapidly evolving scripts and commands.
 - ✅ Example folder reorganization (config/env files moved to component subdirectories)
   - Challenges: updating all path references in example scripts and documentation.
+- 📝 Dependency cleanup: remove `@types/joi` (Joi provides its own types), address `source-map` deprecation warning
+  - Challenges: ensuring type definitions work correctly after removing @types/joi, verifying no build issues from source-map update.
 
 
