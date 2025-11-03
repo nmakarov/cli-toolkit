@@ -13,6 +13,68 @@
 
 > **📝 Note**: This PROMPT.md serves as external memory. When establishing new patterns, conventions, or solving tricky problems, update this document so those decisions persist across sessions and projects.
 
+---
+
+## 📋 Multi-Project Workflow
+
+This section defines how documentation files are maintained across the main project and subprojects.
+
+### PROMPT.md - Synchronized External Memory
+
+**Rule:** PROMPT.md must be **identical across all projects** (main and all subprojects). It is shared external memory.
+
+#### When User Says: "I just switched here"
+
+**AI will:**
+
+1. **Detect current project** from workspace path
+2. **If in subproject** (e.g., `subprojects/cli-toolkit/`):
+   - Read `PROMPT.md` from current subproject
+   - Load all patterns and considerations
+3. **If in main project** (e.g., `mlsfarm/`):
+   - Scan all `subprojects/*/PROMPT.md` files
+   - Compare content to find newest version
+   - Synchronize all PROMPT.md files to be identical
+   - Read the synchronized PROMPT.md
+
+#### When New Consideration is Discovered
+
+- Update PROMPT.md in current project
+- It will sync to all others next time we switch back to main project
+- PROMPT.md changes should be committed to each repository independently
+
+---
+
+### CHANGELOG.md & FEATURES.md - Project-Specific
+
+**Rule:** Only update files for the **current project** being worked on. These files are NOT synchronized.
+
+#### Working on Main Project
+
+- ✅ Update `mlsfarm/CHANGELOG.md`
+- ✅ Update `mlsfarm/FEATURES.md`
+- ❌ Don't touch subproject files
+
+#### Working on Subproject
+
+- ✅ Update `subproject/CHANGELOG.md`
+- ✅ Update `subproject/FEATURES.md`
+- ❌ Don't touch main project files
+
+---
+
+### Weekly Report Generation
+
+**Pull from ALL sources:**
+
+- Main project: `CHANGELOG.md` + `FEATURES.md`
+- All subprojects: `subprojects/*/CHANGELOG.md` + `subprojects/*/FEATURES.md`
+- Aggregate all changes into weekly report
+- Show component-level progress from main project
+- Show library-level progress from subprojects
+
+---
+
 ## Project Context
 
 You are working with a developer who has been building CLI utilities and screen system components. The developer has experience with monorepo structures and has successfully developed a complete CLI screen system framework.
@@ -96,6 +158,7 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Examples**: ✅ Includes functionality samples plus the interactive `examples/example-runner.ts`
 - **Logger module**: 🚧 In progress (fallback console logger, full-featured CLI logger with transports, progress throttling, IPC support, CI coverage)
 - **Feature tracker**: ✅ Maintain `FEATURES.md` with status updates and challenge notes for each feature
+- **IMPORTANT**: ✅ EVERY project must have its own `CHANGELOG.md` and `FEATURES.md` files maintained throughout development
 
 ### Common Gotchas & Solutions
 - **Stale closures in React**: Use `useRef` for mutable values in actions, recalculate values inside action handlers
@@ -113,11 +176,14 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Publishing workflow**: ALWAYS commit changes first (`git add . && git commit`), THEN use `npm run release:patch` (or `release:minor`/`release:major`). The `npm version` command requires a clean git working directory and will fail with "Git working directory not clean" if there are uncommitted changes.
 - **Feature tracking with challenges**: Every feature entry in FEATURES.md must include a "Challenges" bullet documenting implementation difficulties or gotchas.
 - **FEATURES.md maintenance**: Update automatically whenever planning or completing work; mark status (📝 planned / 🚧 in progress / ✅ complete).
+- **CHANGELOG.md and FEATURES.md are mandatory**: EVERY project (not just subprojects) MUST have these files created at project start and maintained throughout development. Update both files whenever significant work is done, bugs are fixed, or architectural decisions are made.
 - **Test organization**: Component-local tests in `src/<component>/tests/` with `*.ci.test.ts` for fast CI checks and `*.test.ts` for comprehensive coverage.
 - **Documentation structure**: Root README.md focuses on whole library with quick starts; detailed component docs in `docs/<COMPONENT>.md`; FULL_REFERENCE.md for complete API.
 - **Example organization**: Component examples in `examples/<component>/` folders; config/env files colocated with examples that use them; main `example-runner.ts` at examples root.
 - **Cross-parameter references**: Use Joi context passing (`validate(val, { context: { params: this.params } })`) to enable `@paramName+offset` syntax; evaluate left-to-right.
 - **Date/time handling**: Always store as UTC ISO8601 strings internally; convert to other timezones/formats only for display; support relative time (`-7d`, `+2h`, `now`) and cross-param refs (`@startDate+30d`).
+- **Native module compatibility (node-expat)**: `node-expat` v2.4.1 (used by RETS client) only compiles on Node.js ≤20. Node 22+ has breaking V8 API changes that prevent compilation. If upgrading local Node version, use Node 20 LTS for legacy mlsfarm code, or keep separate Node versions via nvm. After switching Node versions, always run `rm -rf node_modules && npm install` to rebuild native modules.
+- **Git submodules for service libraries**: Use git submodules for independent libraries (cli-toolkit, etc.) that need separate version control. Workflow: 1) Work in submodule directory normally, 2) Commit/push submodule changes first, 3) Update main repo to reference new submodule commit. Clone with `--recurse-submodules` or run `git submodule init && git submodule update` after cloning. Update submodules with `git submodule update --remote --merge`. Document submodule setup in main README.md.
 
 ### Decision Rationale
 - **Why 4 spaces**: User preference, consistent with existing codebase, enforced via Prettier
