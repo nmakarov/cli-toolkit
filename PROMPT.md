@@ -6,10 +6,12 @@
 - **Colors**: Never hardcode, always parameterize
 - **Args**: `=` separator, case-insensitive, precedence: overrides > CLI > config > env > defaults
 - **Screen**: React.createElement, breadcrumbs, customizable everything
-- **Build**: tsup, ESLint flat config, Prettier
-- **Git**: Conventional commits, SemVer, feature branches
+- **Build**: tsup (dual ESM/CJS), ESLint flat config, Prettier, Vitest for tests
+- **Git**: Commit first, then `npm run release:patch`, conventional commits, SemVer
+- **Docs**: FEATURES.md with challenges, CHANGELOG.md with versions, component-specific docs
+- **Publishing**: `npm run release:patch/minor/major` (includes test, build, version, publish, push)
 
-> **📝 Note**: Going forward, if I see considerations worth adding to this PROMPT.md, I'll show you what I'm planning to add right away so we can keep track of those things together.
+> **📝 Note**: This PROMPT.md serves as external memory. When establishing new patterns, conventions, or solving tricky problems, update this document so those decisions persist across sessions and projects.
 
 ## Project Context
 
@@ -108,7 +110,14 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Logger bootstrap**: Initialize with a console-only fallback before swapping to the fully configured logger once params/config are available
 - **Feature tracking**: Update `FEATURES.md` alongside planning/implementation, capturing both status and noted challenges
 - **Script run command**: Place the `// Run with: ...` comment immediately after imports and before executable code in every runnable script
-- **Publishing workflow**: ALWAYS commit changes first (`git add . && git commit`), THEN use `npm run release:patch` (or `release:minor`/`release:major`). The release script requires a clean git working directory.
+- **Publishing workflow**: ALWAYS commit changes first (`git add . && git commit`), THEN use `npm run release:patch` (or `release:minor`/`release:major`). The `npm version` command requires a clean git working directory and will fail with "Git working directory not clean" if there are uncommitted changes.
+- **Feature tracking with challenges**: Every feature entry in FEATURES.md must include a "Challenges" bullet documenting implementation difficulties or gotchas.
+- **FEATURES.md maintenance**: Update automatically whenever planning or completing work; mark status (📝 planned / 🚧 in progress / ✅ complete).
+- **Test organization**: Component-local tests in `src/<component>/tests/` with `*.ci.test.ts` for fast CI checks and `*.test.ts` for comprehensive coverage.
+- **Documentation structure**: Root README.md focuses on whole library with quick starts; detailed component docs in `docs/<COMPONENT>.md`; FULL_REFERENCE.md for complete API.
+- **Example organization**: Component examples in `examples/<component>/` folders; config/env files colocated with examples that use them; main `example-runner.ts` at examples root.
+- **Cross-parameter references**: Use Joi context passing (`validate(val, { context: { params: this.params } })`) to enable `@paramName+offset` syntax; evaluate left-to-right.
+- **Date/time handling**: Always store as UTC ISO8601 strings internally; convert to other timezones/formats only for display; support relative time (`-7d`, `+2h`, `now`) and cross-param refs (`@startDate+30d`).
 
 ### Decision Rationale
 - **Why 4 spaces**: User preference, consistent with existing codebase, enforced via Prettier
@@ -119,6 +128,10 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Why `=` separator**: Clear distinction between key/value pairs and boolean flags + commands
 - **Why case-insensitive**: Better UX, matches legacy behavior, handles typos gracefully
 - **Why breadcrumb titles**: Clear navigation context, consistent with screen system patterns
+- **Why chalk v4**: v5 is ESM-only, breaks CommonJS imports; v4 supports both ESM and CJS for dual module builds
+- **Why ISO8601 strings for dates**: PostgreSQL compatible, JSON serializable, timezone unambiguous, human-readable
+- **Why UTC internal representation**: Avoids timezone confusion, consistent storage, easy conversion to any timezone for display
+- **Why `@paramName+offset` syntax**: Clean, no escaping needed, extensible to other param types beyond dates, easy regex parsing
 
 ## Project Setup & Development Workflow
 
