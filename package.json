@@ -41,6 +41,11 @@
       "types": "./dist/logger.d.ts",
       "import": "./dist/logger.js",
       "require": "./dist/logger.cjs"
+    },
+    "./filestore": {
+      "types": "./dist/filestore.d.ts",
+      "import": "./dist/filestore.js",
+      "require": "./dist/filestore.cjs"
     }
   },
   "scripts": {
@@ -50,7 +55,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:coverage:open": "vitest --coverage && open coverage/index.html",
-    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts --coverage",
+    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts src/filestore/tests/filestore.ci.test.ts src/filestore/tests/synopsis-functions.ci.test.ts src/utils/tests/format-utils.ci.test.ts src/utils/tests/date-utils.ci.test.ts src/utils/tests/crypto-utils.ci.test.ts src/utils/tests/fs-utils.ci.test.ts --coverage",
     "test:args": "vitest run src/args/tests",
     "test:args:ci": "vitest run src/args/tests/args.ci.test.ts --coverage",
     "test:params": "vitest run src/params/tests",
@@ -61,6 +66,12 @@
     "test:screen:ci": "vitest run src/screen/tests/screen.ci.test.ts --coverage",
     "test:logger": "vitest run src/logger/tests/logger.cli.test.ts",
     "test:logger:ci": "vitest run src/logger/tests/logger.ci.test.ts --coverage",
+    "test:filestore": "vitest run src/filestore/tests",
+    "test:filestore:ci": "vitest run src/filestore/tests/filestore.ci.test.ts --coverage",
+    "test:synopsis": "vitest run src/filestore/tests/synopsis-functions.ci.test.ts",
+    "test:synopsis:ci": "vitest run src/filestore/tests/synopsis-functions.ci.test.ts --coverage",
+    "test:utils": "vitest run src/utils/tests",
+    "test:utils:ci": "vitest run src/utils/tests/*.ci.test.ts --coverage",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
     "docs": "typedoc src/index.ts",

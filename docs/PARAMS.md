@@ -32,7 +32,7 @@ console.log(config.debug);  // Boolean (false if not provided)
 
 - ✅ String-based type definitions (`"string required"`, `"number default 100"`)
 - ✅ Joi schema support (for complex validation)
-- ✅ Custom types (`edate`, `array(type)`)
+- ✅ Custom types (`date`, `array(type)`)
 - ✅ Cross-parameter references (`@paramName+offset`)
 - ✅ Required/optional validation
 - ✅ Default values
@@ -55,7 +55,7 @@ params.getAll({
     timeout: 'number default 5000',
     tags: 'array(string) default api,web',
     count: 'array(number)',
-    startDate: 'edate default now'
+    startDate: 'date default now'
 });
 ```
 
@@ -66,7 +66,7 @@ params.getAll({
 - `number` / `integer` / `int`
 - `boolean` / `bool`
 - `array(string)` / `array(number)` / `array(boolean)`
-- `edate` - Enhanced date (ISO8601 strings with relative time)
+- `date` - Enhanced date (ISO8601 strings with relative time)
 - `duration` - ISO8601 duration strings
 
 ### Object Syntax
@@ -101,9 +101,9 @@ params.getAll({
 });
 ```
 
-## Enhanced Date Type (`edate`)
+## Enhanced Date Type (`date`)
 
-The `edate` type provides flexible date/time handling with ISO8601 internal representation.
+The `date` type provides flexible date/time handling with ISO8601 internal representation.
 
 ### Supported Input Formats
 
@@ -133,7 +133,7 @@ The `edate` type provides flexible date/time handling with ISO8601 internal repr
 
 ### Internal Representation
 
-All `edate` values are stored as **UTC ISO8601 strings**:
+All `date` values are stored as **UTC ISO8601 strings**:
 - Format: `YYYY-MM-DDTHH:mm:ss.sssZ`
 - Example: `2025-01-01T10:30:00.000Z`
 - Always UTC timezone
@@ -145,9 +145,9 @@ Use `@paramName+offset` to calculate dates relative to other parameters:
 
 ```typescript
 const config = params.getAll({
-    startDate: 'edate',
-    endDate: 'edate',
-    reminderDate: 'edate'
+    startDate: 'date',
+    endDate: 'date',
+    reminderDate: 'date'
 });
 ```
 

@@ -1,0 +1,3016 @@
+[
+  {
+    "ListingId": "F10425068",
+    "ListingKey": "1061490231",
+    "ModificationTimestamp": "2024-03-26T17:00:34.830-00:00",
+    "ListPrice": 300000,
+    "PhotosCount": 26,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1973,
+    "City": "Tamarac"
+  },
+  {
+    "ListingId": "R10969587",
+    "ListingKey": "1063436852",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 275000,
+    "PhotosCount": 55,
+    "Flooring": "Tile",
+    "YearBuilt": 1969,
+    "City": "Ocean Ridge"
+  },
+  {
+    "ListingId": "R10958165",
+    "ListingKey": "1060239805",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 425000,
+    "PhotosCount": 53,
+    "Flooring": "Carpet,CeramicTile,Tile",
+    "YearBuilt": 2018,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10956465",
+    "ListingKey": "1059962141",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 209900,
+    "PhotosCount": 39,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1989,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10957834",
+    "ListingKey": "1060206781",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 349000,
+    "PhotosCount": 53,
+    "Flooring": "Carpet,Laminate",
+    "YearBuilt": 2002,
+    "City": "Sebastian"
+  },
+  {
+    "ListingId": "R10961191",
+    "ListingKey": "1061388692",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 999900,
+    "PhotosCount": 37,
+    "Flooring": "Carpet,CeramicTile,Wood",
+    "YearBuilt": 2003,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10968744",
+    "ListingKey": "1063371801",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 649900,
+    "PhotosCount": 57,
+    "Flooring": "Carpet,CeramicTile,Wood",
+    "YearBuilt": 1993,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10970846",
+    "ListingKey": "1063549091",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 1100000,
+    "PhotosCount": 45,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 1998,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10971939",
+    "ListingKey": "1064842618",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 265000,
+    "PhotosCount": 26,
+    "Flooring": "Carpet,CeramicTile,Parquet",
+    "YearBuilt": 1982,
+    "City": "Greenacres"
+  },
+  {
+    "ListingId": "R10954181",
+    "ListingKey": "1059389063",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 265000,
+    "PhotosCount": 43,
+    "Flooring": "Tile",
+    "YearBuilt": 2005
+  },
+  {
+    "ListingId": "R10954103",
+    "ListingKey": "1059373567",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 589900,
+    "PhotosCount": 37,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1999,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10971987",
+    "ListingKey": "1064846455",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 5250000,
+    "PhotosCount": 55,
+    "Flooring": "Marble,Wood",
+    "YearBuilt": 1999,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10971227",
+    "ListingKey": "1064687656",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 4950000,
+    "PhotosCount": 99,
+    "Flooring": "Tile",
+    "YearBuilt": 2023,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10960699",
+    "ListingKey": "1061326841",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 2350,
+    "PhotosCount": 28,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1985,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10969328",
+    "ListingKey": "1063421455",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 555000,
+    "PhotosCount": 30,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1952,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10964002",
+    "ListingKey": "1061807266",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 849900,
+    "PhotosCount": 43,
+    "Flooring": "Clay,Wood",
+    "YearBuilt": 1991,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10960135",
+    "ListingKey": "1061264102",
+    "ModificationTimestamp": "2024-03-26T17:02:15.840-00:00",
+    "ListPrice": 1800000,
+    "PhotosCount": 57,
+    "Flooring": "Carpet,CeramicTile,Wood",
+    "YearBuilt": 1962,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10949093",
+    "ListingKey": "1054964571",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 370000,
+    "PhotosCount": 17,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2007,
+    "City": "Vero Beach"
+  },
+  {
+    "ListingId": "R10970260",
+    "ListingKey": "1063494866",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 499000,
+    "PhotosCount": 46,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1972,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10960809",
+    "ListingKey": "1061341309",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 633900,
+    "PhotosCount": 132,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 2006,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10938883",
+    "ListingKey": "1048622985",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 124900,
+    "PhotosCount": 27,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1972,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10959052",
+    "ListingKey": "1061111356",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 41,
+    "Flooring": "CeramicTile,Tile",
+    "YearBuilt": 1984,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10947236",
+    "ListingKey": "1054108221",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 359500,
+    "PhotosCount": 22,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1983,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10918520",
+    "ListingKey": "1044988330",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 475000,
+    "PhotosCount": 18,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1958,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "R10946755",
+    "ListingKey": "1054065460",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 209000,
+    "PhotosCount": 15,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1953,
+    "City": "Fort Pierce"
+  },
+  {
+    "ListingId": "R10972088",
+    "ListingKey": "1064855078",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 3300,
+    "PhotosCount": 1,
+    "Flooring": "Vinyl",
+    "YearBuilt": 2003,
+    "City": "Miramar"
+  },
+  {
+    "ListingId": "F10426520",
+    "ListingKey": "1061818602",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 3925,
+    "PhotosCount": 17,
+    "City": "Miramar"
+  },
+  {
+    "ListingId": "R10951160",
+    "ListingKey": "1058230108",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 338000,
+    "PhotosCount": 50,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1996,
+    "City": "Hypoluxo"
+  },
+  {
+    "ListingId": "R10972087",
+    "ListingKey": "1064855077",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 539000,
+    "PhotosCount": 57,
+    "Flooring": "Carpet,Vinyl",
+    "YearBuilt": 1985,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10953197",
+    "ListingKey": "1058675447",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 1399000,
+    "PhotosCount": 33,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1924,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10964636",
+    "ListingKey": "1061923229",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 245000,
+    "PhotosCount": 36,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1988,
+    "City": "Vero Beach"
+  },
+  {
+    "ListingId": "R10883834",
+    "ListingKey": "1035770286",
+    "ModificationTimestamp": "2024-03-26T17:02:45.233-00:00",
+    "ListPrice": 3300,
+    "PhotosCount": 75,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1978,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "F10416388",
+    "ListingKey": "1054109198",
+    "ModificationTimestamp": "2024-03-26T17:03:14.617-00:00",
+    "ListPrice": 2275,
+    "PhotosCount": 16,
+    "YearBuilt": 1992,
+    "City": "Hobe Sound"
+  },
+  {
+    "ListingId": "F10413272",
+    "ListingKey": "1052270673",
+    "ModificationTimestamp": "2024-03-26T17:04:24.807-00:00",
+    "ListPrice": 400000,
+    "PhotosCount": 14,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1958,
+    "City": "Margate"
+  },
+  {
+    "ListingId": "F10427661",
+    "ListingKey": "1062069554",
+    "ModificationTimestamp": "2024-03-26T17:04:57.833-00:00",
+    "ListPrice": 1775,
+    "PhotosCount": 9,
+    "YearBuilt": 1951,
+    "City": "Miami Beach"
+  },
+  {
+    "ListingId": "F10428307",
+    "ListingKey": "1063028764",
+    "ModificationTimestamp": "2024-03-26T17:05:29.433-00:00",
+    "ListPrice": 3050,
+    "PhotosCount": 15,
+    "YearBuilt": 1969,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10410339",
+    "ListingKey": "1048484637",
+    "ModificationTimestamp": "2024-03-26T17:05:29.433-00:00",
+    "ListPrice": 849999,
+    "PhotosCount": 34,
+    "Flooring": "Tile",
+    "YearBuilt": 2013,
+    "City": "Lighthouse Point"
+  },
+  {
+    "ListingId": "F10423155",
+    "ListingKey": "1060242246",
+    "ModificationTimestamp": "2024-03-26T17:07:15.150-00:00",
+    "ListPrice": 1500,
+    "PhotosCount": 9,
+    "YearBuilt": 1983,
+    "City": "Coral Springs"
+  },
+  {
+    "ListingId": "F10413332",
+    "ListingKey": "1052292869",
+    "ModificationTimestamp": "2024-03-26T17:08:15.660-00:00",
+    "ListPrice": 1900,
+    "PhotosCount": 16,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1974,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10374004",
+    "ListingKey": "1035170495",
+    "ModificationTimestamp": "2024-03-26T17:08:15.660-00:00",
+    "ListPrice": 97000,
+    "PhotosCount": 18,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1974,
+    "City": "Sunrise"
+  },
+  {
+    "ListingId": "F10429499",
+    "ListingKey": "1063441247",
+    "ModificationTimestamp": "2024-03-26T17:08:15.660-00:00",
+    "ListPrice": 279000,
+    "PhotosCount": 5,
+    "Flooring": "Carpet",
+    "YearBuilt": 1962,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "F10429967",
+    "ListingKey": "1063510822",
+    "ModificationTimestamp": "2024-03-26T17:08:15.660-00:00",
+    "ListPrice": 367900,
+    "PhotosCount": 22,
+    "Flooring": "Tile",
+    "YearBuilt": 1978,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10429440",
+    "ListingKey": "1063423860",
+    "ModificationTimestamp": "2024-03-26T17:08:15.660-00:00",
+    "ListPrice": 1700,
+    "PhotosCount": 7,
+    "YearBuilt": 1955,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10431088",
+    "ListingKey": "1064855039",
+    "ModificationTimestamp": "2024-03-26T17:09:42.920-00:00",
+    "ListPrice": 650000,
+    "PhotosCount": 9,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1958,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10421161",
+    "ListingKey": "1059536114",
+    "ModificationTimestamp": "2024-03-26T17:09:42.920-00:00",
+    "ListPrice": 5750,
+    "PhotosCount": 23,
+    "Flooring": "Marble,Other,Tile",
+    "YearBuilt": 2018,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10426099",
+    "ListingKey": "1061993621",
+    "ModificationTimestamp": "2024-03-26T17:10:08.303-00:00",
+    "ListPrice": 5400000,
+    "PhotosCount": 82,
+    "Flooring": "Tile",
+    "YearBuilt": 2016,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10427040",
+    "ListingKey": "1064823395",
+    "ModificationTimestamp": "2024-03-26T17:10:08.303-00:00",
+    "ListPrice": 589900,
+    "PhotosCount": 34,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1988,
+    "City": "Sunrise"
+  },
+  {
+    "ListingId": "R10957883",
+    "ListingKey": "1060211472",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 5000,
+    "PhotosCount": 24,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1990,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10963077",
+    "ListingKey": "1061695866",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 699000,
+    "PhotosCount": 40,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1968,
+    "City": "Lighthouse Point"
+  },
+  {
+    "ListingId": "R10959040",
+    "ListingKey": "1061107512",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1900,
+    "PhotosCount": 13,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1971,
+    "City": "Lake Worth"
+  },
+  {
+    "ListingId": "R10971194",
+    "ListingKey": "1064672016",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 610000,
+    "PhotosCount": 46,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 2006,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10971902",
+    "ListingKey": "1064839346",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 12900000,
+    "PhotosCount": 49,
+    "Flooring": "Marble,Other,Wood",
+    "YearBuilt": 1953,
+    "City": "Palm Beach"
+  },
+  {
+    "ListingId": "R10954960",
+    "ListingKey": "1059546104",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1500,
+    "PhotosCount": 12,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1953,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10964782",
+    "ListingKey": "1061937351",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 5700,
+    "PhotosCount": 68,
+    "Flooring": "Marble,Tile,Wood",
+    "YearBuilt": 2003,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10971071",
+    "ListingKey": "1064547254",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1199000,
+    "PhotosCount": 41,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2017,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10958733",
+    "ListingKey": "1060290094",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 3400,
+    "PhotosCount": 80,
+    "Flooring": "CeramicTile,Laminate,Wood",
+    "YearBuilt": 2005,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10964175",
+    "ListingKey": "1061827719",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 189900,
+    "PhotosCount": 28,
+    "Flooring": "Other",
+    "YearBuilt": 1976,
+    "City": "Barefoot Bay"
+  },
+  {
+    "ListingId": "F10418397",
+    "ListingKey": "1058183425",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 280000,
+    "PhotosCount": 18,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 1980,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "R10971853",
+    "ListingKey": "1064835370",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 415000,
+    "PhotosCount": 25,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1963,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "R10971243",
+    "ListingKey": "1064694163",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1150000,
+    "PhotosCount": 62,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1994,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10970544",
+    "ListingKey": "1063518766",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1600,
+    "PhotosCount": 14,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1969,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10972008",
+    "ListingKey": "1064848068",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 2695000,
+    "PhotosCount": 1,
+    "Flooring": "Carpet,Marble",
+    "YearBuilt": 1995,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10961582",
+    "ListingKey": "1061509723",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 179999,
+    "PhotosCount": 14,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2006,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10965991",
+    "ListingKey": "1062058021",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 2600000,
+    "PhotosCount": 72,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1955,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10966555",
+    "ListingKey": "1062106939",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 5000,
+    "PhotosCount": 20,
+    "Flooring": "Tile",
+    "YearBuilt": 1973,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "R10972085",
+    "ListingKey": "1064854753",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 259900,
+    "PhotosCount": 38,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1985,
+    "City": "Greenacres"
+  },
+  {
+    "ListingId": "R10972090",
+    "ListingKey": "1064855467",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1700,
+    "PhotosCount": 25,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1967,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10968069",
+    "ListingKey": "1063235995",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 195000,
+    "PhotosCount": 23,
+    "Flooring": "Laminate",
+    "YearBuilt": 1965,
+    "City": "North Palm Beach"
+  },
+  {
+    "ListingId": "R10969965",
+    "ListingKey": "1063470503",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 1000000,
+    "PhotosCount": 45,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1994,
+    "City": "Hobe Sound"
+  },
+  {
+    "ListingId": "R10965551",
+    "ListingKey": "1061991809",
+    "ModificationTimestamp": "2024-03-26T17:12:24.053-00:00",
+    "ListPrice": 228000,
+    "PhotosCount": 20,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1985,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10942551",
+    "ListingKey": "1052321756",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 298500,
+    "PhotosCount": 38,
+    "Flooring": "Carpet,CeramicTile,Laminate",
+    "YearBuilt": 1978,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10917267",
+    "ListingKey": "1044855600",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 399000,
+    "PhotosCount": 49,
+    "Flooring": "Laminate",
+    "YearBuilt": 1978,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10942041",
+    "ListingKey": "1052265312",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 2200,
+    "PhotosCount": 34,
+    "Flooring": "Tile",
+    "YearBuilt": 1981,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "R10951368",
+    "ListingKey": "1058378697",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 2100,
+    "PhotosCount": 2,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 2017,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10936977",
+    "ListingKey": "1048474069",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 2600,
+    "PhotosCount": 6,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2024,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10925310",
+    "ListingKey": "1045923043",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 5700,
+    "PhotosCount": 71,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1978,
+    "City": "Highland Beach"
+  },
+  {
+    "ListingId": "R10921546",
+    "ListingKey": "1045570599",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 48,
+    "PhotosCount": 55,
+    "Flooring": "Carpet,Laminate,Tile",
+    "YearBuilt": 2005,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10430840",
+    "ListingKey": "1064854471",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 449000,
+    "PhotosCount": 4,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1957,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "R10936963",
+    "ListingKey": "1048472847",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 2200,
+    "PhotosCount": 10,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2024,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10931895",
+    "ListingKey": "1046603306",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 212000,
+    "PhotosCount": 48,
+    "Flooring": "Carpet,CeramicTile,Laminate",
+    "YearBuilt": 1974,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10938745",
+    "ListingKey": "1048609021",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 418000,
+    "PhotosCount": 53,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2002,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "F10429629",
+    "ListingKey": "1063450640",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 750000,
+    "PhotosCount": 28,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1998,
+    "City": "Lake Worth"
+  },
+  {
+    "ListingId": "R10926054",
+    "ListingKey": "1046010930",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 339000,
+    "PhotosCount": 21,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1989,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10951547",
+    "ListingKey": "1058392618",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 224000,
+    "PhotosCount": 23,
+    "Flooring": "CeramicTile,Vinyl",
+    "YearBuilt": 1974,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "F10430288",
+    "ListingKey": "1064855482",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 289900,
+    "PhotosCount": 32,
+    "Flooring": "Vinyl",
+    "YearBuilt": 2000,
+    "City": "The Villages"
+  },
+  {
+    "ListingId": "R10947223",
+    "ListingKey": "1054107373",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 1295000,
+    "PhotosCount": 49,
+    "Flooring": "Tile",
+    "YearBuilt": 1978,
+    "City": "Tequesta"
+  },
+  {
+    "ListingId": "R10951009",
+    "ListingKey": "1058218950",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 498900,
+    "PhotosCount": 19,
+    "Flooring": "Carpet,Wood",
+    "YearBuilt": 1962,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10921209",
+    "ListingKey": "1045540832",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 675000,
+    "PhotosCount": 27,
+    "Flooring": "Wood",
+    "YearBuilt": 2004,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10942709",
+    "ListingKey": "1052333347",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 1975,
+    "PhotosCount": 9,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2024,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10951500",
+    "ListingKey": "1058389714",
+    "ModificationTimestamp": "2024-03-26T17:13:03.813-00:00",
+    "ListPrice": 3400000,
+    "PhotosCount": 29,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 1950,
+    "City": "Sebastian"
+  },
+  {
+    "ListingId": "F10430934",
+    "ListingKey": "1064855505",
+    "ModificationTimestamp": "2024-03-26T17:13:33.317-00:00",
+    "ListPrice": 350000,
+    "PhotosCount": 28,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 2005,
+    "City": "Tamarac"
+  },
+  {
+    "ListingId": "F10419479",
+    "ListingKey": "1058434950",
+    "ModificationTimestamp": "2024-03-26T17:15:16.110-00:00",
+    "ListPrice": 450000,
+    "PhotosCount": 13,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1956,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "F10421125",
+    "ListingKey": "1061118346",
+    "ModificationTimestamp": "2024-03-26T17:15:16.110-00:00",
+    "ListPrice": 306999,
+    "PhotosCount": 17,
+    "Flooring": "Tile",
+    "YearBuilt": 1998,
+    "City": "Pembroke Pines"
+  },
+  {
+    "ListingId": "F10430631",
+    "ListingKey": "1064853031",
+    "ModificationTimestamp": "2024-03-26T17:16:28.493-00:00",
+    "ListPrice": 199900,
+    "PhotosCount": 25,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1980,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10429066",
+    "ListingKey": "1063373768",
+    "ModificationTimestamp": "2024-03-26T17:16:28.493-00:00",
+    "ListPrice": 6500,
+    "PhotosCount": 24,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1972,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10425067",
+    "ListingKey": "1061493144",
+    "ModificationTimestamp": "2024-03-26T17:16:28.493-00:00",
+    "ListPrice": 199777,
+    "PhotosCount": 21,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1969,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10397695",
+    "ListingKey": "1044820952",
+    "ModificationTimestamp": "2024-03-26T17:16:28.493-00:00",
+    "ListPrice": 1125000,
+    "PhotosCount": 29,
+    "Flooring": "Tile",
+    "YearBuilt": 1951,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10427165",
+    "ListingKey": "1062135619",
+    "ModificationTimestamp": "2024-03-26T17:17:00.627-00:00",
+    "ListPrice": 1350,
+    "PhotosCount": 6,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1960,
+    "City": "Hollywood"
+  },
+  {
+    "ListingId": "F10386070",
+    "ListingKey": "1038395835",
+    "ModificationTimestamp": "2024-03-26T17:17:00.627-00:00",
+    "ListPrice": 210000,
+    "PhotosCount": 17,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1979,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "F10355326",
+    "ListingKey": "1027739474",
+    "ModificationTimestamp": "2024-03-26T17:17:26.910-00:00",
+    "ListPrice": 382000,
+    "PhotosCount": 32,
+    "Flooring": "Tile",
+    "YearBuilt": 1970,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10409720",
+    "ListingKey": "1047046987",
+    "ModificationTimestamp": "2024-03-26T17:18:08.183-00:00",
+    "ListPrice": 3500,
+    "PhotosCount": 7,
+    "YearBuilt": 1978,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "F10428740",
+    "ListingKey": "1064824390",
+    "ModificationTimestamp": "2024-03-26T17:18:08.183-00:00",
+    "ListPrice": 289000,
+    "PhotosCount": 14,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1974,
+    "City": "North Miami Beach"
+  },
+  {
+    "ListingId": "F10419653",
+    "ListingKey": "1058457365",
+    "ModificationTimestamp": "2024-03-26T17:18:08.183-00:00",
+    "ListPrice": 339000,
+    "PhotosCount": 65,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 1976,
+    "City": "Plantation"
+  },
+  {
+    "ListingId": "F10424131",
+    "ListingKey": "1061932857",
+    "ModificationTimestamp": "2024-03-26T17:18:08.183-00:00",
+    "ListPrice": 6000000,
+    "PhotosCount": 43,
+    "Flooring": "Tile",
+    "YearBuilt": 2024,
+    "City": "Sea Ranch Lakes"
+  },
+  {
+    "ListingId": "F10428133",
+    "ListingKey": "1062156192",
+    "ModificationTimestamp": "2024-03-26T17:18:45.383-00:00",
+    "ListPrice": 299900,
+    "PhotosCount": 36,
+    "Flooring": "Tile",
+    "YearBuilt": 1974,
+    "City": "Tamarac"
+  },
+  {
+    "ListingId": "F10428130",
+    "ListingKey": "1062155885",
+    "ModificationTimestamp": "2024-03-26T17:19:50.430-00:00",
+    "ListPrice": 1250,
+    "PhotosCount": 10,
+    "YearBuilt": 1947,
+    "City": "North Miami"
+  },
+  {
+    "ListingId": "F10424782",
+    "ListingKey": "1061375042",
+    "ModificationTimestamp": "2024-03-26T17:21:37.150-00:00",
+    "ListPrice": 2100,
+    "PhotosCount": 7,
+    "YearBuilt": 1974,
+    "City": "Plantation"
+  },
+  {
+    "ListingId": "F10431070",
+    "ListingKey": "1064856665",
+    "ModificationTimestamp": "2024-03-26T17:21:37.150-00:00",
+    "ListPrice": 579000,
+    "PhotosCount": 20,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 2005,
+    "City": "Winter Park"
+  },
+  {
+    "ListingId": "R10972028",
+    "ListingKey": "1064849280",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 7000,
+    "PhotosCount": 44,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 2023,
+    "City": "Sarasota"
+  },
+  {
+    "ListingId": "R10958296",
+    "ListingKey": "1060249251",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 1027900,
+    "PhotosCount": 42,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1925,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10966275",
+    "ListingKey": "1062080708",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 555555,
+    "PhotosCount": 62,
+    "Flooring": "Concrete,CeramicTile,Other,Tile",
+    "YearBuilt": 2004,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10972092",
+    "ListingKey": "1064855466",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 19,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1974,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10956555",
+    "ListingKey": "1060042166",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 30,
+    "Flooring": "Tile",
+    "YearBuilt": 1984,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10963963",
+    "ListingKey": "1061800067",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 2300,
+    "PhotosCount": 21,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1984,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10971846",
+    "ListingKey": "1064834523",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 2100,
+    "PhotosCount": 20,
+    "Flooring": "Vinyl",
+    "YearBuilt": 2001,
+    "City": "Jensen Beach"
+  },
+  {
+    "ListingId": "R10971782",
+    "ListingKey": "1064829316",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 310000,
+    "PhotosCount": 0,
+    "Flooring": "Carpet,Terrazzo",
+    "YearBuilt": 1965,
+    "City": "Riviera Beach"
+  },
+  {
+    "ListingId": "R10969597",
+    "ListingKey": "1063438269",
+    "ModificationTimestamp": "2024-03-26T17:22:13.843-00:00",
+    "ListPrice": 399000,
+    "PhotosCount": 27,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2002,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10960380",
+    "ListingKey": "1061284579",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 185000,
+    "PhotosCount": 31,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1984,
+    "City": "Melbourne"
+  },
+  {
+    "ListingId": "F10422248",
+    "ListingKey": "1060078643",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 2100,
+    "PhotosCount": 33,
+    "Flooring": "Laminate",
+    "YearBuilt": 1970,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "R10971434",
+    "ListingKey": "1064781191",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 1550000,
+    "PhotosCount": 35,
+    "Flooring": "Tile",
+    "YearBuilt": 1962,
+    "City": "North Palm Beach"
+  },
+  {
+    "ListingId": "R10960433",
+    "ListingKey": "1061289342",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 688000,
+    "PhotosCount": 61,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2001,
+    "City": "Royal Palm Beach"
+  },
+  {
+    "ListingId": "R10937696",
+    "ListingKey": "1048525294",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 449900,
+    "PhotosCount": 22,
+    "Flooring": "CeramicTile,Laminate,Vinyl",
+    "YearBuilt": 2007,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10931507",
+    "ListingKey": "1046572636",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 14500,
+    "PhotosCount": 6,
+    "City": "Lake Placid"
+  },
+  {
+    "ListingId": "R10945031",
+    "ListingKey": "1053506045",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 8500,
+    "PhotosCount": 6,
+    "City": "Lakeland"
+  },
+  {
+    "ListingId": "R10936339",
+    "ListingKey": "1047576951",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 475000,
+    "PhotosCount": 35,
+    "Flooring": "Tile",
+    "YearBuilt": 2014,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10902862",
+    "ListingKey": "1039005214",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 479995,
+    "PhotosCount": 68,
+    "Flooring": "Carpet,CeramicTile,Parquet",
+    "YearBuilt": 1985,
+    "City": "Hutchinson Island"
+  },
+  {
+    "ListingId": "R10953609",
+    "ListingKey": "1058806341",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 400000,
+    "PhotosCount": 33,
+    "Flooring": "Clay",
+    "YearBuilt": 1984,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10969928",
+    "ListingKey": "1063467398",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 5000,
+    "PhotosCount": 19,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1952,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "R10952433",
+    "ListingKey": "1058447250",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 139000,
+    "PhotosCount": 32,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1975,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "R10960502",
+    "ListingKey": "1061299477",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 9250,
+    "PhotosCount": 5,
+    "City": "Sebring"
+  },
+  {
+    "ListingId": "R10952614",
+    "ListingKey": "1058460733",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 217000,
+    "PhotosCount": 65,
+    "Flooring": "Laminate",
+    "YearBuilt": 1984,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10968287",
+    "ListingKey": "1063254768",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 600000,
+    "PhotosCount": 77,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1999,
+    "City": "Titusville"
+  },
+  {
+    "ListingId": "R10972078",
+    "ListingKey": "1064858733",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 185000,
+    "PhotosCount": 14,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10317178",
+    "ListingKey": "280196696",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 235000,
+    "PhotosCount": 11,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10965746",
+    "ListingKey": "1062029481",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 629900,
+    "PhotosCount": 10,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1987,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10960789",
+    "ListingKey": "1061337095",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 394900,
+    "PhotosCount": 51,
+    "Flooring": "Carpet,Tile,Vinyl",
+    "YearBuilt": 2007,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10972094",
+    "ListingKey": "1064858735",
+    "ModificationTimestamp": "2024-03-26T17:22:52.377-00:00",
+    "ListPrice": 1200000,
+    "PhotosCount": 1,
+    "Flooring": "Carpet,Tile,Wood",
+    "YearBuilt": 2005,
+    "City": "Hobe Sound"
+  },
+  {
+    "ListingId": "F10431080",
+    "ListingKey": "1064856690",
+    "ModificationTimestamp": "2024-03-26T17:23:58.913-00:00",
+    "ListPrice": 2300,
+    "PhotosCount": 1,
+    "Flooring": "Tile",
+    "YearBuilt": 1987,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10394076",
+    "ListingKey": "1041371256",
+    "ModificationTimestamp": "2024-03-26T17:24:36.390-00:00",
+    "ListPrice": 2000,
+    "PhotosCount": 14,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1963,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10431089",
+    "ListingKey": "1064860741",
+    "ModificationTimestamp": "2024-03-26T17:25:09.990-00:00",
+    "ListPrice": 320000,
+    "PhotosCount": 19,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1995,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10415312",
+    "ListingKey": "1053989691",
+    "ModificationTimestamp": "2024-03-26T17:25:42.807-00:00",
+    "ListPrice": 2200,
+    "PhotosCount": 34,
+    "Flooring": "Tile",
+    "YearBuilt": 2004,
+    "City": "Coral Springs"
+  },
+  {
+    "ListingId": "F10431095",
+    "ListingKey": "1064859725",
+    "ModificationTimestamp": "2024-03-26T17:25:42.807-00:00",
+    "ListPrice": 2715,
+    "PhotosCount": 16,
+    "YearBuilt": 1958,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "F10416560",
+    "ListingKey": "1054132958",
+    "ModificationTimestamp": "2024-03-26T17:26:14.530-00:00",
+    "ListPrice": 6200000,
+    "PhotosCount": 13,
+    "YearBuilt": 1954,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10431093",
+    "ListingKey": "1064858701",
+    "ModificationTimestamp": "2024-03-26T17:26:14.530-00:00",
+    "ListPrice": 2150,
+    "PhotosCount": 17,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1980,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10410955",
+    "ListingKey": "1048571317",
+    "ModificationTimestamp": "2024-03-26T17:26:14.530-00:00",
+    "ListPrice": 540000,
+    "PhotosCount": 37,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 1990,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10417018",
+    "ListingKey": "1061672633",
+    "ModificationTimestamp": "2024-03-26T17:26:46.087-00:00",
+    "ListPrice": 776000,
+    "PhotosCount": 32,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1960,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10427668",
+    "ListingKey": "1063234281",
+    "ModificationTimestamp": "2024-03-26T17:26:46.087-00:00",
+    "ListPrice": 1990,
+    "PhotosCount": 24,
+    "Flooring": "Tile",
+    "YearBuilt": 1987,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10418010",
+    "ListingKey": "1059530305",
+    "ModificationTimestamp": "2024-03-26T17:26:46.087-00:00",
+    "ListPrice": 2575,
+    "PhotosCount": 16,
+    "Flooring": "Tile",
+    "YearBuilt": 1949,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10384879",
+    "ListingKey": "1038552893",
+    "ModificationTimestamp": "2024-03-26T17:26:46.087-00:00",
+    "ListPrice": 4195000,
+    "PhotosCount": 32,
+    "Flooring": "Marble",
+    "YearBuilt": 2005,
+    "City": "Lauderdale By The Sea"
+  },
+  {
+    "ListingId": "F10418702",
+    "ListingKey": "1058198209",
+    "ModificationTimestamp": "2024-03-26T17:27:27.387-00:00",
+    "ListPrice": 250000,
+    "PhotosCount": 24,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1968,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10413497",
+    "ListingKey": "1052324162",
+    "ModificationTimestamp": "2024-03-26T17:27:27.387-00:00",
+    "ListPrice": 310000,
+    "PhotosCount": 67,
+    "Flooring": "Tile",
+    "YearBuilt": 1968,
+    "City": "Hallandale Beach"
+  },
+  {
+    "ListingId": "F10431087",
+    "ListingKey": "1064860827",
+    "ModificationTimestamp": "2024-03-26T17:27:27.387-00:00",
+    "ListPrice": 1600,
+    "PhotosCount": 25,
+    "YearBuilt": 1968,
+    "City": "Hallandale Beach"
+  },
+  {
+    "ListingId": "F10426926",
+    "ListingKey": "1061944688",
+    "ModificationTimestamp": "2024-03-26T17:27:27.387-00:00",
+    "ListPrice": 2700,
+    "PhotosCount": 22,
+    "Flooring": "CeramicTile,Tile",
+    "YearBuilt": 2007,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "F10429534",
+    "ListingKey": "1063435055",
+    "ModificationTimestamp": "2024-03-26T17:27:51.480-00:00",
+    "ListPrice": 555000,
+    "PhotosCount": 31,
+    "Flooring": "Tile",
+    "YearBuilt": 1977,
+    "City": "Coral Springs"
+  },
+  {
+    "ListingId": "F10410947",
+    "ListingKey": "1048571376",
+    "ModificationTimestamp": "2024-03-26T17:27:51.480-00:00",
+    "ListPrice": 5000,
+    "PhotosCount": 58,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1990,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10428760",
+    "ListingKey": "1063238626",
+    "ModificationTimestamp": "2024-03-26T17:27:51.480-00:00",
+    "ListPrice": 2095,
+    "PhotosCount": 16,
+    "Flooring": "Wood",
+    "YearBuilt": 1951,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "F10428495",
+    "ListingKey": "1063235853",
+    "ModificationTimestamp": "2024-03-26T17:28:23.433-00:00",
+    "ListPrice": 490000,
+    "PhotosCount": 19,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1996,
+    "City": "Weston"
+  },
+  {
+    "ListingId": "F10419694",
+    "ListingKey": "1058454795",
+    "ModificationTimestamp": "2024-03-26T17:29:46.747-00:00",
+    "ListPrice": 170000,
+    "PhotosCount": 38,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1969,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10420928",
+    "ListingKey": "1059850586",
+    "ModificationTimestamp": "2024-03-26T17:29:46.747-00:00",
+    "ListPrice": 925000,
+    "PhotosCount": 44,
+    "Flooring": "Concrete,Slate,Wood",
+    "YearBuilt": 1958,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10423918",
+    "ListingKey": "1061193271",
+    "ModificationTimestamp": "2024-03-26T17:29:46.747-00:00",
+    "ListPrice": 720000,
+    "PhotosCount": 45,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1991,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "F10425070",
+    "ListingKey": "1061648206",
+    "ModificationTimestamp": "2024-03-26T17:30:12.287-00:00",
+    "ListPrice": 458000,
+    "PhotosCount": 50,
+    "Flooring": "Tile",
+    "YearBuilt": 1990,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10429657",
+    "ListingKey": "1063448530",
+    "ModificationTimestamp": "2024-03-26T17:30:12.287-00:00",
+    "ListPrice": 449000,
+    "PhotosCount": 17,
+    "Flooring": "Tile",
+    "YearBuilt": 1930,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "F10429778",
+    "ListingKey": "1063464545",
+    "ModificationTimestamp": "2024-03-26T17:30:46.360-00:00",
+    "ListPrice": 492000,
+    "PhotosCount": 37,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 2019,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "F10430665",
+    "ListingKey": "1064832421",
+    "ModificationTimestamp": "2024-03-26T17:30:46.360-00:00",
+    "ListPrice": 4250,
+    "PhotosCount": 0,
+    "Flooring": "Tile",
+    "YearBuilt": 1954,
+    "City": "Wilton Manors"
+  },
+  {
+    "ListingId": "F10427565",
+    "ListingKey": "1063264167",
+    "ModificationTimestamp": "2024-03-26T17:30:46.360-00:00",
+    "ListPrice": 1100000,
+    "PhotosCount": 23,
+    "Flooring": "Marble,Vinyl",
+    "YearBuilt": 2004,
+    "City": "Lauderdale By The Sea"
+  },
+  {
+    "ListingId": "F10430356",
+    "ListingKey": "1063548309",
+    "ModificationTimestamp": "2024-03-26T17:30:46.360-00:00",
+    "ListPrice": 174000,
+    "PhotosCount": 10,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1984,
+    "City": "Coral Springs"
+  },
+  {
+    "ListingId": "F10430914",
+    "ListingKey": "1064852532",
+    "ModificationTimestamp": "2024-03-26T17:31:18.597-00:00",
+    "ListPrice": 1990000,
+    "PhotosCount": 8,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 2024,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10430843",
+    "ListingKey": "1064858736",
+    "ModificationTimestamp": "2024-03-26T17:31:18.597-00:00",
+    "ListPrice": 19000,
+    "PhotosCount": 45,
+    "Flooring": "Other,Tile,Wood",
+    "YearBuilt": 2022,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10430368",
+    "ListingKey": "1063549665",
+    "ModificationTimestamp": "2024-03-26T17:31:52.233-00:00",
+    "ListPrice": 276000,
+    "PhotosCount": 13,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1984,
+    "City": "Coral Springs"
+  },
+  {
+    "ListingId": "F10431094",
+    "ListingKey": "1064859724",
+    "ModificationTimestamp": "2024-03-26T17:31:52.233-00:00",
+    "ListPrice": 776000,
+    "PhotosCount": 26,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10429117",
+    "ListingKey": "1063369555",
+    "ModificationTimestamp": "2024-03-26T17:31:52.233-00:00",
+    "ListPrice": 1800,
+    "PhotosCount": 12,
+    "Flooring": "Laminate",
+    "YearBuilt": 1970,
+    "City": "Wilton Manors"
+  },
+  {
+    "ListingId": "R10940829",
+    "ListingKey": "1050766676",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 719900,
+    "PhotosCount": 35,
+    "Flooring": "Concrete",
+    "YearBuilt": 1988,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10932223",
+    "ListingKey": "1046631266",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 1780,
+    "PhotosCount": 17,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 2000,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10945593",
+    "ListingKey": "1053936024",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 749900,
+    "PhotosCount": 58,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 2006,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10949169",
+    "ListingKey": "1055009107",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 505000,
+    "PhotosCount": 54,
+    "Flooring": "Tile",
+    "YearBuilt": 1999,
+    "City": "Lake Worth"
+  },
+  {
+    "ListingId": "R10960422",
+    "ListingKey": "1061288385",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 28500000,
+    "PhotosCount": 42,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1962,
+    "City": "Hobe Sound"
+  },
+  {
+    "ListingId": "R10929707",
+    "ListingKey": "1046414869",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 274900,
+    "PhotosCount": 76,
+    "Flooring": "Carpet,CeramicTile,Vinyl",
+    "YearBuilt": 2003,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10960107",
+    "ListingKey": "1061260684",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 2100,
+    "PhotosCount": 35,
+    "Flooring": "Carpet,CeramicTile,Parquet",
+    "YearBuilt": 2006,
+    "City": "Riviera Beach"
+  },
+  {
+    "ListingId": "R10972097",
+    "ListingKey": "1064858734",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 4000,
+    "PhotosCount": 33,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1991,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10955526",
+    "ListingKey": "1059842694",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 526900,
+    "PhotosCount": 24,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2023,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10949552",
+    "ListingKey": "1055443201",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 545000,
+    "PhotosCount": 46,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1995,
+    "City": "Hutchinson Island"
+  },
+  {
+    "ListingId": "R10972099",
+    "ListingKey": "1064862088",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 189900,
+    "PhotosCount": 25,
+    "Flooring": "Laminate,Tile,Vinyl",
+    "YearBuilt": 1976,
+    "City": "Barefoot Bay"
+  },
+  {
+    "ListingId": "R10947277",
+    "ListingKey": "1054111956",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 84000,
+    "PhotosCount": 17,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1971,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10957748",
+    "ListingKey": "1060190701",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 2600,
+    "PhotosCount": 26,
+    "Flooring": "Carpet,Tile,Vinyl",
+    "YearBuilt": 1995,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10972096",
+    "ListingKey": "1064858732",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 419900,
+    "PhotosCount": 1,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 2000,
+    "City": "Royal Palm Beach"
+  },
+  {
+    "ListingId": "R10970389",
+    "ListingKey": "1063505828",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 3660000,
+    "PhotosCount": 60,
+    "Flooring": "Carpet,Marble",
+    "YearBuilt": 1986,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10929296",
+    "ListingKey": "1046383008",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 6950,
+    "PhotosCount": 33,
+    "Flooring": "CeramicTile,Tile,Vinyl",
+    "YearBuilt": 1999,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10968974",
+    "ListingKey": "1063392195",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 3450,
+    "PhotosCount": 28,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1996,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10900244",
+    "ListingKey": "1038613296",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 7600000,
+    "PhotosCount": 42,
+    "Flooring": "Tile",
+    "YearBuilt": 2026,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10965409",
+    "ListingKey": "1061978526",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 3000,
+    "PhotosCount": 83,
+    "Flooring": "Carpet,Concrete,CeramicTile",
+    "YearBuilt": 2024,
+    "City": "Lake Worth"
+  },
+  {
+    "ListingId": "F10423921",
+    "ListingKey": "1061199458",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 1597700,
+    "PhotosCount": 77,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1963,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10971391",
+    "ListingKey": "1064763838",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 1480000,
+    "PhotosCount": 8,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 2013,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10972095",
+    "ListingKey": "1064858731",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 902345,
+    "PhotosCount": 1,
+    "Flooring": "Tile",
+    "YearBuilt": 2023,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10902547",
+    "ListingKey": "1038975122",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 4750,
+    "PhotosCount": 29,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 2001,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10969617",
+    "ListingKey": "1063439566",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 18,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1983,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10939943",
+    "ListingKey": "1050644436",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 539000,
+    "PhotosCount": 36,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1998,
+    "City": "Lake Worth"
+  },
+  {
+    "ListingId": "R10970687",
+    "ListingKey": "1063534378",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 579900,
+    "PhotosCount": 41,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1999,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10963097",
+    "ListingKey": "1061696818",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 3250,
+    "PhotosCount": 13,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1980,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10970466",
+    "ListingKey": "1063512194",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 26,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1983,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10971880",
+    "ListingKey": "1064837269",
+    "ModificationTimestamp": "2024-03-26T17:32:24.620-00:00",
+    "ListPrice": 6950,
+    "PhotosCount": 35,
+    "Flooring": "CeramicTile,Vinyl",
+    "YearBuilt": 2000,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "F10430910",
+    "ListingKey": "1064860969",
+    "ModificationTimestamp": "2024-03-26T17:32:56.090-00:00",
+    "ListPrice": 169900,
+    "PhotosCount": 55,
+    "Flooring": "Laminate",
+    "YearBuilt": 1978,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "F10428243",
+    "ListingKey": "1063021422",
+    "ModificationTimestamp": "2024-03-26T17:32:56.090-00:00",
+    "ListPrice": 399000,
+    "PhotosCount": 4,
+    "Flooring": "Marble",
+    "YearBuilt": 1971,
+    "City": "North Miami Beach"
+  },
+  {
+    "ListingId": "F10430917",
+    "ListingKey": "1064834382",
+    "ModificationTimestamp": "2024-03-26T17:33:26.833-00:00",
+    "ListPrice": 289000,
+    "PhotosCount": 16,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1975,
+    "City": "Pembroke Pines"
+  },
+  {
+    "ListingId": "F10428002",
+    "ListingKey": "1063535064",
+    "ModificationTimestamp": "2024-03-26T17:34:33.057-00:00",
+    "ListPrice": 260000,
+    "PhotosCount": 49,
+    "Flooring": "CeramicTile,Laminate,Tile,Vinyl",
+    "YearBuilt": 1960,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10419466",
+    "ListingKey": "1058433202",
+    "ModificationTimestamp": "2024-03-26T17:34:33.057-00:00",
+    "ListPrice": 194900,
+    "PhotosCount": 44,
+    "Flooring": "Tile",
+    "YearBuilt": 2002,
+    "City": "Tamarac"
+  },
+  {
+    "ListingId": "F10425146",
+    "ListingKey": "1061507895",
+    "ModificationTimestamp": "2024-03-26T17:34:33.057-00:00",
+    "ListPrice": 925000,
+    "PhotosCount": 10,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 2008,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10428687",
+    "ListingKey": "1063243097",
+    "ModificationTimestamp": "2024-03-26T17:35:04.707-00:00",
+    "ListPrice": 664500,
+    "PhotosCount": 38,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 2002,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "F10430505",
+    "ListingKey": "1064775706",
+    "ModificationTimestamp": "2024-03-26T17:35:42.807-00:00",
+    "ListPrice": 879000,
+    "PhotosCount": 54,
+    "Flooring": "Marble",
+    "YearBuilt": 1967,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10428358",
+    "ListingKey": "1063093803",
+    "ModificationTimestamp": "2024-03-26T17:35:42.807-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 15,
+    "Flooring": "Tile",
+    "YearBuilt": 1980,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "F10422440",
+    "ListingKey": "1061368644",
+    "ModificationTimestamp": "2024-03-26T17:36:11.730-00:00",
+    "ListPrice": 289000,
+    "PhotosCount": 33,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1973,
+    "City": "Wilton Manors"
+  },
+  {
+    "ListingId": "F10429888",
+    "ListingKey": "1063541843",
+    "ModificationTimestamp": "2024-03-26T17:36:11.730-00:00",
+    "ListPrice": 204900,
+    "PhotosCount": 18,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1973,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10411118",
+    "ListingKey": "1048595092",
+    "ModificationTimestamp": "2024-03-26T17:36:11.730-00:00",
+    "ListPrice": 659301,
+    "PhotosCount": 86,
+    "Flooring": "Carpet,CeramicTile,Wood",
+    "YearBuilt": 1992,
+    "City": "Cooper City"
+  },
+  {
+    "ListingId": "F10430922",
+    "ListingKey": "1064830659",
+    "ModificationTimestamp": "2024-03-26T17:37:22.610-00:00",
+    "ListPrice": 2999,
+    "PhotosCount": 36,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 2020,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "F10405250",
+    "ListingKey": "1046285047",
+    "ModificationTimestamp": "2024-03-26T17:37:22.610-00:00",
+    "ListPrice": 5900,
+    "PhotosCount": 31,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 2023,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "F10426584",
+    "ListingKey": "1061908504",
+    "ModificationTimestamp": "2024-03-26T17:37:22.610-00:00",
+    "ListPrice": 199000,
+    "PhotosCount": 27,
+    "Flooring": "Other,Vinyl",
+    "YearBuilt": 1980,
+    "City": "Pembroke Pines"
+  },
+  {
+    "ListingId": "F10424907",
+    "ListingKey": "1061507320",
+    "ModificationTimestamp": "2024-03-26T17:37:52.587-00:00",
+    "ListPrice": 396900,
+    "PhotosCount": 44,
+    "Flooring": "Tile",
+    "YearBuilt": 1993,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "F10429633",
+    "ListingKey": "1064722072",
+    "ModificationTimestamp": "2024-03-26T17:38:25.683-00:00",
+    "ListPrice": 8950000,
+    "PhotosCount": 13,
+    "Flooring": "Carpet,Marble",
+    "YearBuilt": 2001,
+    "City": "Lighthouse Point"
+  },
+  {
+    "ListingId": "F10410535",
+    "ListingKey": "1048541930",
+    "ModificationTimestamp": "2024-03-26T17:38:25.683-00:00",
+    "ListPrice": 449000,
+    "PhotosCount": 61,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1964,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10412106",
+    "ListingKey": "1050722765",
+    "ModificationTimestamp": "2024-03-26T17:39:05.830-00:00",
+    "ListPrice": 2400,
+    "PhotosCount": 14,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1974,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10419842",
+    "ListingKey": "1058473895",
+    "ModificationTimestamp": "2024-03-26T17:39:05.830-00:00",
+    "ListPrice": 949000,
+    "PhotosCount": 45,
+    "Flooring": "Tile",
+    "YearBuilt": 1969,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10425239",
+    "ListingKey": "1061525795",
+    "ModificationTimestamp": "2024-03-26T17:40:19.687-00:00",
+    "ListPrice": 499900,
+    "PhotosCount": 36,
+    "Flooring": "Tile",
+    "YearBuilt": 1997,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "F10419301",
+    "ListingKey": "1058442593",
+    "ModificationTimestamp": "2024-03-26T17:40:19.687-00:00",
+    "ListPrice": 1359000,
+    "PhotosCount": 28,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1997,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10430881",
+    "ListingKey": "1064824286",
+    "ModificationTimestamp": "2024-03-26T17:41:25.127-00:00",
+    "ListPrice": 190000,
+    "PhotosCount": 1,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1978,
+    "City": "Coconut Creek"
+  },
+  {
+    "ListingId": "F10430462",
+    "ListingKey": "1063978333",
+    "ModificationTimestamp": "2024-03-26T17:42:00.397-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 14,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1941,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "R10971765",
+    "ListingKey": "1064827241",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 650000,
+    "PhotosCount": 41,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1973,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10926908",
+    "ListingKey": "1046155243",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 624900,
+    "PhotosCount": 39,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1994,
+    "City": "Pembroke Pines"
+  },
+  {
+    "ListingId": "R10950932",
+    "ListingKey": "1058214007",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 5900,
+    "PhotosCount": 17,
+    "Flooring": "Laminate",
+    "YearBuilt": 1979,
+    "City": "Royal Palm Beach"
+  },
+  {
+    "ListingId": "R10939055",
+    "ListingKey": "1048637913",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 469900,
+    "PhotosCount": 1,
+    "Flooring": "Tile",
+    "YearBuilt": 1939,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "R10932762",
+    "ListingKey": "1046690074",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 539000,
+    "PhotosCount": 58,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1976,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "F10430643",
+    "ListingKey": "1064763739",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 399000,
+    "PhotosCount": 27,
+    "Flooring": "Carpet",
+    "YearBuilt": 1971,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "R10958076",
+    "ListingKey": "1060232085",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 539000,
+    "PhotosCount": 36,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 2000,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10924585",
+    "ListingKey": "1045854884",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 372000,
+    "PhotosCount": 28,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1986,
+    "City": "Fort Pierce"
+  },
+  {
+    "ListingId": "R10968827",
+    "ListingKey": "1063407379",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1925000,
+    "PhotosCount": 71,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1926,
+    "City": "Lake Worth Beach"
+  },
+  {
+    "ListingId": "R10968037",
+    "ListingKey": "1063232203",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 750000,
+    "PhotosCount": 77,
+    "Flooring": "Carpet,CeramicTile,Vinyl",
+    "YearBuilt": 1992,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10966194",
+    "ListingKey": "1062071606",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1475000,
+    "PhotosCount": 31,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1971,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10958174",
+    "ListingKey": "1060240734",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 579000,
+    "PhotosCount": 43,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1999,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10972103",
+    "ListingKey": "1064864362",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 12000,
+    "PhotosCount": 0,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1987,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10968780",
+    "ListingKey": "1063375170",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 729000,
+    "PhotosCount": 51,
+    "Flooring": "Other,Tile,Wood",
+    "YearBuilt": 1973,
+    "City": "Coral Springs"
+  },
+  {
+    "ListingId": "R10972102",
+    "ListingKey": "1064864366",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 847508,
+    "PhotosCount": 0,
+    "Flooring": "Tile",
+    "YearBuilt": 2023,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10937338",
+    "ListingKey": "1048498903",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 8995000,
+    "PhotosCount": 84,
+    "Flooring": "CeramicTile,Marble,Tile,Wood",
+    "YearBuilt": 2017,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10950058",
+    "ListingKey": "1058155584",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 9950000,
+    "PhotosCount": 35,
+    "YearBuilt": 2023
+  },
+  {
+    "ListingId": "R10970830",
+    "ListingKey": "1063547443",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 149000,
+    "PhotosCount": 19,
+    "Flooring": "Carpet",
+    "YearBuilt": 1965,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10936498",
+    "ListingKey": "1048428921",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 749000,
+    "PhotosCount": 68,
+    "Flooring": "Tile",
+    "YearBuilt": 1981,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10972098",
+    "ListingKey": "1064862090",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 938000,
+    "PhotosCount": 6,
+    "Flooring": "Laminate",
+    "YearBuilt": 1989,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10925991",
+    "ListingKey": "1045990715",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 399000,
+    "PhotosCount": 23,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2005,
+    "City": "Fort Pierce"
+  },
+  {
+    "ListingId": "R10961573",
+    "ListingKey": "1061508221",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 469000,
+    "PhotosCount": 22,
+    "Flooring": "CeramicTile,Tile",
+    "YearBuilt": 2001,
+    "City": "Boynton Beach"
+  },
+  {
+    "ListingId": "R10955018",
+    "ListingKey": "1059554509",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 4500,
+    "PhotosCount": 34,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 2002,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10954435",
+    "ListingKey": "1059452925",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 489000,
+    "PhotosCount": 86,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 2022,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10966751",
+    "ListingKey": "1062125045",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 310000,
+    "PhotosCount": 28,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 2006,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10953725",
+    "ListingKey": "1059321201",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 4000,
+    "PhotosCount": 22,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1961,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10963720",
+    "ListingKey": "1061771992",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 299900,
+    "PhotosCount": 42,
+    "Flooring": "Concrete,CeramicTile,Wood",
+    "YearBuilt": 1982,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10921666",
+    "ListingKey": "1045579243",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 5500,
+    "PhotosCount": 30,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1969,
+    "City": "Hillsboro Beach"
+  },
+  {
+    "ListingId": "R10871384",
+    "ListingKey": "1033956747",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 34800,
+    "PhotosCount": 5,
+    "City": "Palm Bay"
+  },
+  {
+    "ListingId": "R10972091",
+    "ListingKey": "1064864365",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 2500,
+    "PhotosCount": 0,
+    "Flooring": "Concrete",
+    "YearBuilt": 1960,
+    "City": "Lake Park"
+  },
+  {
+    "ListingId": "R10968660",
+    "ListingKey": "1063363517",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 6000,
+    "PhotosCount": 38,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1976,
+    "City": "Tequesta"
+  },
+  {
+    "ListingId": "F10430437",
+    "ListingKey": "1063679471",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 3500,
+    "PhotosCount": 19,
+    "Flooring": "CeramicTile",
+    "YearBuilt": 1941,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "R10968734",
+    "ListingKey": "1063370862",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 6895000,
+    "PhotosCount": 33,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 2024,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10935327",
+    "ListingKey": "1046979191",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 480000,
+    "PhotosCount": 41,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2016,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10972100",
+    "ListingKey": "1064862091",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 42000,
+    "PhotosCount": 27,
+    "Flooring": "Laminate",
+    "YearBuilt": 1984,
+    "City": "Fort Pierce"
+  },
+  {
+    "ListingId": "R10957450",
+    "ListingKey": "1060158645",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 4500,
+    "PhotosCount": 38,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1963,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10967764",
+    "ListingKey": "1063202833",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 37500,
+    "PhotosCount": 33,
+    "Flooring": "Laminate",
+    "YearBuilt": 1985,
+    "City": "Fort Pierce"
+  },
+  {
+    "ListingId": "R10955682",
+    "ListingKey": "1059859850",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 420000,
+    "PhotosCount": 50,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2003,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10970115",
+    "ListingKey": "1063482187",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 229000,
+    "PhotosCount": 30,
+    "Flooring": "CeramicTile,Vinyl",
+    "YearBuilt": 1975,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10871415",
+    "ListingKey": "1033958549",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 34800,
+    "PhotosCount": 5,
+    "City": "Palm Bay"
+  },
+  {
+    "ListingId": "R10955428",
+    "ListingKey": "1059617971",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 424990,
+    "PhotosCount": 33,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1992,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10889290",
+    "ListingKey": "1037441282",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1900000,
+    "PhotosCount": 10,
+    "Flooring": "Tile",
+    "YearBuilt": 1960,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10972105",
+    "ListingKey": "1064864364",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 5500,
+    "PhotosCount": 0,
+    "Flooring": "Other",
+    "YearBuilt": 1958,
+    "City": "North Palm Beach"
+  },
+  {
+    "ListingId": "R10955513",
+    "ListingKey": "1059842313",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 750000,
+    "PhotosCount": 58,
+    "Flooring": "Laminate",
+    "YearBuilt": 1981,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10966000",
+    "ListingKey": "1062053852",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1499888,
+    "PhotosCount": 82,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 2016,
+    "City": "Palm Beach Gardens"
+  },
+  {
+    "ListingId": "R10968307",
+    "ListingKey": "1063256683",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 635900,
+    "PhotosCount": 46,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 1986,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "F10425741",
+    "ListingKey": "1061648663",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 265000,
+    "PhotosCount": 29,
+    "Flooring": "CeramicTile,Laminate",
+    "YearBuilt": 1983,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "R10954395",
+    "ListingKey": "1059445264",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 69900,
+    "PhotosCount": 27,
+    "Flooring": "Laminate",
+    "YearBuilt": 1979,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10879135",
+    "ListingKey": "1035326762",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1850,
+    "PhotosCount": 11,
+    "Flooring": "Laminate",
+    "YearBuilt": 1987,
+    "City": "Wellington"
+  },
+  {
+    "ListingId": "R10963328",
+    "ListingKey": "1061718955",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1899000,
+    "PhotosCount": 64,
+    "Flooring": "Laminate",
+    "YearBuilt": 1959,
+    "City": "Riviera Beach"
+  },
+  {
+    "ListingId": "R10954999",
+    "ListingKey": "1059550720",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 224700,
+    "PhotosCount": 26,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1968,
+    "City": "Stuart"
+  },
+  {
+    "ListingId": "R10947180",
+    "ListingKey": "1054103370",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 328990,
+    "PhotosCount": 27,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 1990,
+    "City": "Lake Clarke Shores"
+  },
+  {
+    "ListingId": "R10960818",
+    "ListingKey": "1061346906",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 675000,
+    "PhotosCount": 22,
+    "Flooring": "Tile,Vinyl",
+    "YearBuilt": 1961,
+    "City": "Delray Beach"
+  },
+  {
+    "ListingId": "R10972101",
+    "ListingKey": "1064862089",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 2125,
+    "PhotosCount": 9,
+    "Flooring": "Laminate,Tile",
+    "YearBuilt": 2024,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10947202",
+    "ListingKey": "1054105127",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 485000,
+    "PhotosCount": 33,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1979,
+    "City": "Riviera Beach"
+  },
+  {
+    "ListingId": "R10954004",
+    "ListingKey": "1059362769",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 455000,
+    "PhotosCount": 37,
+    "Flooring": "Laminate,Terrazzo",
+    "YearBuilt": 1969,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10951691",
+    "ListingKey": "1058405271",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 1700000,
+    "PhotosCount": 20,
+    "Flooring": "Other",
+    "YearBuilt": 2020,
+    "City": "Vero Beach"
+  },
+  {
+    "ListingId": "R10969848",
+    "ListingKey": "1063459829",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 799000,
+    "PhotosCount": 27,
+    "Flooring": "CeramicTile,Laminate,Wood",
+    "YearBuilt": 1982,
+    "City": "West Palm Beach"
+  },
+  {
+    "ListingId": "R10963786",
+    "ListingKey": "1061777542",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 489700,
+    "PhotosCount": 37,
+    "Flooring": "Other",
+    "YearBuilt": 2005,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10962555",
+    "ListingKey": "1061615171",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 450000,
+    "PhotosCount": 72,
+    "Flooring": "Vinyl",
+    "YearBuilt": 1991,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10958079",
+    "ListingKey": "1060232345",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 799999,
+    "PhotosCount": 59,
+    "Flooring": "Tile,Wood",
+    "YearBuilt": 2007,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "R10972104",
+    "ListingKey": "1064864363",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 2300,
+    "PhotosCount": 0,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 2004,
+    "City": "Port St Lucie"
+  },
+  {
+    "ListingId": "R10970187",
+    "ListingKey": "1063488593",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 2800,
+    "PhotosCount": 25,
+    "Flooring": "CeramicTile,Wood",
+    "YearBuilt": 1979,
+    "City": "Boca Raton"
+  },
+  {
+    "ListingId": "R10970941",
+    "ListingKey": "1063557536",
+    "ModificationTimestamp": "2024-03-26T17:42:35.630-00:00",
+    "ListPrice": 479000,
+    "PhotosCount": 54,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1977,
+    "City": "Palm City"
+  },
+  {
+    "ListingId": "F10407837",
+    "ListingKey": "1046688700",
+    "ModificationTimestamp": "2024-03-26T17:43:36.753-00:00",
+    "ListPrice": 2299000,
+    "PhotosCount": 46,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1952,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10420674",
+    "ListingKey": "1059410611",
+    "ModificationTimestamp": "2024-03-26T17:43:36.753-00:00",
+    "ListPrice": 3600,
+    "PhotosCount": 37,
+    "YearBuilt": 1969,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10414771",
+    "ListingKey": "1053084114",
+    "ModificationTimestamp": "2024-03-26T17:44:15.687-00:00",
+    "ListPrice": 6200,
+    "PhotosCount": 87,
+    "Flooring": "Marble,Tile,Wood",
+    "YearBuilt": 1941,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10429398",
+    "ListingKey": "1064817465",
+    "ModificationTimestamp": "2024-03-26T17:44:15.687-00:00",
+    "ListPrice": 614900,
+    "PhotosCount": 54,
+    "Flooring": "Carpet,Tile,Wood",
+    "YearBuilt": 1965,
+    "City": "Lauderdale By The Sea"
+  },
+  {
+    "ListingId": "F10427931",
+    "ListingKey": "1062116529",
+    "ModificationTimestamp": "2024-03-26T17:44:49.950-00:00",
+    "ListPrice": 3800,
+    "PhotosCount": 28,
+    "Flooring": "Wood",
+    "YearBuilt": 2008,
+    "City": "Miami"
+  },
+  {
+    "ListingId": "F10404873",
+    "ListingKey": "1046260779",
+    "ModificationTimestamp": "2024-03-26T17:45:21.510-00:00",
+    "ListPrice": 195000,
+    "PhotosCount": 28,
+    "Flooring": "Carpet,CeramicTile",
+    "YearBuilt": 1977,
+    "City": "Deerfield Beach"
+  },
+  {
+    "ListingId": "F10416645",
+    "ListingKey": "1054148454",
+    "ModificationTimestamp": "2024-03-26T17:45:21.510-00:00",
+    "ListPrice": 179000,
+    "PhotosCount": 31,
+    "Flooring": "Carpet,Laminate",
+    "YearBuilt": 1975,
+    "City": "Pembroke Pines"
+  },
+  {
+    "ListingId": "F10428841",
+    "ListingKey": "1063253504",
+    "ModificationTimestamp": "2024-03-26T17:45:56.147-00:00",
+    "ListPrice": 20000,
+    "PhotosCount": 63,
+    "YearBuilt": 2017,
+    "City": "Fort Lauderdale"
+  },
+  {
+    "ListingId": "F10416169",
+    "ListingKey": "1054081437",
+    "ModificationTimestamp": "2024-03-26T17:45:56.147-00:00",
+    "ListPrice": 5200,
+    "PhotosCount": 11,
+    "YearBuilt": 2003,
+    "City": "Southwest Ranches"
+  },
+  {
+    "ListingId": "F10422587",
+    "ListingKey": "1061706985",
+    "ModificationTimestamp": "2024-03-26T17:45:56.147-00:00",
+    "ListPrice": 259000,
+    "PhotosCount": 42,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 1974,
+    "City": "Aventura"
+  },
+  {
+    "ListingId": "F10430765",
+    "ListingKey": "1064830492",
+    "ModificationTimestamp": "2024-03-26T17:46:27.730-00:00",
+    "ListPrice": 2800,
+    "PhotosCount": 3,
+    "Flooring": "Tile",
+    "YearBuilt": 1966,
+    "City": "Miami Beach"
+  },
+  {
+    "ListingId": "F10423414",
+    "ListingKey": "1060289847",
+    "ModificationTimestamp": "2024-03-26T17:46:27.730-00:00",
+    "ListPrice": 329000,
+    "PhotosCount": 4,
+    "Flooring": "Concrete,CeramicTile",
+    "YearBuilt": 1979,
+    "City": "Weston"
+  },
+  {
+    "ListingId": "F10421030",
+    "ListingKey": "1059500747",
+    "ModificationTimestamp": "2024-03-26T17:47:40.620-00:00",
+    "ListPrice": 1124900,
+    "PhotosCount": 63,
+    "Flooring": "Tile",
+    "YearBuilt": 2004,
+    "City": "Jupiter"
+  },
+  {
+    "ListingId": "F10430568",
+    "ListingKey": "1064672449",
+    "ModificationTimestamp": "2024-03-26T17:47:40.620-00:00",
+    "ListPrice": 795000,
+    "PhotosCount": 45,
+    "Flooring": "Other,Tile",
+    "YearBuilt": 1971,
+    "City": "Wilton Manors"
+  },
+  {
+    "ListingId": "F10431090",
+    "ListingKey": "1064864544",
+    "ModificationTimestamp": "2024-03-26T17:47:40.620-00:00",
+    "ListPrice": 184900,
+    "PhotosCount": 0,
+    "Flooring": "Laminate",
+    "YearBuilt": 1974,
+    "City": "Pompano Beach"
+  },
+  {
+    "ListingId": "F10430804",
+    "ListingKey": "1064816292",
+    "ModificationTimestamp": "2024-03-26T17:47:40.620-00:00",
+    "ListPrice": 369900,
+    "PhotosCount": 10,
+    "Flooring": "Carpet,Tile",
+    "YearBuilt": 2022,
+    "City": "Lehigh Acres"
+  },
+  {
+    "ListingId": "F10415520",
+    "ListingKey": "1053995956",
+    "ModificationTimestamp": "2024-03-26T17:47:40.620-00:00",
+    "ListPrice": 1790,
+    "PhotosCount": 11,
+    "YearBuilt": 1990,
+    "City": "Margate"
+  }
+]

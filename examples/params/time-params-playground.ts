@@ -98,10 +98,10 @@ const formatISOForDisplay = (
 // Define parameter definitions
 // Note: Order matters for cross-parameter references (@paramName+offset)
 const paramDefinitions = {
-    startDate: "edate",
-    endDate: "edate",
-    eventTime: "edate",
-    scheduledFor: "edate"
+    startDate: "date",
+    endDate: "date",
+    eventTime: "date",
+    scheduledFor: "date"
 };
 
 // Create Args instance with aliases

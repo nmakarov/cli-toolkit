@@ -32,7 +32,7 @@ const paramDefinitions = {
     flags: "array(boolean) default true,false",
     
     // Custom types
-    startDate: "edate default -7d",
+    startDate: "date default -7d",
     features: "array(string) default auth,logging",
     
     // Validation with values

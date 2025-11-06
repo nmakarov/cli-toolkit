@@ -66,7 +66,7 @@ const config = params.getAll({
     port: 'number default 3000',
     debug: 'boolean default false',
     tags: 'array(string)',
-    startDate: 'edate'  // Enhanced date with relative time
+    startDate: 'date'  // Enhanced date with relative time
 });
 
 console.log(config.name);       // Type-safe, validated

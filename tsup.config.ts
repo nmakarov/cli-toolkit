@@ -7,7 +7,8 @@ export default defineConfig({
     screen: "src/screen/index.ts",
     params: "src/params.ts",
     errors: "src/errors.ts",
-    logger: "src/logger/index.ts"
+    logger: "src/logger/index.ts",
+    filestore: "src/filestore.ts"
   },
     format: ["esm", "cjs"],
     dts: false,

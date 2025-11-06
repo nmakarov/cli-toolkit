@@ -10,7 +10,7 @@ describe("Params CI", () => {
                 port: 8080,
                 listNumbers: "1,2,3",
                 listBooleans: "true,false,0,1",
-                edate: "+1d",
+                date: "+1d",
                 duration: "P1DT2H",
                 feature: "beta",
                 camelCase: "Camel",
@@ -54,10 +54,10 @@ describe("Params CI", () => {
         expect(params.get("listNumbers", "array(number)")).toEqual([1, 2, 3]);
         expect(params.get("listBooleans", "array(boolean)")).toEqual([true, false, false, true]);
         expect(params.get("duration", "duration")).toBe("P1DT2H");
-        // edate now returns ISO8601 string, not Date object
-        const edateValue = params.get("edate", "edate");
-        expect(typeof edateValue).toBe("string");
-        expect(edateValue).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+        // date now returns ISO8601 string, not Date object
+        const dateValue = params.get("date", "date");
+        expect(typeof dateValue).toBe("string");
+        expect(dateValue).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
         expect(params.get("arrayString", "array(string)")).toEqual(["one", "two"]);
 
         // Constructor options precedence

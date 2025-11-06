@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Logger module export to `package.json` and `tsup.config.ts` for proper CommonJS/ESM distribution.
-- Cross-parameter reference support in `edate` type using `@paramName+offset` syntax (e.g., `@startDate+2h`).
+- Cross-parameter reference support in `date` type using `@paramName+offset` syntax (e.g., `@startDate+2h`).
 - `time-params-playground.ts` example demonstrating ISO8601 timestamps, timezone conversions, and cross-parameter calculations.
 - Date utility library (`src/utils/date-utils.ts`) with formatting and timezone conversion helpers.
 - Automated release scripts: `release:patch`, `release:minor`, `release:major` for streamlined publishing.
@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Logger module not building for CommonJS consumers due to missing export configuration.
-- Params CI tests updated to expect ISO8601 strings instead of Date objects for `edate` type.
+- Params CI tests updated to expect ISO8601 strings instead of Date objects for `date` type.
 
 ## [0.1.1] - 2025-11-02
 

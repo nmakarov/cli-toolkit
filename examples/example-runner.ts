@@ -114,6 +114,25 @@ const exampleGroups: ExampleGroup[] = [
                 description: "Demonstrate routing log output through the parent process channel."
             }
         ]
+    },
+    {
+        id: "filedb",
+        title: "FileDatabase Module",
+        description: "Explore versioned file storage with chunking, pagination, and metadata.",
+        examples: [
+            {
+                id: "filedb-basic",
+                title: "FileDatabase – basic usage",
+                command: "npx tsx examples/filestore/basic-usage.ts",
+                description: "Write and read data with automatic versioning, pagination, and synopsis functions."
+            },
+            {
+                id: "filedb-legacy",
+                title: "FileDatabase – read legacy data",
+                command: "npx tsx examples/filestore/read-legacy-data.ts",
+                description: "Read old-format data without metadata.json using optimized metadata building."
+            }
+        ]
     }
 ];
 

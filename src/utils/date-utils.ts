@@ -121,3 +121,48 @@ export function dateDiff(
     };
 }
 
+/**
+ * Check if a folder name looks like an ISO8601 timestamp
+ * Used to identify version folders vs regular folders
+ * @param folderName - Folder name to check
+ * @returns true if the folder name is a valid ISO8601 timestamp
+ */
+export function isTimestampFolder(folderName: string): boolean {
+    // Match ISO8601 format: YYYY-MM-DDTHH:mm:ssZ
+    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|\.\d{3}Z)$/;
+    
+    if (!isoRegex.test(folderName)) {
+        return false;
+    }
+    
+    const date = new Date(folderName);
+    return !isNaN(date.getTime()) && date.getTime() > 0;
+}
+
+/**
+ * Generate a new version name (ISO8601 timestamp)
+ * If existingVersions provided, ensures the new version is later than all existing ones
+ * @param existingVersions - Array of existing version timestamps
+ * @returns New version timestamp that is unique and later than existing ones
+ */
+export function generateVersionName(existingVersions: string[] = []): string {
+    if (existingVersions.length === 0) {
+        // No existing versions, use current timestamp
+        const now = new Date();
+        return now.toISOString().split(".")[0] + "Z";
+    }
+    
+    // Find the maximum timestamp among all existing versions
+    const maxTimestamp = existingVersions.reduce((max, version) => {
+        const versionDate = new Date(version);
+        const maxDate = new Date(max);
+        return versionDate > maxDate ? version : max;
+    });
+    
+    // Increment by 1 second to ensure uniqueness
+    const maxDate = new Date(maxTimestamp);
+    const nextDate = new Date(maxDate.getTime() + 1000);
+    
+    return nextDate.toISOString().split(".")[0] + "Z";
+}
+

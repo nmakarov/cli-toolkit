@@ -31,7 +31,7 @@ const paramDefinitions = {
     flags: "array(boolean)",
     
     // Custom types
-    startDate: "edate",
+    startDate: "date",
     features: "array(string)",
     
     // Validation with values

@@ -17,7 +17,7 @@ export interface ParsedArgs {
     command: string;
     flags: Record<string, boolean>;
     options: Record<string, string>;
-    usedKeys: Set<string>;
+    usedKeys: string[];
 }
 
 /**
@@ -534,7 +534,7 @@ export class Args {
             command: this.commands[0] || "",
             flags: { ...this.flags },
             options: { ...this.options },
-            usedKeys: new Set(this.usedKeys)
+            usedKeys: Array.from(this.usedKeys)
         };
     }
 

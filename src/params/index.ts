@@ -102,8 +102,6 @@ export class Params {
         } else if (str.match(/^boolean|^bool/i)) {
             type = Joi.boolean();
         } else if (str.match(/^date/i)) {
-            type = Joi.date();
-        } else if (str.match(/^edate/i)) {
             type = Joi.custom(joiEdateType);
         } else if (str.match(/^duration/i)) {
             type = Joi.string().isoDuration();
