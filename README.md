@@ -59,7 +59,7 @@ node app.js --verbose --port=8080 build deploy
 
 [📖 Full Args Documentation](docs/ARGS.md)
 
-### Params - Validate Parameters
+### Params - Validate Parameters.
 
 ```typescript
 import { Params } from '@nmakarov/cli-toolkit/params';
