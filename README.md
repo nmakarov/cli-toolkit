@@ -5,6 +5,10 @@ A comprehensive TypeScript toolkit for building professional CLI applications wi
 [![npm version](https://img.shields.io/npm/v/@nmakarov/cli-toolkit.svg)](https://www.npmjs.com/package/@nmakarov/cli-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Known Vulnerabilities](https://snyk.io/test/github/nmakarov/cli-toolkit/badge.svg)](https://snyk.io/test/github/nmakarov/cli-toolkit)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Node Version](https://img.shields.io/node/v/@nmakarov/cli-toolkit.svg)](https://nodejs.org)
+[![npm downloads](https://img.shields.io/npm/dm/@nmakarov/cli-toolkit.svg)](https://www.npmjs.com/package/@nmakarov/cli-toolkit)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@nmakarov/cli-toolkit)](https://bundlephobia.com/package/@nmakarov/cli-toolkit)
 
 ## Features
 
