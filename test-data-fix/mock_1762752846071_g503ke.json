@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "host": "api.example.com",
+  "pathname": "/users/1",
+  "query": "",
+  "timestamp": "2025-11-10T05:34:06.071Z",
+  "operationId": "getUser",
+  "mockName": "Test Mock",
+  "file": "response_mock_1762752846071_g503ke.json"
+}

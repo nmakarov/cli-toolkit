@@ -137,6 +137,10 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Composability**: Components can be combined to build complex screens
 - **Reusability**: Extract common patterns into reusable components
 - **Minimal Hardcoding**: All UI elements, colors, and styling should be customizable parameters with sensible defaults
+- **Never Throw**: HTTP clients and data storage should return unified response objects, never throw exceptions
+- **Human-Readable Errors**: Use use-case oriented error names instead of technical codes for better developer experience
+- **Progressive Enhancement**: Start with simple implementations, add advanced features (retry, caching, etc.) incrementally
+- **Legacy Compatibility**: Maintain backward compatibility while adding new capabilities
 - **Documentation**: Comprehensive docs for each package and component
 
 ### Minimal Hardcoding Philosophy
@@ -153,6 +157,8 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Screen module**: ✅ Complete with sorting, scrolling, customization, breadcrumbs
 - **Params module**: ✅ Complete with validation, custom types, and singleton helpers
 - **Init module**: ⏳ Placeholder (next priority - CLI app structure, config loading)
+- **FileDatabase module**: ✅ Complete with versioned/non-versioned storage, metadata management, and legacy compatibility
+- **HttpClient module**: ✅ Complete with retry logic, error classification, and unified response format
 - **Documentation**: ✅ Updated regularly (README, API, Quick Reference, Examples, changelog)
 - **Tests**: ✅ Component-local suites under `src/<component>/tests/` with CI-focused `*.ci.test.ts`
 - **Examples**: ✅ Includes functionality samples plus the interactive `examples/example-runner.ts`
@@ -182,6 +188,12 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Example organization**: Component examples in `examples/<component>/` folders; config/env files colocated with examples that use them; main `example-runner.ts` at examples root.
 - **Cross-parameter references**: Use Joi context passing (`validate(val, { context: { params: this.params } })`) to enable `@paramName+offset` syntax; evaluate left-to-right.
 - **Date/time handling**: Always store as UTC ISO8601 strings internally; convert to other timezones/formats only for display; support relative time (`-7d`, `+2h`, `now`) and cross-param refs (`@startDate+30d`).
+- **HttpClient retry logic**: Use exponential backoff with jitter to prevent thundering herd; never retry authentication errors; classify errors as retryable vs non-retryable based on error type.
+- **HttpClient error classification**: Use human-readable error names (connectionFailed, timeout, unauthorized) instead of technical codes (ECONNRESET, ETIMEDOUT); map HTTP status codes to custom statuses (success, authRequired, clientError, serverError).
+- **HttpClient never throws**: Always return unified response format with status, code, headers, data; handle errors gracefully with retry logic and clear error reporting.
+- **FileDatabase versioned vs non-versioned**: Versioned mode creates timestamped folders for data history; non-versioned mode stores files directly in table folder for single objects; auto-detect legacy formats on read.
+- **FileDatabase metadata management**: Use metadata.json for new formats; auto-detect and build metadata on-the-fly for legacy formats; optimize metadata building by reading only first/last files for JSON arrays.
+- **FileDatabase path resolution**: getDestinationPath() optionally includes version folder based on mode; ensure table directories exist before writing in non-versioned mode.
 - **Native module compatibility (node-expat)**: `node-expat` v2.4.1 (used by RETS client) only compiles on Node.js ≤20. Node 22+ has breaking V8 API changes that prevent compilation. If upgrading local Node version, use Node 20 LTS for legacy mlsfarm code, or keep separate Node versions via nvm. After switching Node versions, always run `rm -rf node_modules && npm install` to rebuild native modules.
 - **Git submodules for service libraries**: Use git submodules for independent libraries (cli-toolkit, etc.) that need separate version control. Workflow: 1) Work in submodule directory normally, 2) Commit/push submodule changes first, 3) Update main repo to reference new submodule commit. Clone with `--recurse-submodules` or run `git submodule init && git submodule update` after cloning. Update submodules with `git submodule update --remote --merge`. Document submodule setup in main README.md.
 
@@ -198,6 +210,13 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Why ISO8601 strings for dates**: PostgreSQL compatible, JSON serializable, timezone unambiguous, human-readable
 - **Why UTC internal representation**: Avoids timezone confusion, consistent storage, easy conversion to any timezone for display
 - **Why `@paramName+offset` syntax**: Clean, no escaping needed, extensible to other param types beyond dates, easy regex parsing
+- **Why HttpClient over XAxios**: More professional name, describes complete HTTP client functionality, not tied to specific implementation (axios)
+- **Why axios as HTTP base**: Mature, battle-tested, excellent TypeScript support, comprehensive feature set, active maintenance
+- **Why human-readable error names**: Better developer experience, use-case oriented (connectionFailed vs ECONNRESET), actionable error messages
+- **Why HttpClient never throws**: Predictable API, forces proper error handling, matches functional programming patterns
+- **Why exponential backoff with jitter**: Prevents thundering herd problems, reduces server load during outages, more resilient than fixed delays
+- **Why FileDatabase versioned/non-versioned modes**: Versioned for data history/temporal queries, non-versioned for single objects/API responses
+- **Why FileDatabase metadata optimization**: Reading only first/last files for JSON arrays significantly improves performance for large datasets
 
 ## Project Setup & Development Workflow
 
@@ -482,7 +501,25 @@ cli-toolkit/
 ├── src/
 │   ├── args.ts           # Arguments discovery and parsing
 │   ├── params.ts         # Parameter management and validation
-│   ├── init.ts           # CLI app initialization
+│   ├── init.ts           # CLI app initialization (placeholder)
+│   ├── filedatabase.ts   # FileDatabase module exports
+│   ├── http-client.ts    # HttpClient module exports
+│   ├── logger/           # Logger module (in progress)
+│   ├── screen/           # Screen UI components
+│   ├── filedatabase/     # FileDatabase implementation
+│   │   ├── index.ts      # Main FileDatabase class
+│   │   ├── types.ts      # TypeScript definitions
+│   │   ├── utils.ts      # Utility functions
+│   │   ├── serializers.ts # Data serialization
+│   │   ├── synopsis-functions.ts # Data synopsis calculations
+│   │   └── tests/        # FileDatabase tests
+│   ├── http-client/      # HttpClient implementation
+│   │   ├── index.ts      # Main HttpClient class
+│   │   ├── types.ts      # TypeScript definitions
+│   │   ├── errors.ts     # Error classification
+│   │   ├── retry.ts      # Retry logic
+│   │   └── tests/        # HttpClient tests
+│   ├── utils/            # Shared utilities
 │   └── index.ts          # Main exports
 ├── dist/                 # Built JavaScript (ESM + CJS)
 │   ├── index.js          # ESM build
@@ -490,11 +527,19 @@ cli-toolkit/
 │   ├── index.d.ts        # TypeScript declarations
 │   └── ...               # Other modules
 ├── examples/             # Usage examples
+│   ├── args/             # Args examples
+│   ├── params/           # Params examples
+│   ├── screen/           # Screen examples
+│   ├── filedatabase/     # FileDatabase examples
+│   ├── http-client/      # HttpClient examples
+│   └── example-runner.ts # Interactive example launcher
 ├── docs/                 # Documentation
 ├── tests/                # Test suites
 ├── package.json          # @nmakarov/cli-toolkit
 ├── tsconfig.json         # TypeScript configuration
 ├── tsup.config.ts       # Build configuration
+├── FEATURES.md           # Feature tracking
+├── CHANGELOG.md          # Change log
 └── README.md             # Package documentation
 ```
 

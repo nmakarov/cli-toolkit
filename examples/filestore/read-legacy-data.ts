@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { FileDatabase } from "../../src/filestore.js";
+import { FileDatabase } from "../../src/filedatabase.js";
 import chalk from "chalk";
 import path from "path";
 import { fileURLToPath } from "url";

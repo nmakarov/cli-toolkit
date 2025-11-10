@@ -36,6 +36,34 @@ Legend:
 - 📝 Date/time utility library with timezone conversions and multiple output formats
   - Challenges: balancing simplicity with timezone complexity, deciding when to use external libraries (luxon/date-fns-tz) vs native Date APIs.
 
+## HttpClient Module
+- ✅ Core HttpClient class with axios wrapper and unified response format
+  - Challenges: ensuring never-throws behavior while maintaining proper error classification and logging.
+- ✅ Progressive retry logic with exponential backoff and jitter
+  - Challenges: preventing thundering herd problems with randomized delays while maintaining predictable test behavior.
+- ✅ Human-readable error classification (connectionFailed vs ECONNRESET)
+  - Challenges: mapping technical network errors to use-case oriented names while preserving debugging information.
+- ✅ Support for all HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+  - Challenges: maintaining consistent behavior across methods while handling method-specific request formatting.
+- ✅ Comprehensive CI tests with axios mocking (60 tests, 80%+ coverage across all files)
+  - Challenges: mocking complex axios behavior while ensuring realistic error scenarios and retry logic validation.
+- ✅ Interactive examples demonstrating error handling and retry scenarios
+  - Challenges: creating realistic network failure scenarios for demonstration without external dependencies.
+
+## FileDatabase Module
+- ✅ Versioned/non-versioned storage modes with automatic format detection
+  - Challenges: maintaining backward compatibility with legacy data structures while adding new metadata features.
+- ✅ Chunked file writes and pagination for large datasets
+  - Challenges: optimizing metadata building by reading only first/last files for JSON arrays.
+- ✅ Legacy format compatibility and automatic metadata generation
+  - Challenges: detecting data types and building metadata on-the-fly without explicit configuration.
+- ✅ Custom synopsis functions for data analysis and statistics
+  - Challenges: providing flexible calculation framework while maintaining performance for large datasets.
+- ✅ Comprehensive CI tests covering all storage modes and edge cases (26 tests, 80%+ coverage)
+  - Challenges: testing file system operations and ensuring proper cleanup between test runs.
+- ✅ Interactive examples with data inspection and format detection
+  - Challenges: creating sample datasets that demonstrate real-world usage patterns and performance characteristics.
+
 ## Error Classes
 - ✅ CI test for inheritance/name wiring of custom errors
   - Challenges: minimal, mostly verifying prototype chains.
@@ -62,4 +90,39 @@ Legend:
 - 📝 Comprehensive timezone support with named zones (PST, EST, etc.) and DST handling
   - Challenges: deciding whether to use luxon/date-fns-tz vs native APIs, maintaining small bundle size.
 
+### MockServer Module
+
+**Status:** ✅ Complete (0.2.0)
+
+**Core Components:**
+- **Express Server**: Full Express.js HTTP server with configurable middleware
+- **Request Matching**: Intelligent matching using FileDatabase catalog with operation ID support
+- **Data Sanitization**: Configurable masking of sensitive data (auth tokens, API keys, passwords)
+- **Catalog Management**: Automatic catalog creation, maintenance, and cleanup
+- **FileDatabase Integration**: Uses FileDatabase for persistent mock storage and retrieval
+
+**Key Features:**
+- **HTTP Server**: Express.js based with standard endpoints (/version, /404, /test)
+- **Mock Capture**: Store API responses with metadata for later replay
+- **Request Matching**: Exact and fuzzy matching with operation ID precision
+- **Sensitive Data**: MD5-hashed masking of configurable sensitive fields
+- **Maintenance**: Automatic cleanup of orphaned files and invalid catalog entries
+- **HttpClient Integration**: Test server redirection for seamless testing
+
+**Test Coverage:** 63 tests, 80%+ coverage across catalog.ts (85%), index.ts (65%), sanitization.ts (97%)
+
+**Challenges Solved:**
+- **Legacy Migration**: Replacing MockEngine.js with modern, type-safe implementation
+- **Catalog Queries**: Efficient request matching using FileDatabase as storage backend
+- **Sensitive Data Handling**: Balancing security (masking) with functionality (matching)
+- **Server Management**: Proper Express server lifecycle and error handling
+- **Test Integration**: Seamless integration with HttpClient for development workflows
+
+**API Surface:**
+- `MockServer` class with start/stop/server management
+- `storeMock()` - Capture and store responses
+- `listMocks()` - Query stored responses
+- `removeMock()` - Delete specific mocks
+- `maintenance()` - Clean up orphaned data
+- `createMockServer()` convenience function
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { FileDatabase } from "../../src/filestore.js";
+import { FileDatabase } from "../../src/filedatabase.js";
 import chalk from "chalk";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -194,10 +194,66 @@ async function main() {
     console.info(`  ${chalk.bold("Avg Records/File:")} ${chalk.white(synopsisMetadata.synopsis.averageRecordsPerFile.toFixed(1))}`);
     console.info("");
 
+    // Example 6: Non-versioned mode (for single objects, API responses, etc.)
+    console.info(chalk.bold.magenta("📄 Example 6: Non-Versioned Mode"));
+    console.info(chalk.dim("─".repeat(50)));
+
+    const nonVersionedStore = new FileDatabase({
+        basePath: dataPath,
+        namespace: "demo",
+        tableName: "api-responses",
+        versioned: false, // No timestamp folders
+        useMetadata: true,
+    });
+
+    console.info(chalk.cyan("Configuration:"));
+    console.info(`  Mode: ${chalk.white("Non-versioned (single objects)")}`);
+    console.info(`  Table: ${chalk.white("api-responses")}`);
+    console.info("");
+
+    // Write an API response (single object)
+    const apiResponse = {
+        id: "user-123",
+        email: "user@example.com",
+        name: "John Doe",
+        createdAt: new Date().toISOString(),
+        status: "active",
+        roles: ["admin", "user"]
+    };
+
+    await nonVersionedStore.write(apiResponse);
+
+    // Check if data exists
+    const hasData = await nonVersionedStore.hasData();
+    console.info(`  ${chalk.bold("Has Data:")} ${chalk.white(hasData ? "Yes" : "No")}`);
+
+    // Read back the API response
+    const readResponse = await nonVersionedStore.read();
+    console.info(`  ${chalk.bold("User ID:")} ${chalk.white(readResponse.id)}`);
+    console.info(`  ${chalk.bold("Email:")} ${chalk.white(readResponse.email)}`);
+    console.info(`  ${chalk.bold("Status:")} ${chalk.white(readResponse.status)}`);
+    console.info(`  ${chalk.bold("Roles:")} ${chalk.white(readResponse.roles.join(", "))}`);
+    console.info("");
+
+    // Demonstrate data format detection
+    const format = await nonVersionedStore.detectDataFormat();
+    console.info(`  ${chalk.bold("Detected Format:")} ${chalk.white(format.versioned ? "Versioned" : "Non-versioned")}`);
+    console.info(`  ${chalk.bold("Has Metadata:")} ${chalk.white(format.hasMetadata ? "Yes" : "No")}`);
+    console.info(`  ${chalk.bold("Data Type:")} ${chalk.white(format.dataType || "Unknown")}`);
+    console.info("");
+
     console.info(chalk.green("🎉 FileDatabase demonstration completed!"));
     console.info("");
     console.info(chalk.yellow("Data Location:"));
     console.info(`  ${chalk.dim(dataPath)}`);
+    console.info("");
+    console.info(chalk.dim("💡 Key Features Demonstrated:"));
+    console.info(chalk.dim("  • Automatic versioning with timestamp folders"));
+    console.info(chalk.dim("  • Chunked file writes for large datasets"));
+    console.info(chalk.dim("  • Pagination for efficient reading"));
+    console.info(chalk.dim("  • Metadata tracking with custom synopsis functions"));
+    console.info(chalk.dim("  • Non-versioned mode for single objects"));
+    console.info(chalk.dim("  • Automatic data format detection"));
     console.info("");
 }
 

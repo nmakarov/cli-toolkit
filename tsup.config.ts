@@ -8,7 +8,9 @@ export default defineConfig({
     params: "src/params.ts",
     errors: "src/errors.ts",
     logger: "src/logger/index.ts",
-    filestore: "src/filestore.ts"
+    filedatabase: "src/filedatabase.ts",
+    "http-client": "src/http-client.ts",
+    "mock-server": "src/mock-server.ts"
   },
     format: ["esm", "cjs"],
     dts: false,

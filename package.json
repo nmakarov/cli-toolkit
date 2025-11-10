@@ -27,6 +27,16 @@
       "import": "./dist/init.js",
       "require": "./dist/init.cjs"
     },
+    "./http-client": {
+      "types": "./dist/http-client.d.ts",
+      "import": "./dist/http-client.js",
+      "require": "./dist/http-client.cjs"
+    },
+    "./mock-server": {
+      "types": "./dist/mock-server.d.ts",
+      "import": "./dist/mock-server.js",
+      "require": "./dist/mock-server.cjs"
+    },
     "./screen": {
       "types": "./dist/screen.d.ts",
       "import": "./dist/screen.js",
@@ -42,10 +52,10 @@
       "import": "./dist/logger.js",
       "require": "./dist/logger.cjs"
     },
-    "./filestore": {
-      "types": "./dist/filestore.d.ts",
-      "import": "./dist/filestore.js",
-      "require": "./dist/filestore.cjs"
+    "./filedatabase": {
+      "types": "./dist/filedatabase.d.ts",
+      "import": "./dist/filedatabase.js",
+      "require": "./dist/filedatabase.cjs"
     }
   },
   "scripts": {
@@ -55,7 +65,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:coverage:open": "vitest --coverage && open coverage/index.html",
-    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts src/filestore/tests/filestore.ci.test.ts src/filestore/tests/synopsis-functions.ci.test.ts src/utils/tests/format-utils.ci.test.ts src/utils/tests/date-utils.ci.test.ts src/utils/tests/crypto-utils.ci.test.ts src/utils/tests/fs-utils.ci.test.ts --coverage",
+    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts src/filedatabase/tests/filestore.ci.test.ts src/filedatabase/tests/synopsis-functions.ci.test.ts src/http-client/tests/http-client.ci.test.ts src/mock-server/tests/mock-server.ci.test.ts src/utils/tests/format-utils.ci.test.ts src/utils/tests/date-utils.ci.test.ts src/utils/tests/crypto-utils.ci.test.ts src/utils/tests/fs-utils.ci.test.ts --coverage",
     "test:args": "vitest run src/args/tests",
     "test:args:ci": "vitest run src/args/tests/args.ci.test.ts --coverage",
     "test:params": "vitest run src/params/tests",
@@ -66,10 +76,16 @@
     "test:screen:ci": "vitest run src/screen/tests/screen.ci.test.ts --coverage",
     "test:logger": "vitest run src/logger/tests/logger.cli.test.ts",
     "test:logger:ci": "vitest run src/logger/tests/logger.ci.test.ts --coverage",
-    "test:filestore": "vitest run src/filestore/tests",
-    "test:filestore:ci": "vitest run src/filestore/tests/filestore.ci.test.ts --coverage",
-    "test:synopsis": "vitest run src/filestore/tests/synopsis-functions.ci.test.ts",
-    "test:synopsis:ci": "vitest run src/filestore/tests/synopsis-functions.ci.test.ts --coverage",
+    "test:filedatabase": "vitest run src/filedatabase/tests",
+    "test:filedatabase:ci": "vitest run src/filedatabase/tests/filestore.ci.test.ts --coverage",
+    "test:synopsis": "vitest run src/filedatabase/tests/synopsis-functions.ci.test.ts",
+    "test:synopsis:ci": "vitest run src/filedatabase/tests/synopsis-functions.ci.test.ts --coverage",
+    "test:http-client": "vitest run src/http-client/tests",
+    "test:http-client:ci": "vitest run src/http-client/tests/http-client.ci.test.ts --coverage",
+    "test:http-client:ci:real-timeouts": "HTTP_CLIENT_REAL_TIMEOUTS=true vitest run src/http-client/tests/http-client.ci.test.ts --coverage",
+    "test:mock-server": "vitest run src/mock-server/tests",
+    "test:mock-server:ci": "vitest run src/mock-server/tests/mock-server.ci.test.ts --coverage",
+    "test:mock-server:coverage": "vitest run src/mock-server/tests --coverage",
     "test:utils": "vitest run src/utils/tests",
     "test:utils:ci": "vitest run src/utils/tests/*.ci.test.ts --coverage",
     "lint": "eslint src/",
@@ -124,9 +140,12 @@
   },
   "dependencies": {
     "@types/joi": "^17.2.3",
+    "axios": "^1.6.0",
     "chalk": "^4.1.2",
     "dotenv": "^17.2.3",
-    "joi": "^18.0.1"
+    "express": "^4.18.0",
+    "joi": "^18.0.1",
+    "morgan": "^1.10.0"
   },
   "engines": {
     "node": ">=20.0.0"

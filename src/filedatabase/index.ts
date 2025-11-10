@@ -40,6 +40,7 @@ export class FileDatabase {
     private basePath: string;
     private namespace: string;
     private tableName: string | null = null;
+    private versioned: boolean;
     private maxVersions: number;
     private pageSize: number;
     private useMetadata: boolean;
@@ -68,6 +69,7 @@ export class FileDatabase {
         this.basePath = config.basePath;
         this.namespace = config.namespace || "default";
         this.tableName = config.tableName || null;
+        this.versioned = config.versioned ?? true; // Default true for backward compatibility
         this.maxVersions = config.maxVersions || 5;
         this.pageSize = config.pageSize || 5000;
         this.useMetadata = config.useMetadata !== false; // Default true
@@ -94,16 +96,27 @@ export class FileDatabase {
     }
 
     /**
-     * Get the destination path (basePath/namespace/tableName)
+     * Get the destination path (basePath/namespace/tableName[/version])
      */
-    private getDestinationPath(): string {
+    private getDestinationPath(version?: string): string {
         const errors = ["basePath", "namespace", "tableName"]
             .filter(prop => !this[prop as keyof this])
             .map(prop => `${prop} is not set`);
         if (errors.length) {
             throw new FileDatabaseError(`[FileDatabase] ${errors.join("; ")}`);
         }
-        return path.resolve(this.basePath, this.namespace, this.tableName!);
+
+        let parts = [this.basePath, this.namespace];
+        if (this.tableName) {
+            parts.push(...this.tableName.split('/'));
+        }
+
+        // Only add version folder if in versioned mode and version is specified
+        if (this.versioned && version) {
+            parts.push(version);
+        }
+
+        return path.resolve(...parts);
     }
 
     /**
@@ -116,8 +129,16 @@ export class FileDatabase {
 
     /**
      * Create a new version folder with comprehensive timestamp logic
+     * Only works in versioned mode
      */
     private async makeNewVersion(): Promise<string> {
+        if (!this.versioned) {
+            throw new FileDatabaseError("makeNewVersion() only works in versioned mode");
+        }
+
+        // Reset in-memory metadata when creating a new version
+        this.metadata = this.getDefaultMetadata();
+
         const existingVersions = await this.getVersions();
         let versionName: string;
 
@@ -157,8 +178,13 @@ export class FileDatabase {
 
     /**
      * Get list of all versions (sorted chronologically)
+     * Only works in versioned mode
      */
     async getVersions(): Promise<string[]> {
+        if (!this.versioned) {
+            return []; // No versions in non-versioned mode
+        }
+
         const destPath = this.getDestinationPath();
 
         try {
@@ -174,6 +200,113 @@ export class FileDatabase {
         } catch (error) {
             return [];
         }
+    }
+
+    /**
+     * Get the latest version (most recent timestamp)
+     * Only works in versioned mode
+     * @returns Latest version string or null if no versions
+     */
+    async getLatestVersion(): Promise<string | null> {
+        if (!this.versioned) {
+            throw new FileDatabaseError("getLatestVersion() only works in versioned mode");
+        }
+
+        const versions = await this.getVersions();
+        if (versions.length === 0) {
+            return null;
+        }
+
+        return versions[versions.length - 1];
+    }
+
+    /**
+     * Check if any data exists in this table
+     * Works for both versioned and non-versioned modes
+     * @returns true if data exists
+     */
+    async hasData(): Promise<boolean> {
+        const tablePath = this.getDestinationPath();
+
+        if (!fs.existsSync(tablePath)) {
+            return false;
+        }
+
+        if (this.versioned) {
+            // Check for version folders
+            const versions = await this.getVersions();
+            return versions.length > 0;
+        } else {
+            // Check for any data files or metadata
+            const items = await fs.promises.readdir(tablePath);
+            return items.some(item =>
+                item === 'metadata.json' ||
+                item.match(/^\d{6}\.(json|txt|xml)$/) ||
+                item.endsWith('.json')
+            );
+        }
+    }
+
+    /**
+     * Auto-detect the data format in this table
+     * Used when reading existing data
+     * @returns Format detection result
+     */
+    async detectDataFormat(): Promise<{
+        versioned: boolean;
+        hasMetadata: boolean;
+        dataType: DataType | null;
+    }> {
+        const tablePath = this.getDestinationPath();
+
+        if (!fs.existsSync(tablePath)) {
+            return { versioned: false, hasMetadata: false, dataType: null };
+        }
+
+        const items = await fs.promises.readdir(tablePath);
+
+        // Check for metadata.json in root (non-versioned with metadata)
+        if (items.includes('metadata.json')) {
+            const metadata = JSON.parse(
+                await fs.promises.readFile(path.join(tablePath, 'metadata.json'), 'utf8')
+            );
+            return {
+                versioned: false,
+                hasMetadata: true,
+                dataType: metadata.dataType || null
+            };
+        }
+
+        // Check for version folders
+        const versionFolders = items.filter(item => {
+            const itemPath = path.join(tablePath, item);
+            const stat = fs.statSync(itemPath);
+            return stat.isDirectory() && isTimestampFolder(item);
+        });
+
+        if (versionFolders.length > 0) {
+            // Check if latest version has metadata
+            const latestVersion = versionFolders.sort().pop()!;
+            const versionMetadataPath = path.join(tablePath, latestVersion, 'metadata.json');
+
+            return {
+                versioned: true,
+                hasMetadata: fs.existsSync(versionMetadataPath),
+                dataType: null
+            };
+        }
+
+        // Check for sequential files (legacy non-versioned)
+        const dataFiles = items.filter(f => f.match(/^\d{6}\.(json|txt|xml)$/));
+        if (dataFiles.length > 0) {
+            return {
+                versioned: false,
+                hasMetadata: false,
+                dataType: null
+            };
+        }
+
+        return { versioned: false, hasMetadata: false, dataType: null };
     }
 
     /**
@@ -364,12 +497,24 @@ export class FileDatabase {
      * Save version metadata to file
      */
     private async saveVersionMetadata(metadata?: VersionMetadata): Promise<void> {
-        if (!this.useMetadata || !this.currentVersion) {
+        if (!this.useMetadata) {
             return;
         }
 
         const metadataToSave = metadata || this.metadata;
-        const metadataFile = path.join(this.getDestinationPath(), this.currentVersion, "metadata.json");
+        let metadataFile: string;
+
+        if (this.versioned) {
+            // Versioned mode: metadata in version folder
+            if (!this.currentVersion) {
+                return;
+            }
+            metadataFile = path.join(this.getDestinationPath(), this.currentVersion, "metadata.json");
+        } else {
+            // Non-versioned mode: metadata in root table folder
+            metadataFile = path.join(this.getDestinationPath(), "metadata.json");
+        }
+
         await fs.promises.writeFile(metadataFile, JSON.stringify(metadataToSave, null, 4), "utf8");
     }
 
@@ -534,34 +679,91 @@ export class FileDatabase {
      */
     private async prepare({ write, read, version }: { write?: boolean; read?: boolean; version?: string }): Promise<void> {
         if (write) {
-            if (this.currentVersion === null) {
-                await this.makeNewVersion();
-                this.metadata = this.getDefaultMetadata();
-                this.metadata.version = this.currentVersion;
-                this.makeNewFile();
+            if (this.versioned) {
+                // Versioned mode
+                if (this.currentVersion === null) {
+                    await this.makeNewVersion();
+                    this.metadata = this.getDefaultMetadata();
+                    this.metadata.version = this.currentVersion;
+                    this.makeNewFile();
+                } else {
+                    // For existing versions, load the metadata if not already loaded
+                    if (!this.metadata.files.length) {
+                        this.metadata = await this.figureMetadata(this.currentVersion);
+                    }
+                }
             } else {
-                // For existing versions, load the metadata if not already loaded
-                if (!this.metadata.files.length) {
-                    this.metadata = await this.figureMetadata(this.currentVersion);
+                // Non-versioned mode - ensure table directory exists
+                await ensurePath(this.getDestinationPath());
+
+                // Non-versioned mode - auto-detect useMetadata if not set
+                if (this.useMetadata === true) {
+                    // Try to load existing metadata, create new if doesn't exist
+                    const metadataPath = path.join(this.getDestinationPath(), 'metadata.json');
+                    if (fs.existsSync(metadataPath)) {
+                        try {
+                            const rawData = await fs.promises.readFile(metadataPath, 'utf8');
+                            this.metadata = JSON.parse(rawData);
+                        } catch (e) {
+                            this.metadata = this.getDefaultMetadata();
+                        }
+                    } else {
+                        this.metadata = this.getDefaultMetadata();
+                        this.makeNewFile();
+                    }
+                } else {
+                    // No metadata mode - just create default metadata
+                    this.metadata = this.getDefaultMetadata();
+                    this.makeNewFile();
                 }
             }
         } else if (read) {
-            const versions = await this.getVersions();
-            if (versions.length === 0) {
-                throw new FileDatabaseError("[FileDatabase] No versions found, cannot read");
-            }
-
-            if (version) {
-                if (!versions.includes(version)) {
-                    throw new FileDatabaseError(`[FileDatabase] Version "${version}" not found`);
+            if (this.versioned) {
+                // Versioned mode
+                const versions = await this.getVersions();
+                if (versions.length === 0) {
+                    throw new FileDatabaseError("[FileDatabase] No versions found, cannot read");
                 }
-                await this.setCurrentVersion(version);
-            } else {
-                await this.setCurrentVersion(versions[versions.length - 1]);
-            }
 
-            if (!this.metadata.files.length) {
-                this.metadata = await this.figureMetadata(this.currentVersion!);
+                if (version) {
+                    if (!versions.includes(version)) {
+                        throw new FileDatabaseError(`[FileDatabase] Version "${version}" not found`);
+                    }
+                    await this.setCurrentVersion(version);
+                } else {
+                    await this.setCurrentVersion(versions[versions.length - 1]);
+                }
+
+                if (!this.metadata.files.length) {
+                    this.metadata = await this.figureMetadata(this.currentVersion!);
+                }
+            } else {
+                // Non-versioned mode
+                this.currentVersion = null; // No version concept
+
+                // Auto-detect useMetadata if not explicitly set
+                if (this.useMetadata === undefined) {
+                    const format = await this.detectDataFormat();
+                    this.useMetadata = format.hasMetadata;
+                }
+
+                if (this.useMetadata) {
+                    // Load metadata from root
+                    const metadataPath = path.join(this.getDestinationPath(), 'metadata.json');
+                    if (fs.existsSync(metadataPath)) {
+                        try {
+                            const rawData = await fs.promises.readFile(metadataPath, 'utf8');
+                            this.metadata = JSON.parse(rawData);
+                        } catch (e) {
+                            throw new FileDatabaseError(`Failed to read metadata: ${(e as Error).message}`);
+                        }
+                    } else {
+                        throw new FileDatabaseError("[FileDatabase] No metadata found in non-versioned mode");
+                    }
+                } else {
+                    // Figure metadata from files
+                    this.metadata = await this.figureMetadataFromVersionFiles('');
+                }
             }
         }
     }
@@ -570,10 +772,15 @@ export class FileDatabase {
      * Write data to the file database
      */
     async write(data: any, options: WriteOptions = {}): Promise<void> {
+        // Check for forceNewVersion in non-versioned mode
+        if (options.forceNewVersion && !this.versioned) {
+            throw new FileDatabaseError("Cannot use forceNewVersion in non-versioned mode");
+        }
+
         // Prepare for writing
         await this.prepare({ write: true });
 
-        // Force new version if requested
+        // Force new version if requested (versioned mode only)
         if (options.forceNewVersion) {
             await this.makeNewVersion();
             this.metadata = this.getDefaultMetadata();
@@ -584,13 +791,14 @@ export class FileDatabase {
         let { dataToWrite, dataLeftOver, fileName } = this.figureOutDataAndFileToWrite(data);
 
         // Write first batch
-        await this.safeWrite(path.join(this.currentVersionFolder!, fileName), dataToWrite);
+        const destPath = this.getDestinationPath(this.currentVersion || undefined);
+        await this.safeWrite(path.join(destPath, fileName), dataToWrite);
         this.updateMetadata(dataToWrite, fileName);
 
         // Handle pagination for remaining data (arrays only)
         while (dataLeftOver && dataLeftOver.length > 0) {
             const writeContext = this.figureOutDataAndFileToWrite(dataLeftOver);
-            await this.safeWrite(path.join(this.currentVersionFolder!, writeContext.fileName), writeContext.dataToWrite);
+            await this.safeWrite(path.join(destPath, writeContext.fileName), writeContext.dataToWrite);
             this.updateMetadata(writeContext.dataToWrite, writeContext.fileName);
             dataLeftOver = writeContext.dataLeftOver;
         }
@@ -620,7 +828,7 @@ export class FileDatabase {
         if (isNonPaginatedData) {
             // For text/xml/object data, return all content
             const file = this.metadata.files[0];
-            const filePath = path.join(this.getDestinationPath(), this.currentVersion!, file.fileName);
+            const filePath = path.join(this.getDestinationPath(this.currentVersion || undefined), file.fileName);
             try {
                 const rawData = await fs.promises.readFile(filePath, "utf8");
                 return deserializeData(rawData, this.metadata.dataType!);
@@ -671,7 +879,7 @@ export class FileDatabase {
         let cumulativeRecords = currentFileOffset;
         for (let i = currentFileIndex; i < this.metadata.files.length && recordsRead < effectivePageSize; i++) {
             const file = this.metadata.files[i];
-            const filePath = path.join(this.getDestinationPath(), this.currentVersion!, file.fileName);
+            const filePath = path.join(this.getDestinationPath(this.currentVersion || undefined), file.fileName);
 
             try {
                 const rawData = await fs.promises.readFile(filePath, "utf8");

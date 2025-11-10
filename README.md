@@ -16,6 +16,9 @@ A comprehensive TypeScript toolkit for building professional CLI applications wi
 
 - 🎯 **Args** - Powerful argument parser with config files, environment variables, and precedence rules
 - ✅ **Params** - Type-safe parameter validation with Joi schemas and cross-parameter references
+- 🌐 **HttpClient** - Resilient HTTP client with automatic retry, error classification, and unified responses
+- 🧪 **MockServer** - HTTP mock server with FileDatabase integration for API testing
+- 💾 **FileDatabase** - Versioned file storage with chunking, pagination, and legacy compatibility
 - 🖥️ **Screen** - Interactive terminal UIs with React/Ink (lists, menus, grids, navigation)
 - 📝 **Logger** - Structured logging with levels, progress tracking, and IPC routing
 - ⚡ **Errors** - Custom error classes for framework-specific error handling
@@ -86,6 +89,107 @@ node app.js --name="My App" --port=8080 --tags="api,web" --startDate="-7d"
 ```
 
 [📖 Full Params Documentation](docs/PARAMS.md)
+
+### HttpClient - Resilient HTTP Requests
+
+```typescript
+import { HttpClient } from '@nmakarov/cli-toolkit/http-client';
+
+const client = new HttpClient({
+    timeout: 10000,
+    retryCount: 3,
+    retryDelay: 1000
+});
+
+// Always returns unified response - never throws!
+const response = await client.get('https://api.example.com/users', {
+    params: { limit: 10 },
+    headers: { 'Authorization': 'Bearer token' }
+});
+
+if (response.status === 'success') {
+    console.log('Users:', response.data);
+} else {
+    console.log('Error:', response.error); // Human-readable: 'connectionFailed', 'timeout', etc.
+}
+```
+
+```bash
+# Features:
+# - Automatic retry with exponential backoff
+# - Human-readable error classification
+# - All HTTP methods (GET, POST, PUT, DELETE, PATCH, etc.)
+# - Per-request configuration overrides
+# - Comprehensive logging
+```
+
+[📖 Full HttpClient Documentation](docs/HTTP_CLIENT.md)
+
+### FileDatabase - Structured File Storage
+
+```typescript
+import { FileDatabase } from '@nmakarov/cli-toolkit/filedatabase';
+
+// Versioned mode (default) - creates timestamped folders
+const db = new FileDatabase({
+    basePath: './data',
+    namespace: 'api',
+    tableName: 'responses'
+});
+
+// Non-versioned mode - for single objects
+const db = new FileDatabase({
+    basePath: './data',
+    namespace: 'cache',
+    tableName: 'user-profile',
+    versioned: false
+});
+
+await db.write(userData);
+const data = await db.read(); // Auto-detects latest version
+const hasData = await db.hasData();
+```
+
+```bash
+# Features:
+# - Versioned/non-versioned storage modes
+# - Automatic chunking for large datasets
+# - Pagination for efficient reading
+# - Legacy format compatibility
+# - Custom synopsis functions
+```
+
+[📖 Full FileDatabase Documentation](docs/FILEDATABASE.md)
+
+### MockServer - HTTP Mock Server
+
+```typescript
+import { MockServer } from '@nmakarov/cli-toolkit/mock-server';
+
+const mockServer = new MockServer({
+    basePath: './mocks',
+    port: 5030
+});
+
+await mockServer.start();
+
+// Capture responses
+await mockServer.storeMock('https://api.example.com/users', null, response);
+
+// Use with HttpClient for testing
+const client = new HttpClient({ useTestServer: 'http://localhost:5030' });
+```
+
+```bash
+# Features:
+# - Express.js HTTP server with FileDatabase storage
+# - Request/response capture and replay
+# - Sensitive data masking
+# - Automatic catalog management
+# - Test server redirection support
+```
+
+[📖 Full MockServer Documentation](docs/MOCK_SERVER.md)
 
 ### Screen - Interactive Terminal UIs
 

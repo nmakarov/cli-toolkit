@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2025-11-09
+
+### Added
+- **MockServer module** - HTTP mock server with FileDatabase integration for API testing
+  - Express.js server with request/response capture and replay
+  - Intelligent request matching with operation ID support
+  - Configurable sensitive data masking (authorization, API keys, etc.)
+  - Automatic catalog management and maintenance cleanup
+  - Test server redirection support for HttpClient integration
+- **HttpClient module** - Resilient HTTP client with automatic retry, error classification, and unified responses
+  - Exponential backoff with jitter to prevent thundering herd problems
+  - Human-readable error names (connectionFailed, timeout, unauthorized) instead of technical codes
+  - Support for all HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+  - Never-throws API with unified response format
+  - Comprehensive logging and per-request configuration overrides
+- **FileDatabase module** - Versioned/non-versioned file storage with chunking and pagination
+  - Versioned mode for data history, non-versioned mode for single objects
+  - Automatic legacy format detection and metadata generation
+  - Optimized metadata building (reads only first/last files for JSON arrays)
+  - Custom synopsis functions for data analysis
+  - 100% backward compatibility with existing data structures
+- **HttpClient and FileDatabase examples** integrated into interactive example runner
+- **Comprehensive CI test suites** for new modules with **311 total tests** and **80%+ code coverage**
+  - HttpClient: 60 tests, 80%+ coverage across errors.ts (91%), index.ts (84%), retry.ts (100%)
+  - FileDatabase: 26 tests, 80%+ coverage across all files
+  - MockServer: 63 tests, 80%+ coverage across catalog.ts (85%), index.ts (65%), sanitization.ts (97%)
+- **Axios dependency** (^1.6.0) for HttpClient HTTP functionality
+
+### Changed
+- Updated README.md with HttpClient and FileDatabase documentation and examples
+- Updated PROMPT.md with new implementation patterns and gotchas
+- Enhanced example runner to include HttpClient and FileDatabase demos
+- Updated package.json exports and build configuration for new modules
+
+### Technical Details
+- HttpClient uses axios as battle-tested HTTP foundation with enhanced error handling
+- FileDatabase supports both timestamped versioning and direct file storage
+- Both modules follow "never throw" pattern for predictable error handling
+- Comprehensive TypeScript types and human-readable error classifications
+
 ## [0.1.2] - 2025-11-02
 
 ### Added

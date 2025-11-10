@@ -131,6 +131,38 @@ const exampleGroups: ExampleGroup[] = [
                 title: "FileDatabase – read legacy data",
                 command: "npx tsx examples/filestore/read-legacy-data.ts",
                 description: "Read old-format data without metadata.json using optimized metadata building."
+            },
+            {
+                id: "filedb-inspect",
+                title: "FileDatabase – inspect data",
+                command: "npx tsx examples/filestore/inspect-data.ts --tableName=beaches/properties",
+                description: "Analyze stored data with automatic type detection and comprehensive statistics."
+            }
+        ]
+    },
+    {
+        id: "http-client",
+        title: "HttpClient Module",
+        description: "Explore resilient HTTP client with automatic retry and error handling.",
+        examples: [
+            {
+                id: "http-client-basic",
+                title: "HttpClient – basic usage",
+                command: "npx tsx examples/http-client/basic-usage.ts",
+                description: "Make HTTP requests with automatic retry, error classification, and unified responses."
+            }
+        ]
+    },
+    {
+        id: "mock-server",
+        title: "MockServer Module",
+        description: "Explore HTTP mock server with FileDatabase integration for API testing.",
+        examples: [
+            {
+                id: "mock-server-basic",
+                title: "MockServer – basic usage",
+                command: "npx tsx examples/mock-server/basic-usage.ts",
+                description: "Start mock HTTP server, capture responses, and serve stored mocks for testing. Demonstrates proper cleanup and automatic exit."
             }
         ]
     }

@@ -1,0 +1,14 @@
+{
+  "method": "GET",
+  "host": "api.example.com",
+  "pathname": "/user/profile",
+  "query": "",
+  "timestamp": "2025-11-10T06:12:29.270Z",
+  "requestData": {
+    "api_key": "[md5:a82d720de5b114668d6982c44f989887]",
+    "password": "[md5:5d7845ac6ee7cfffafc5fe5f35cf666d]"
+  },
+  "operationId": "getProfile",
+  "mockName": "Get User Profile with Sensitive Data",
+  "file": "response_mock_1762755149270_w7rfnw.json"
+}

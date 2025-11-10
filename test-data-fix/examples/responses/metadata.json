@@ -1,0 +1,15 @@
+{
+    "version": null,
+    "files": [
+        {
+            "number": 1,
+            "recordsCount": 1,
+            "fileName": "000001.json"
+        }
+    ],
+    "createdAt": "2025-11-10T05:34:06.072Z",
+    "modifiedAt": "2025-11-10T05:34:06.081Z",
+    "totalRecords": 1,
+    "synopsis": null,
+    "dataType": "json-object"
+}

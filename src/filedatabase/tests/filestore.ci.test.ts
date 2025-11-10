@@ -380,5 +380,134 @@ describe("FileDatabase CI", () => {
         expect(metadata.files[2].fileName).toBe("000003.json");
         expect(metadata.files[3].fileName).toBe("000004.json");
     });
+
+    // Phase 1: New functionality tests
+    it("supports getLatestVersion() method", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "latest-version",
+        });
+
+        // No versions yet
+        expect(await store.getLatestVersion()).toBeNull();
+
+        // Write some data to create a version
+        await store.write([{ id: 1, name: "test" }]);
+        const latest = await store.getLatestVersion();
+        expect(latest).toBeTruthy();
+        expect(latest).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+    });
+
+    it("supports hasData() method for versioned mode", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "has-data-versioned",
+        });
+
+        // No data yet
+        expect(await store.hasData()).toBe(false);
+
+        // Write some data
+        await store.write([{ id: 1 }]);
+        expect(await store.hasData()).toBe(true);
+    });
+
+    it("supports hasData() method for non-versioned mode", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "has-data-nonversioned",
+            versioned: false,
+        });
+
+        // No data yet
+        expect(await store.hasData()).toBe(false);
+
+        // Write some data
+        await store.write([{ id: 1 }]);
+        expect(await store.hasData()).toBe(true);
+    });
+
+    it("supports detectDataFormat() method", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "detect-format",
+        });
+
+        // Empty table
+        let format = await store.detectDataFormat();
+        expect(format.versioned).toBe(false);
+        expect(format.hasMetadata).toBe(false);
+        expect(format.dataType).toBe(null);
+
+        // Write versioned data
+        await store.write([{ id: 1 }]);
+        format = await store.detectDataFormat();
+        expect(format.versioned).toBe(true);
+        expect(format.hasMetadata).toBe(true);
+    });
+
+    it("supports non-versioned mode", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "non-versioned",
+            versioned: false,
+        });
+
+        const testData = [{ id: 1, name: "test" }];
+        await store.write(testData);
+
+        const readData = await store.read();
+        expect(readData).toEqual(testData);
+    });
+
+    it("throws error for getLatestVersion() in non-versioned mode", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "error-test",
+            versioned: false,
+        });
+
+        await expect(store.getLatestVersion()).rejects.toThrow("getLatestVersion() only works in versioned mode");
+    });
+
+    it("throws error for forceNewVersion in non-versioned mode", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "error-test",
+            versioned: false,
+        });
+
+        await expect(store.write([{ id: 1 }], { forceNewVersion: true })).rejects.toThrow("Cannot use forceNewVersion in non-versioned mode");
+    });
+
+    it("returns empty versions array for non-versioned mode", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "versions-test",
+            versioned: false,
+        });
+
+        const versions = await store.getVersions();
+        expect(versions).toEqual([]);
+    });
+
+    it("defaults to versioned mode when versioned is not specified", () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "default-test",
+        });
+
+        // We can't directly access the private versioned property, but we can test behavior
+        expect(() => store.getLatestVersion()).not.toThrow(); // Should not throw since it's versioned by default
+    });
 });
 

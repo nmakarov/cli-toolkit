@@ -11,8 +11,10 @@ export type DataType = "json-array" | "json-object" | "text" | "xml";
 
 /**
  * Storage mode determines the file organization strategy
+ * - versioned: Creates timestamp-based version folders (default)
+ * - non-versioned: Stores files directly in table folder
  */
-export type StorageMode = "versioned" | "catalog" | "logs";
+export type StorageMode = "versioned" | "non-versioned";
 
 /**
  * File entry in version metadata
@@ -58,16 +60,16 @@ export interface FileDatabaseConfig {
     namespace?: string;
     /** Table/collection name (e.g., "properties", "members") - optional */
     tableName?: string;
-    /** Maximum number of versions to keep (older versions are deleted) - default: 5 */
+    /** Storage mode - default: "versioned" */
+    versioned?: boolean;
+    /** Maximum number of versions to keep (older versions are deleted) - default: 5 - only for versioned mode */
     maxVersions?: number;
     /** Page size for chunked file writes (records per file) - default: 5000 */
     pageSize?: number;
-    /** Whether to use metadata.json files (new structure) - default: true */
+    /** Whether to use metadata.json files - default: true for writes, auto-detected for reads */
     useMetadata?: boolean;
     /** Minimum free disk space threshold in bytes - default: 100MB */
     freeSpaceThreshold?: number;
-    /** Storage mode - default: "versioned" */
-    storageMode?: StorageMode;
     /** Optional logger instance */
     logger?: any;
 }
