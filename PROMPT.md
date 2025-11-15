@@ -23,7 +23,7 @@ This section defines how documentation files are maintained across the main proj
 
 **Rule:** PROMPT.md must be **identical across all projects** (main and all subprojects). It is shared external memory.
 
-#### When User Says: "I just switched here"
+#### When user says:  "I just switched here"
 
 **AI will:**
 
