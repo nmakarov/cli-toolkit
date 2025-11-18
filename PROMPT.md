@@ -4,7 +4,7 @@
 - **Indent**: 4 spaces, double quotes, semicolons
 - **Node**: 24+, ESM+CJS, TypeScript strict
 - **Colors**: Never hardcode, always parameterize
-- **Args**: `=` separator, case-insensitive, precedence: overrides > CLI > config > env > defaults
+- **Args**: `=` separator, case-insensitive, precedence:  overrides > CLI > config > env > defaults
 - **Screen**: React.createElement, breadcrumbs, customizable everything
 - **Build**: tsup (dual ESM/CJS), ESLint flat config, Prettier, Vitest for tests
 - **Git**: Commit first, then `npm run release:patch`, conventional commits, SemVer
@@ -325,15 +325,37 @@ npm publish
 - **hotfix/***: Critical fixes for main
 
 #### Commit Convention
+
+We use semantic commit messages with **functional scopes** (not submodule names, since commits are made within submodules).
+
+**Commit Types:**
+- `feat(scope):` - New features (code, examples, tests together)
+- `fix(scope):` - Bug fixes
+- `docs(scope):` - Documentation changes
+- `test(scope):` - Test files and test utilities
+- `refactor(scope):` - Code restructuring without changing functionality
+- `chore(scope):` - Maintenance tasks (infrastructure, dependencies, build config)
+- `config(scope):` - Configuration changes
+
+**Functional Scopes:**
+- **Core:** `api`, `storage`, `config`, `transform`, `db`
+- **Infrastructure:** `infra`, `scripts`, `build`, `deps`
+- **Documentation & Testing:** `docs` (or `docs(readme)`, `docs(changelog)`, etc.), `test`, `examples`
+
+**Examples:**
+```bash
+feat(api): add retry logic with exponential backoff
+feat(storage): implement versioned file database
+feat(config): add blueprint lookup function
+fix(api): resolve timeout handling edge case
+refactor(scripts): move prompt-sync to library module
+chore(infra): add blueprints, transformers, data-access submodules
+docs(readme): add developer onboarding guide
+test(api): add retry logic test suite
+feat(scripts): add check-prompts.js for PROMPT.md synchronization
 ```
-feat: add new feature
-fix: bug fix
-docs: documentation changes
-style: formatting changes
-refactor: code refactoring
-test: add tests
-chore: maintenance tasks
-```
+
+**Multiple Change Types:** When a commit includes code + examples + tests, use the primary functional scope (e.g., `feat(api): add HTTP client` includes implementation, examples, and tests).
 
 #### Release Process
 1. **Feature complete** → Merge to develop
