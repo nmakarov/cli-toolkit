@@ -10,7 +10,8 @@ export default defineConfig({
     logger: "src/logger/index.ts",
     filedatabase: "src/filedatabase.ts",
     "http-client": "src/http-client.ts",
-    "mock-server": "src/mock-server.ts"
+    "mock-server": "src/mock-server.ts",
+    db: "src/db.ts"
   },
     format: ["esm", "cjs"],
     dts: false,
