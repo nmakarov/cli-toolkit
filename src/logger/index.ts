@@ -241,9 +241,10 @@ export class CliToolkitLogger implements Logger {
 
     private normalizeOptions(options: LoggerOptions): NormalizedOptions {
         const { route, mode, prefix, silent, showLevel, timestamp, levels, progress } = options;
+        const shouldUseIpc = this.shouldUseIpcRoute();
         const normalized: NormalizedOptions = {
             mode: this.isValidMode(mode) ? mode! : "text",
-            route: route ?? (typeof process.send === "function" ? "ipc" : "console"),
+            route: route ?? (shouldUseIpc ? "ipc" : "console"),
             prefix,
             silent: silent ?? false,
             showLevel: showLevel ?? true,
@@ -253,6 +254,17 @@ export class CliToolkitLogger implements Logger {
             progressThrottle: progress?.throttleMs
         };
         return normalized;
+    }
+
+    private shouldUseIpcRoute(): boolean {
+        // Don't use IPC in test environments (Vitest workers interfere with process.send)
+        if (process.env.VITEST || process.env.NODE_ENV === "test") {
+            return false;
+        }
+        // Only use IPC if process.send exists AND we're connected to a parent
+        // In Vitest workers, process.send exists but process.connected is undefined/false
+        // process.connected is only true in actual child processes created with fork()
+        return typeof process.send === "function" && process.connected === true;
     }
 
     private normalizeLevels(levels?: string[]): LevelName[] {

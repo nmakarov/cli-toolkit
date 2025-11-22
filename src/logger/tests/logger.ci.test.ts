@@ -71,8 +71,17 @@ describe("Logger CI", () => {
     it("routes to parent process when available", () => {
         const sendMock = vi.fn();
         const originalSend = process.send;
+        const originalVITEST = process.env.VITEST;
+        const originalNODE_ENV = process.env.NODE_ENV;
+        const originalConnected = (process as any).connected;
+        
+        // Temporarily disable test environment checks and mock process.connected
+        delete process.env.VITEST;
+        delete process.env.NODE_ENV;
         // @ts-expect-error - assigning mock for test
         process.send = sendMock;
+        // @ts-expect-error - mocking process.connected for test
+        process.connected = true;
 
         try {
             const logger = new CliToolkitLogger({ route: "ipc" });
@@ -82,6 +91,18 @@ describe("Logger CI", () => {
         } finally {
             // @ts-expect-error - restore original type
             process.send = originalSend;
+            // @ts-expect-error - restore original connected
+            process.connected = originalConnected;
+            if (originalVITEST !== undefined) {
+                process.env.VITEST = originalVITEST;
+            } else {
+                delete process.env.VITEST;
+            }
+            if (originalNODE_ENV !== undefined) {
+                process.env.NODE_ENV = originalNODE_ENV;
+            } else {
+                delete process.env.NODE_ENV;
+            }
         }
     });
 
