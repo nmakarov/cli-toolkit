@@ -11,7 +11,8 @@ export default defineConfig({
     filedatabase: "src/filedatabase.ts",
     "http-client": "src/http-client.ts",
     "mock-server": "src/mock-server.ts",
-    db: "src/db.ts"
+    db: "src/db.ts",
+    init: "src/init.ts"
   },
     format: ["esm", "cjs"],
     dts: false,

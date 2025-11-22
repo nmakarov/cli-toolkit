@@ -165,6 +165,31 @@ const exampleGroups: ExampleGroup[] = [
                 description: "Start mock HTTP server, capture responses, and serve stored mocks for testing. Demonstrates proper cleanup and automatic exit."
             }
         ]
+    },
+    {
+        id: "init",
+        title: "Init Framework",
+        description: "Framework initialization and flow execution with Args, Params, and Logger.",
+        examples: [
+            {
+                id: "init-basic",
+                title: "Init – basic usage",
+                command: "npx tsx examples/init/basic.ts",
+                description: "Initialize framework with Args, Params, and Logger, then execute a simple flow function."
+            },
+            {
+                id: "init-params",
+                title: "Init – with params",
+                command: "npx tsx examples/init/params.ts --since=-2d",
+                description: "Demonstrate parameter handling in flow function using Params.getAll()."
+            },
+            {
+                id: "init-verbose",
+                title: "Init – verbose mode",
+                command: "npx tsx examples/init/basic.ts --verbose",
+                description: "Show how CLI arguments are automatically available in flow function via Params."
+            }
+        ]
     }
 ];
 
