@@ -7,13 +7,16 @@
  * npx tsx examples/screen/simple-navigation.ts
  */
 
-import React, { useState, useEffect } from "react";
-import { Box, Text } from "ink";
-import { showScreen } from "@nmakarov/cli-toolkit/screen";
-import { ScreenRow } from "@nmakarov/cli-toolkit/screen";
-import { init } from "../../src/init/index.js";
-
-const { createElement: h } = React;
+import { 
+    showScreen, 
+    ScreenRow, 
+    useState, 
+    useEffect, 
+    Box, 
+    Text, 
+    h 
+} from "@nmakarov/cli-toolkit/screen";
+import { init } from "@nmakarov/cli-toolkit/init";
 
 /**
  * Simple three-screen navigation example

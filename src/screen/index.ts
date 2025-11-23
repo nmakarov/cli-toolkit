@@ -3,6 +3,14 @@
  * Converted from legacy/screenSystem/src
  */
 
+// Re-export React and React hooks (encapsulated)
+import React, { useState, useEffect, useRef, useMemo, useCallback, createElement } from "react";
+export { React, useState, useEffect, useRef, useMemo, useCallback };
+export { createElement as h };
+
+// Re-export Ink components (encapsulated)
+export { Box, Text, useInput } from "ink";
+
 // Screen functions
 export {
     showScreen,
