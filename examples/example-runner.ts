@@ -88,6 +88,13 @@ const exampleGroups: ExampleGroup[] = [
         description: "Explore the interactive terminal UI components powered by Ink.",
         examples: [
             {
+                id: "screen-simple-navigation",
+                title: "Simple Navigation – three screens",
+                command: "npx tsx examples/screen/simple-navigation.ts",
+                description: "Simple example with three screens navigable with left/right arrow keys.",
+                interactive: true
+            },
+            {
                 id: "screen-basic",
                 title: "Screen Demo – component tour",
                 command: "npx tsx examples/screen/basic.ts",
