@@ -64,7 +64,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/fix-cjs-esm-deps.js",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:watch": "vitest --watch",

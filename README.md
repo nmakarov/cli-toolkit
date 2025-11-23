@@ -33,12 +33,14 @@ npm install @nmakarov/cli-toolkit
 ## Requirements
 
 - **Node.js**: v20.0.0 or higher (recommended: v24+)
-- **For Screen module**: `ink` and `react` as peer dependencies
+- **For Screen module**: `ink` and `react` as peer dependencies (ESM-only packages)
 
 ```bash
 # Install peer dependencies for interactive UIs
 npm install ink react
 ```
+
+**Note**: The Screen module has special requirements for CommonJS usage. See [CommonJS Support](#screen-module---esm-only-dependencies) for details.
 
 ## Quick Start
 
@@ -194,9 +196,8 @@ const client = new HttpClient({ useTestServer: 'http://localhost:5030' });
 ### Screen - Interactive Terminal UIs
 
 ```typescript
+// ESM (recommended)
 import { showListScreen } from '@nmakarov/cli-toolkit/screen';
-import { createElement as h } from 'react';
-import { Text } from 'ink';
 
 const choice = await showListScreen({
     title: "Main Menu",
@@ -211,6 +212,8 @@ const choice = await showListScreen({
 
 console.log(`Selected: ${choice}`);
 ```
+
+**Note**: The Screen module requires ESM dependencies (`ink` and `react`). For CommonJS usage, see [CommonJS Support](#screen-module---esm-only-dependencies) section.
 
 [📖 Full Screen Documentation](docs/SCREEN.md)
 
@@ -385,15 +388,49 @@ const logger = new CliToolkitLogger({ prefix: 'APP' });
 
 ## CommonJS Support
 
-All modules support both ESM and CommonJS:
+Most modules support both ESM and CommonJS:
 
 ```javascript
 // ESM (TypeScript/Modern Node)
 import { Args } from '@nmakarov/cli-toolkit/args';
+import { Params } from '@nmakarov/cli-toolkit/params';
+import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
 
 // CommonJS (Traditional Node.js)
 const { Args } = require('@nmakarov/cli-toolkit/args');
+const { Params } = require('@nmakarov/cli-toolkit/params');
+const { CliToolkitLogger } = require('@nmakarov/cli-toolkit/logger');
 ```
+
+### Screen Module - ESM-Only Dependencies
+
+⚠️ **Important**: The `screen` module depends on `ink` and `react`, which are ESM-only packages. Due to Node.js limitations, synchronous `require()` cannot load ESM modules.
+
+**Recommended (ESM):**
+```javascript
+// Use ESM import (recommended)
+import { showScreen, showListScreen } from '@nmakarov/cli-toolkit/screen';
+```
+
+**CommonJS Workaround:**
+If you must use CommonJS, you need to pre-load the ESM dependencies:
+
+```javascript
+// CommonJS with async pre-loading
+const screen = require('@nmakarov/cli-toolkit/screen');
+
+(async () => {
+  // Pre-load ESM dependencies before using the module
+  await screen.load();
+  
+  // Now you can use screen functions
+  const { showScreen, showListScreen } = screen;
+  
+  await showScreen({ /* ... */ });
+})();
+```
+
+See the [Screen Module Documentation](docs/SCREEN.md#commonjs-usage) for more details.
 
 ## Contributing
 

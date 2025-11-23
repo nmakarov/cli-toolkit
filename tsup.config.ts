@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup";
+import { esmDepsPlugin } from "./tsup-plugin-esm-deps.js";
 
 export default defineConfig({
   entry: {
@@ -24,5 +25,9 @@ export default defineConfig({
     jsx: "transform",
     loader: {
         ".ts": "tsx"
-    }
+    },
+    // Mark ESM-only packages as external so they're not bundled
+    // They'll be loaded via dynamic import in CJS builds by the plugin
+    external: ["ink", "react"],
+    plugins: [esmDepsPlugin()]
 });

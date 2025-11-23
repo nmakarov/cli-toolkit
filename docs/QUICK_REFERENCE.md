@@ -100,6 +100,9 @@ getArgsInstance()                 // Get singleton instance
 
 ### Screen System
 ```typescript
+// ESM (recommended)
+import { showScreen, showListScreen, Box, Text, h } from '@nmakarov/cli-toolkit/screen';
+
 // Basic screen
 await showScreen({
   title: "Welcome",
@@ -124,6 +127,15 @@ h(Divider, { width: 50, color: "cyan" })
 // Utilities
 buildBreadcrumb(["Menu", "Settings"])  // "Menu → Settings"
 buildDetailBreadcrumb(["Menu"], "Item", "Details")  // "← Menu ← "Item" Details"
+```
+
+**CommonJS Usage:**
+```javascript
+// ⚠️ Must pre-load ESM dependencies
+const screen = require('@nmakarov/cli-toolkit/screen');
+await screen.load();  // Pre-load ink/react
+const { showScreen, showListScreen } = screen;
+// Now use normally...
 ```
 
 ## File Resolution

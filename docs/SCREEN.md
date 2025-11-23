@@ -10,12 +10,61 @@ npm install @nmakarov/cli-toolkit ink react
 
 **Note**: `ink` and `react` are peer dependencies and must be installed separately.
 
-## Basic Usage
+## Module System Support
+
+### ESM (Recommended)
+
+The Screen module works seamlessly with ESM imports:
 
 ```typescript
-import { showScreen, showListScreen } from '@nmakarov/cli-toolkit/screen';
-import { createElement as h } from 'react';
-import { Text, Box } from 'ink';
+import { showScreen, showListScreen, Box, Text, h } from '@nmakarov/cli-toolkit/screen';
+```
+
+### CommonJS Usage
+
+⚠️ **Important Limitation**: The Screen module depends on `ink` and `react`, which are ESM-only packages. Node.js does not allow synchronous `require()` to load ESM modules.
+
+**Solution**: Pre-load ESM dependencies using the `load()` function:
+
+```javascript
+// CommonJS
+const screen = require('@nmakarov/cli-toolkit/screen');
+
+(async () => {
+  // Pre-load ESM dependencies (ink, react) before using the module
+  await screen.load();
+  
+  // Now you can use all screen functions
+  const { showScreen, showListScreen, Box, Text, h } = screen;
+  
+  const choice = await showListScreen({
+    title: "Main Menu",
+    items: [
+      { name: "Option 1", value: "opt1" },
+      { name: "Option 2", value: "opt2" }
+    ],
+    onSelect: (value) => value,
+    onEscape: () => null
+  });
+  
+  console.log(`Selected: ${choice}`);
+})();
+```
+
+**Why is this needed?**
+- `ink` and `react` are ESM-only packages
+- CommonJS `require()` is synchronous and cannot load ESM modules
+- The `load()` function uses dynamic `import()` to asynchronously load the dependencies
+- Once loaded, the module cache allows synchronous access to the exports
+
+**Best Practice**: Use ESM (`import`) when possible. Only use the CommonJS workaround if you're working in a legacy CommonJS codebase.
+
+## Basic Usage
+
+### ESM (TypeScript/Modern Node.js)
+
+```typescript
+import { showScreen, showListScreen, Box, Text, h } from '@nmakarov/cli-toolkit/screen';
 
 // Simple screen
 await showScreen({
@@ -35,6 +84,26 @@ const choice = await showListScreen({
     onSelect: (value) => value,
     onEscape: () => null
 });
+```
+
+### CommonJS (Legacy Node.js)
+
+```javascript
+const screen = require('@nmakarov/cli-toolkit/screen');
+
+(async () => {
+  // Pre-load ESM dependencies
+  await screen.load();
+  
+  const { showScreen, showListScreen, Box, Text, h } = screen;
+  
+  await showScreen({
+    title: "Welcome",
+    onRender: (ctx) => {
+      return h(Text, { color: "green" }, "Hello, World!");
+    }
+  });
+})();
 ```
 
 ## Features

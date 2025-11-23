@@ -30,3 +30,20 @@ export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-element
 // Utilities
 export { buildBreadcrumb, buildDetailBreadcrumb } from "./utils.js";
 export { buildFooter, FooterPresets, organizeFooterMessages } from "./footer-builder.js";
+
+// For CommonJS compatibility: pre-load ESM dependencies
+let loadPromise: Promise<void> | null = null;
+export async function load(): Promise<void> {
+  if (loadPromise) return loadPromise;
+  loadPromise = Promise.all([
+    import("react"),
+    import("ink")
+  ]).then(() => {}) as Promise<void>;
+  return loadPromise;
+}
+// Auto-load in ESM, but CJS users should call load() explicitly
+if (typeof window === 'undefined') {
+  load().catch(() => {
+    // Ignore errors during auto-load, user can call load() explicitly
+  });
+}

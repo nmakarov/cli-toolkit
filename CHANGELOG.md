@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **Screen Module CommonJS Support**: Added `load()` function to enable CommonJS usage with ESM-only dependencies (`ink`, `react`). CommonJS users must call `await screen.load()` before using the module. ESM users are unaffected. See [Screen Module Documentation](docs/SCREEN.md#module-system-support) for details.
+
 ## [0.2.0] - 2025-11-09
 
 ### Added
