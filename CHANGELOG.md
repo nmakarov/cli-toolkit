@@ -4,8 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Screen Module CommonJS Support**: Added `load()` function to enable CommonJS usage with ESM-only dependencies (`ink`, `react`)
+  - Post-build script (`scripts/fix-cjs-esm-deps.js`) transforms CJS builds to use dynamic imports
+  - CommonJS users must call `await screen.load()` before using the module
+  - ESM users are unaffected and can use `import` normally
+  - See [Screen Module Documentation](docs/SCREEN.md#module-system-support) for details
+
+### Fixed
+- **Logger Test Environment**: Fixed logger to avoid `process.send()` interference in Vitest test environments
+  - Added environment detection to prevent IPC mode in test contexts
+  - Logger now checks for `process.env.VITEST` or `process.env.NODE_ENV === "test"`
+  - Prevents unhandled errors during test runs
+
 ### Changed
-- **Screen Module CommonJS Support**: Added `load()` function to enable CommonJS usage with ESM-only dependencies (`ink`, `react`). CommonJS users must call `await screen.load()` before using the module. ESM users are unaffected. See [Screen Module Documentation](docs/SCREEN.md#module-system-support) for details.
+- **Documentation Updates**: 
+  - Added CommonJS usage patterns to README.md, SCREEN.md, and QUICK_REFERENCE.md
+  - Documented ESM-only dependency limitations and workarounds
+  - Updated examples to show both ESM and CommonJS usage
 
 ## [0.2.0] - 2025-11-09
 
