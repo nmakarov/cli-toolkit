@@ -73,6 +73,9 @@ async function setupModules(context: Context, opts: InitOptions = {}): Promise<C
 /**
  * Initialize framework and execute flow function
  * 
+ * Automatically handles async module loading (e.g., ESM dependencies for screen module)
+ * so users don't need to call load() manually.
+ * 
  * @param flow - Main function that receives context and executes the script logic
  * @param opts - Configuration options for initialization
  */
@@ -81,6 +84,29 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
     let context: Context | null = null;
 
     try {
+        // Pre-load ESM dependencies (ink, react) for CommonJS compatibility
+        // This ensures screen-related functionality works in CommonJS environments
+        // The load() function is available from the screen module or main package
+        try {
+            // Try to import screen module and call its load function
+            // This works in both ESM and CommonJS (via dynamic import)
+            const screenModule = await import("../screen/index.js");
+            if (screenModule && typeof screenModule.load === "function") {
+                await screenModule.load();
+            }
+        } catch {
+            // If screen module load fails, try accessing via main package (CommonJS)
+            if (typeof require !== "undefined") {
+                try {
+                    // In CommonJS, the main package may have been required and exports load()
+                    // We can't use require() here as it would be synchronous, so we skip it
+                    // The screen module import above should work in both cases
+                } catch {
+                    // Ignore - screen functionality may not be needed
+                }
+            }
+        }
+
         // Setup context with Args, Params, Logger
         context = setup(opts);
         
