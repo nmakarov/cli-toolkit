@@ -10,6 +10,7 @@
 - **Git**: Commit first, then `npm run release:patch`, conventional commits, SemVer
 - **Docs**: FEATURES.md with challenges, CHANGELOG.md with versions, component-specific docs
 - **Publishing**: `npm run release:patch/minor/major` (includes test, build, version, publish, push)
+- **Modules**: MUST support both `import` and `require`, self-contained (no external setup needed)
 
 > **📝 Note**: This PROMPT.md serves as external memory. When establishing new patterns, conventions, or solving tricky problems, update this document so those decisions persist across sessions and projects.
 
@@ -217,6 +218,8 @@ You are working with a developer who has been building CLI utilities and screen 
 - **Why exponential backoff with jitter**: Prevents thundering herd problems, reduces server load during outages, more resilient than fixed delays
 - **Why FileDatabase versioned/non-versioned modes**: Versioned for data history/temporal queries, non-versioned for single objects/API responses
 - **Why FileDatabase metadata optimization**: Reading only first/last files for JSON arrays significantly improves performance for large datasets
+- **Why dual module support (ESM+CJS)**: Maximum compatibility - users can choose their preferred module system, works in any Node.js project without configuration
+- **Why self-contained modules**: Zero-friction adoption - users just `import`/`require` and it works, no setup scripts, no additional dependencies to install, better developer experience
 
 ## Project Setup & Development Workflow
 
@@ -482,16 +485,174 @@ npm run build
 npm run dev
 ```
 
+#### Module System Requirements
+
+**CRITICAL**: All modules MUST support both ESM (`import`) and CommonJS (`require`) usage patterns. Users should be able to use either syntax without additional setup.
+
+**Requirements**:
+1. **Dual Module Support**: Every module must build both ESM (`.js`) and CommonJS (`.cjs`) outputs
+2. **Self-Contained**: Modules must include everything needed - users should only need to `import` or `require` the module, nothing else
+3. **No External Setup**: Users should NOT need to install additional dependencies or run setup scripts
+4. **Consistent API**: The same API must work identically in both ESM and CommonJS contexts
+5. **Type Definitions**: Provide TypeScript definitions (`.d.ts`) for both module formats
+
+**Exceptions** (with documented workarounds):
+- Modules with ESM-only peer dependencies (e.g., `ink`, `react`) may require a `load()` function for CommonJS
+- These exceptions must be clearly documented with usage examples for both patterns
+
+**Build Configuration**:
+```javascript
+// tsup.config.ts - MUST include both formats
+export default defineConfig({
+  format: ['esm', 'cjs'],  // Both formats required
+  dts: true,                // TypeScript definitions required
+  // ...
+});
+```
+
+**Package.json Exports**:
+```json
+{
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",    // ESM
+      "require": "./dist/index.cjs"   // CommonJS
+    }
+  }
+}
+```
+
 #### Usage Examples (Dual Module Support)
 ```typescript
-// ESM usage
+// ESM usage - should work out of the box
 import { parseArgs } from '@nmakarov/cli-toolkit';
 import { parseArgs } from '@nmakarov/cli-toolkit/args';
 
-// CommonJS usage
+// CommonJS usage - should work out of the box
 const { parseArgs } = require('@nmakarov/cli-toolkit');
 const { parseArgs } = require('@nmakarov/cli-toolkit/args');
 ```
+
+#### Handling ESM-Only Dependencies in CommonJS Builds
+
+**Problem**: Some modules depend on ESM-only packages (e.g., `ink`, `react`). Node.js cannot synchronously `require()` ESM modules, causing `ERR_REQUIRE_ASYNC_MODULE` errors.
+
+**Solution Pattern**:
+1. **Post-build script**: Create `scripts/fix-cjs-esm-deps.js` that transforms CJS builds
+2. **Replace `require()` calls**: Transform `require("esm-package")` to `null` initially
+3. **Add `load()` function**: Provide async function that uses dynamic `import()` to load ESM dependencies
+4. **Update build script**: Add post-build step: `"build": "tsup && node scripts/fix-cjs-esm-deps.js"`
+
+**Usage Pattern**:
+```javascript
+// CommonJS with ESM dependencies
+const screen = require('@nmakarov/cli-toolkit/screen');
+await screen.load(); // Pre-load ESM dependencies (ink, react)
+// Now use screen functions normally
+const { showScreen } = screen;
+```
+
+**Documentation Requirements**:
+- Clearly document which modules require `load()` for CommonJS
+- Provide both ESM and CommonJS examples
+- Explain the limitation and why it exists
+- Update README, module-specific docs, and QUICK_REFERENCE
+
+**Test Environment Considerations**:
+- Logger should detect test environments (`process.env.VITEST` or `NODE_ENV === "test"`)
+- Avoid `process.send()` in test contexts (interferes with Vitest workers)
+- Use environment checks: `if (process.env.VITEST || process.env.NODE_ENV === "test") { /* use console */ }`
+
+#### Publishing Private npm Packages
+
+**Use Case**: Publish packages that only your team and CI/CD can access, not the general public.
+
+**Best Option: GitHub Packages** (for GitHub repos)
+- ✅ Free for private repositories
+- ✅ Integrated with GitHub authentication
+- ✅ Works with existing GitHub tokens
+- ✅ Automatic access control via GitHub permissions
+
+**Setup Steps**:
+
+1. **Update package.json**:
+```json
+{
+  "name": "@everystate/blueprints",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/everystate/blueprints.git"
+  }
+}
+```
+
+2. **Create/Update .npmrc** in package root:
+```
+@everystate:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${EVERYSTATE_GITHUB_TOKEN}
+```
+(Note: ⚠️ Token names cannot start with `GITHUB_` - GitHub restriction. Use names like `EVERYSTATE_GITHUB_TOKEN` or `NPM_GITHUB_TOKEN`)
+
+3. **Create GitHub Personal Access Token** (Classic):
+   - Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+   - Generate token with `write:packages` and `read:packages` scopes
+   - Save as `EVERYSTATE_GITHUB_TOKEN` (or your custom token name) environment variable
+
+4. **Update publish scripts** in package.json:
+```json
+{
+  "scripts": {
+    "release:patch": "npm version patch && npm publish && git push --follow-tags",
+    "release:minor": "npm version minor && npm publish && git push --follow-tags",
+    "release:major": "npm version major && npm publish && git push --follow-tags"
+  }
+}
+```
+(Remove `--access public` flag for private packages)
+
+5. **For Team Members** - Add to their `.npmrc` (in home directory or project root):
+```
+@everystate:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${EVERYSTATE_GITHUB_TOKEN}
+```
+Then set `EVERYSTATE_GITHUB_TOKEN` environment variable with their GitHub token.
+
+6. **For CI/CD** - Set `EVERYSTATE_GITHUB_TOKEN` environment variable:
+```yaml
+# GitHub Actions example
+env:
+  EVERYSTATE_GITHUB_TOKEN: ${{ secrets.EVERYSTATE_GITHUB_TOKEN }}
+```
+⚠️ **Important**: Secret names in GitHub Actions cannot start with `GITHUB_` (GitHub restriction). Use names like `EVERYSTATE_GITHUB_TOKEN` instead.
+
+7. **Installation**:
+```bash
+# Users install with:
+npm install @everystate/blueprints
+
+# npm will automatically use GitHub Packages registry for @everystate scope
+```
+
+**Alternative: npm Private Packages**
+- Requires npm paid account ($7/month per user) or organization account
+- Set `"private": true` in package.json
+- Use `npm publish` (no `--access public` flag)
+- Team members need npm accounts added to organization
+
+**Access Control**:
+- **GitHub Packages**: Access controlled by GitHub repository permissions
+  - Private repo = private package (only repo collaborators can access)
+  - Public repo = public package (anyone can access)
+- **npm Private**: Access controlled by npm organization membership
+
+**Best Practice**:
+- Use GitHub Packages for packages in GitHub repos (free, integrated)
+- Use npm private packages if you need npm-specific features or don't use GitHub
+- Always document the registry and authentication requirements in README.md
 
 ## Next Steps
 
@@ -731,9 +892,12 @@ The next phase focuses on building reusable CLI utilities that can be used acros
 ### 🌐 Compatibility & Standards
 - **Node.js 21+** target
 - **Cross-platform** compatibility
-- **ESM and CJS** support
+- **ESM and CJS** support (with post-build transforms for ESM-only dependencies)
 - **TypeScript** strict mode
 - **Modern JavaScript** features (ES2022+)
+- **ESM-only dependencies**: Use `load()` pattern for CommonJS compatibility when needed
+- **Self-contained modules**: All modules must include everything needed - users only `import`/`require`, no additional setup
+- **Dual module builds**: Every module MUST build both ESM (`.js`) and CommonJS (`.cjs`) outputs
 
 ### 📋 Development Workflow
 - **Build before testing** (`npm run build`)
@@ -768,7 +932,12 @@ The next phase focuses on building reusable CLI utilities that can be used acros
 - **Version compatibility**: Document breaking changes and migration paths
 - **Example validation**: Ensure all examples actually work
 - **API consistency**: Keep documentation in sync with actual API
-- **Changelog discipline**: Document every change, no matter how small
+- **Changelog discipline**: 
+  - **Always update CHANGELOG.md** before committing (not after)
+  - Document every change in the `[Unreleased]` section
+  - Use semantic categories: Added, Changed, Fixed, Deprecated, Removed
+  - Include subproject updates in main project CHANGELOG when working on subprojects
+  - Update both main and subproject CHANGELOGs when changes affect both
 
 ## 🛠️ Code Templates
 

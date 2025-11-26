@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
   - CommonJS users must call `await screen.load()` before using the module
   - ESM users are unaffected and can use `import` normally
   - See [Screen Module Documentation](docs/SCREEN.md#module-system-support) for details
+- **Init Function Enhancement**: `init` function now automatically loads ESM dependencies for screen module
+  - Eliminates need for manual `load()` calls in top-level scripts
+  - Simplifies CommonJS usage patterns
+  - Internal async module loading handles screen-related dependencies
 
 ### Fixed
 - **Logger Test Environment**: Fixed logger to avoid `process.send()` interference in Vitest test environments
@@ -22,6 +26,7 @@ All notable changes to this project will be documented in this file.
   - Added CommonJS usage patterns to README.md, SCREEN.md, and QUICK_REFERENCE.md
   - Documented ESM-only dependency limitations and workarounds
   - Updated examples to show both ESM and CommonJS usage
+  - Simplified example scripts to use new init function pattern
 
 ## [0.2.0] - 2025-11-09
 
