@@ -11,9 +11,9 @@ npm install @nmakarov/cli-toolkit
 ## Basic Usage
 
 ```typescript
-import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
+import { Logger } from '@nmakarov/cli-toolkit/logger';
 
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     prefix: 'APP',
     timestamp: true,
     showLevel: true
@@ -59,7 +59,7 @@ Available log levels (in order of severity):
 ## Constructor Options
 
 ```typescript
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     // Output mode: "text" (formatted) or "json" (structured)
     mode: 'text',
     
@@ -184,7 +184,7 @@ logger.info('Back to text');
 ### Console Output (Default)
 
 ```typescript
-const logger = new CliToolkitLogger({ route: 'console' });
+const logger = new Logger({ route: 'console' });
 logger.info('Goes to console.info()');
 ```
 
@@ -194,7 +194,7 @@ For child processes sending logs to parent:
 
 ```typescript
 // child.js
-const logger = new CliToolkitLogger({ route: 'ipc' });
+const logger = new Logger({ route: 'ipc' });
 logger.info('Sent to parent via process.send()');
 
 // parent.js
@@ -209,7 +209,7 @@ child.on('message', (msg) => {
 ### Include Specific Levels
 
 ```typescript
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     levels: ['error', 'warn', 'info']
 });
 
@@ -221,7 +221,7 @@ logger.error('Logged');
 ### Exclude Specific Levels
 
 ```typescript
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     levels: ['-debug', '-silly']  // All except debug and silly
 });
 
@@ -254,7 +254,7 @@ PROGRESS task 100/100 Processing
 ### Progress with Timing
 
 ```typescript
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     progress: { withTimes: true }
 });
 
@@ -282,7 +282,7 @@ Format: `elapsed/remaining` in seconds
 Limit how often progress messages are logged:
 
 ```typescript
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     progress: { 
         withTimes: true,
         throttleMs: 1000  // Max one message per second
@@ -313,7 +313,7 @@ fallback.warn('Config not loaded yet');
 fallback.error('Critical init error');
 
 // Later, swap to full logger
-const logger = new CliToolkitLogger({ /* config */ });
+const logger = new Logger({ /* config */ });
 ```
 
 ## JSON Mode
@@ -321,7 +321,7 @@ const logger = new CliToolkitLogger({ /* config */ });
 For machine-readable output or log aggregation:
 
 ```typescript
-const logger = new CliToolkitLogger({ mode: 'json' });
+const logger = new Logger({ mode: 'json' });
 
 logger.info('Event occurred', { userId: 123 });
 ```
@@ -340,7 +340,7 @@ logger.info('Event occurred', { userId: 123 });
 ### Simple Application Logger
 
 ```typescript
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     prefix: 'myapp',
     timestamp: false,
     showLevel: true
@@ -355,7 +355,7 @@ logger.info('Server listening', { port: 3000 });
 
 ```typescript
 // worker.ts
-const logger = new CliToolkitLogger({ 
+const logger = new Logger({ 
     route: 'ipc',
     mode: 'json' 
 });
@@ -377,7 +377,7 @@ worker.on('message', (log) => {
 ```typescript
 const isDev = process.env.NODE_ENV === 'development';
 
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     levels: isDev 
         ? undefined  // All levels
         : ['error', 'warn', 'info'],  // Production: errors and info only

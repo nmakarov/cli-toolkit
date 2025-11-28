@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { CliToolkitLogger } from "../index.js";
+import { Logger } from "../index.js";
 import { LoggerOptions } from "../types.js";
+
+// Create a minimal context for testing
+const createTestContext = () => ({} as any);
 
 describe("Logger CLI", () => {
     const consoleInfo = vi.spyOn(console, "info");
@@ -15,7 +18,10 @@ describe("Logger CLI", () => {
         vi.useRealTimers();
     });
 
-    const makeLogger = (options: LoggerOptions = {}) => new CliToolkitLogger({ route: "console", ...options });
+    const makeLogger = (options: LoggerOptions = {}) => {
+        const context = createTestContext();
+        return new Logger(context, { route: "console", ...options });
+    };
 
     it("logs all levels by default", () => {
         const logger = makeLogger();

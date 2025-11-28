@@ -46,11 +46,16 @@ export class Args {
     private env: string = "local";
 
     constructor(config: ArgsConfig = {}) {
-        // Set up configuration
-        this.aliases = config.aliases || {};
-        this.overrides = config.overrides || {};
-        this.defaults = config.defaults || {};
-        this.prefixes = config.prefixes || ["not", "no"];
+        // Set defaults first
+        this.aliases = {};
+        this.overrides = {};
+        this.defaults = {};
+        this.prefixes = ["not", "no"];
+
+        // Apply configuration
+        if (Object.keys(config).length > 0) {
+            this.configure(config);
+        }
 
         // Parse arguments first to get environment
         const args = config.args || process.argv.slice(2);
@@ -67,6 +72,36 @@ export class Args {
 
         // Check for conflicts (short + long form of same option)
         this.checkConflicts();
+    }
+
+    /**
+     * Configure Args options
+     * Only parameters present in config are updated
+     * Note: Args is special - it's initialized first, so it can't take context
+     */
+    configure(config: Partial<ArgsConfig>): void {
+        if (config.aliases !== undefined) {
+            this.aliases = config.aliases;
+        }
+        if (config.overrides !== undefined) {
+            this.overrides = config.overrides;
+        }
+        if (config.defaults !== undefined) {
+            this.defaults = config.defaults;
+        }
+        if (config.prefixes !== undefined) {
+            this.prefixes = config.prefixes;
+        }
+        // Note: args array can't be reconfigured after construction
+    }
+
+    /**
+     * Initialize Args instance
+     * Note: Args is special - it's initialized first, so it can't take context
+     * This static method is for consistency with other components
+     */
+    static init(config: ArgsConfig = {}): Args {
+        return new Args(config);
     }
 
     /**

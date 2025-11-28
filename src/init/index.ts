@@ -7,50 +7,83 @@
 
 import { Args } from "../args/index.js";
 import { Params } from "../params/index.js";
-import { CliToolkitLogger } from "../logger/index.js";
+import { Logger } from "../logger/index.js";
 import { ParamError, InitError } from "../errors.js";
 import type { Context, InitOptions, FlowFunction } from "./types.js";
 import { EventEmitter } from "events";
 
 /**
+ * Partial context used during initialization
+ * Components are added as they're created
+ */
+interface PartialContext {
+    args: Args;
+    params?: Params;
+    logger?: any;
+    emitter: EventEmitter;
+    isStop: () => boolean;
+    cleanupFunctions: Array<(context: Context) => Promise<void> | void>;
+    registerCleanup: (fn: (context: Context) => Promise<void> | void) => void;
+}
+
+/**
+ * Extract component-specific options from InitOptions
+ * Removes reserved keys (overrides, defaults, modules) and returns component options
+ */
+function extractComponentOptions(opts: InitOptions, componentName: string): Record<string, any> {
+    const reservedKeys = ["overrides", "defaults", "modules"];
+    const componentOptions: Record<string, any> = {};
+    
+    for (const [key, value] of Object.entries(opts)) {
+        if (!reservedKeys.includes(key)) {
+            componentOptions[key] = value;
+        }
+    }
+    
+    return componentOptions;
+}
+
+/**
  * Setup initial context with Args, Params, and Logger
+ * Uses staged initialization to handle circular dependencies
  */
 function setup(opts: InitOptions = {}): Context {
-    // Initialize Args with overrides and defaults from opts
-    const args = new Args({
+    // Stage 1: Initialize Args (no dependencies)
+    const args = Args.init({
         overrides: opts.overrides || {},
         defaults: opts.defaults || {},
     });
 
-    // Initialize Params with Args instance
-    const params = new Params({ args }, opts.overrides || {});
+    // Stage 2: Create partial context with Args
+    const partialContext: PartialContext = {
+        args,
+        emitter: new EventEmitter(),
+        isStop: () => false,
+        cleanupFunctions: [],
+        registerCleanup: (fn: (context: Context) => Promise<void> | void) => {
+            partialContext.cleanupFunctions.push(fn);
+        },
+    };
 
-    // Initialize Logger with options from opts
-    const loggerOptions = opts.logger || {};
-    const logger = new CliToolkitLogger({
-        mode: loggerOptions.mode || "text",
-        route: loggerOptions.route || "console",
-        prefix: loggerOptions.prefix,
-        silent: loggerOptions.silent,
-        showLevel: loggerOptions.showLevel,
-        timestamp: loggerOptions.timestamp,
-        levels: loggerOptions.levels,
-    });
+    // Stage 3: Initialize Params with partial context
+    const params = Params.init(partialContext as any, opts.overrides || {});
+    partialContext.params = params;
 
-    // Create cleanup functions array
-    const cleanupFunctions: Array<(context: Context) => Promise<void> | void> = [];
+    // Stage 4: Initialize Logger with partial context (now has Args and Params)
+    // Extract logger options from top-level opts (mode, route, prefix, etc.)
+    const loggerOptions = extractComponentOptions(opts, "logger");
+    const logger = Logger.init(partialContext as any, loggerOptions);
+    partialContext.logger = logger;
 
-    // Create context
+    // Stage 5: Create complete context
     const context: Context = {
         args,
         params,
         logger,
-        emitter: new EventEmitter(),
-        isStop: () => false, // Will be set in init function
-        cleanupFunctions,
-        registerCleanup: (fn: (context: Context) => Promise<void> | void) => {
-            cleanupFunctions.push(fn);
-        },
+        emitter: partialContext.emitter,
+        isStop: partialContext.isStop,
+        cleanupFunctions: partialContext.cleanupFunctions,
+        registerCleanup: partialContext.registerCleanup,
     };
 
     logger.debug("[setup] completed successfully");
@@ -68,6 +101,29 @@ async function setupModules(context: Context, opts: InitOptions = {}): Promise<C
     }
     context.logger.debug("[setupModules] completed successfully");
     return context;
+}
+
+/**
+ * Print all figured parameters for --stopAfter=init
+ */
+function printAllParameters(context: Context): void {
+    const trackedParams = context.params.getTrackedParams();
+    
+    console.log("\n=== All Figured Parameters ===");
+    console.log("\nComponent: Logger");
+    const loggerParams = trackedParams.filter(p => 
+        ["mode", "route", "prefix", "silent", "showLevel", "timestamp", "levels"].includes(p.key)
+    );
+    if (loggerParams.length > 0) {
+        loggerParams.forEach(p => {
+            console.log(`  ${p.key}: ${JSON.stringify(p.value)} (from ${p.source})`);
+        });
+    } else {
+        console.log("  (no parameters requested)");
+    }
+
+    // Add other components as they're initialized
+    console.log("\n=== End Parameters ===\n");
 }
 
 /**
@@ -116,6 +172,13 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
         // Setup modules (future feature)
         context = await setupModules(context, opts);
 
+        // Check for --stopAfter=init
+        const stopAfter = context.args.get("stopAfter");
+        if (stopAfter === "init") {
+            printAllParameters(context);
+            process.exit(0);
+        }
+
         // Setup SIGINT handler for graceful shutdown
         process.on("SIGINT", async () => {
             if (stop) {
@@ -145,14 +208,23 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
             ? error.stack.split("\n")[1]?.trim() || "Unknown location"
             : "Unknown location";
 
+        // Use logger if available, otherwise fall back to console.error
+        const logError = (msg: string, ...args: any[]) => {
+            if (context?.logger) {
+                context.logger.error(msg, ...args);
+            } else {
+                console.error(msg, ...args);
+            }
+        };
+
         if (error instanceof ParamError) {
-            context?.logger.error(`[params]: ${error.message} (${errorLocation})`);
+            logError(`[params]: ${error.message} (${errorLocation})`);
             process.exitCode = 3;
         } else if (error instanceof InitError) {
-            context?.logger.error(`[init]: ${error.message} (${errorLocation})`);
+            logError(`[init]: ${error.message} (${errorLocation})`);
             process.exitCode = 4;
         } else {
-            context?.logger.error(`[other] error:`, error, errorLocation);
+            logError(`[other] error:`, error, errorLocation);
             process.exitCode = 5;
         }
     } finally {

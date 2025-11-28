@@ -220,9 +220,9 @@ console.log(`Selected: ${choice}`);
 ### Logger - Structured Logging
 
 ```typescript
-import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
+import { Logger } from '@nmakarov/cli-toolkit/logger';
 
-const logger = new CliToolkitLogger({
+const logger = new Logger({
     prefix: 'APP',
     timestamp: true,
     progress: { withTimes: true }
@@ -378,12 +378,12 @@ The toolkit is written in TypeScript with full type definitions:
 import { Args } from '@nmakarov/cli-toolkit/args';
 import { Params } from '@nmakarov/cli-toolkit/params';
 import { showListScreen } from '@nmakarov/cli-toolkit/screen';
-import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
+import { Logger } from '@nmakarov/cli-toolkit/logger';
 
 // Full IntelliSense and type checking
 const args = new Args({ aliases: { v: 'verbose' } });
 const params = new Params({ args });
-const logger = new CliToolkitLogger({ prefix: 'APP' });
+const logger = new Logger({ prefix: 'APP' });
 ```
 
 ## CommonJS Support
@@ -394,12 +394,12 @@ Most modules support both ESM and CommonJS:
 // ESM (TypeScript/Modern Node)
 import { Args } from '@nmakarov/cli-toolkit/args';
 import { Params } from '@nmakarov/cli-toolkit/params';
-import { CliToolkitLogger } from '@nmakarov/cli-toolkit/logger';
+import { Logger } from '@nmakarov/cli-toolkit/logger';
 
 // CommonJS (Traditional Node.js)
 const { Args } = require('@nmakarov/cli-toolkit/args');
 const { Params } = require('@nmakarov/cli-toolkit/params');
-const { CliToolkitLogger } = require('@nmakarov/cli-toolkit/logger');
+const { Logger } = require('@nmakarov/cli-toolkit/logger');
 ```
 
 ### Screen Module - ESM-Only Dependencies

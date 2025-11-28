@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Params, init, getParamsInstance, joiEdateType, joiStringArrayType } from "../index.js";
+import { Params, joiEdateType, joiStringArrayType } from "../index.js";
 import { ParamError } from "../../errors.js";
 import Joi from "joi";
 
@@ -161,9 +161,11 @@ describe("Params CI", () => {
         expect(() => joiStringArrayType("unknown")("value", {} as any)).toThrow(ParamError);
     });
 
-    it("supports singleton helpers", () => {
-        const instance = init({ args: argsStub });
-        expect(getParamsInstance()).toBe(instance);
+    it("supports static init method", () => {
+        const context = { args: argsStub };
+        const instance = Params.init(context);
+        expect(instance).toBeInstanceOf(Params);
+        expect(instance.get("port", "number")).toBe(8080);
     });
 });
 

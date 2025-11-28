@@ -89,9 +89,8 @@ const flow = async (context) => {
 
 // Initialize and run the flow
 init(flow, {
-    logger: {
-        mode: "text",
-        route: "console",
-    },
+    mode: "text",
+    route: "console",
+    modules: ["logger"],
 });
 

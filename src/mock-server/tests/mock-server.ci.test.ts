@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { MockServer, createMockServer } from "../index.js";
 import { MockCatalog } from "../catalog.js";
+import { Logger } from "../../logger/index.js";
 import {
     maskValue,
     sanitizeUrlEncodedString,
@@ -12,6 +13,14 @@ import {
 } from "../sanitization.js";
 import type { MockServerConfig } from "../types.js";
 import type { MockResponseData, RequestMatchCriteria } from "../types.js";
+
+// Create a silent logger for tests
+const createTestLogger = () => {
+    const context = {} as any;
+    return new Logger(context, { silent: true, route: "console" });
+};
+
+const testLogger = createTestLogger();
 
 // Mock express and related modules
 vi.mock('express', () => ({
@@ -114,7 +123,7 @@ describe("MockServer CI", () => {
         server = new MockServer({
             basePath: '/tmp/test-mocks',
             port: 5030,
-            logger: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() }
+            logger: testLogger
         });
     });
 
@@ -129,7 +138,8 @@ describe("MockServer CI", () => {
 
     it("creates MockServer instance with default config", () => {
         const defaultServer = new MockServer({
-            basePath: '/tmp/test'
+            basePath: '/tmp/test',
+            logger: testLogger
         });
 
         expect(defaultServer).toBeDefined();
@@ -307,7 +317,8 @@ describe("MockServer CI", () => {
     it("configures custom sensitive keys", () => {
         const customServer = new MockServer({
             basePath: '/tmp/test',
-            sensitiveKeys: ['custom_key', 'secret_token']
+            sensitiveKeys: ['custom_key', 'secret_token'],
+            logger: testLogger
         });
 
         const config = customServer.getConfig();
@@ -319,7 +330,8 @@ describe("MockServer CI", () => {
 
         const customServer = new MockServer({
             basePath: '/tmp/test',
-            middleware: [customMiddleware]
+            middleware: [customMiddleware],
+            logger: testLogger
         });
 
         // Custom middleware should be added via app.use
@@ -339,7 +351,7 @@ describe("MockServer CI", () => {
         const testServer = new MockServer({
             basePath: '/tmp/test-remove',
             port: 5031,
-            logger: console,
+            logger: testLogger,
             fileDb: mockFileDb
         });
 
@@ -365,7 +377,8 @@ describe("MockServer CI", () => {
     it("creates and starts server with createMockServer", async () => {
         const instance = await createMockServer({
             basePath: '/tmp/create-test',
-            port: 5050
+            port: 5050,
+            logger: testLogger
         });
 
         expect(instance).toHaveProperty('server');
@@ -404,7 +417,7 @@ describe("MockCatalog CI", () => {
         vi.mocked(path.join).mockImplementation((...args) => args.join('/'));
         vi.mocked(path.dirname).mockImplementation((p) => p.split('/').slice(0, -1).join('/'));
 
-        catalog = new MockCatalog(mockFileDb, '/test-path', console);
+        catalog = new MockCatalog(mockFileDb, '/test-path', testLogger);
     });
 
     describe("storeMock", () => {

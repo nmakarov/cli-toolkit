@@ -11,6 +11,7 @@ import {
     LoggerMode
 } from "./types.js";
 import { ConsoleTransport, ParentProcessTransport } from "./transports.js";
+import type { Context } from "../init/types.js";
 
 const ALL_LEVELS: LevelName[] = [
     "silly",
@@ -25,6 +26,9 @@ const ALL_LEVELS: LevelName[] = [
     "response",
     "progress"
 ];
+
+// Calculate maximum level name length for alignment
+const MAX_LEVEL_LENGTH = Math.max(...ALL_LEVELS.map(level => level.toUpperCase().length));
 
 const LEVEL_COLORS: Record<LevelName, chalk.Chalk> = {
     error: chalk.red.bold,
@@ -52,14 +56,119 @@ interface NormalizedOptions {
     progressThrottle?: number;
 }
 
-export class CliToolkitLogger implements Logger {
-    private readonly options: NormalizedOptions;
+export class Logger implements Logger {
+    private context: any; // Partial context during initialization
+    private options: NormalizedOptions;
     private transport: LoggerTransport;
     private readonly startTimes: Record<string, number> = {};
     private readonly lastProgressTimes: Record<string, number> = {};
 
-    constructor(options: LoggerOptions = {}) {
-        this.options = this.normalizeOptions(options);
+    constructor(context: any, options: LoggerOptions = {}) {
+        this.context = context;
+        // Set defaults first
+        this.options = this.getDefaultOptions();
+        // Apply configuration
+        if (options) {
+            this.configure(options);
+        }
+        // Initialize transport
+        this.updateTransport();
+    }
+
+    /**
+     * Configure logger options
+     * Only parameters present in options are updated
+     */
+    configure(options: Partial<LoggerOptions>): void {
+        if (options.mode !== undefined) {
+            this.options.mode = this.isValidMode(options.mode) ? options.mode : "text";
+        }
+        if (options.route !== undefined) {
+            this.options.route = options.route;
+            this.updateTransport();
+        }
+        if (options.prefix !== undefined) {
+            this.options.prefix = options.prefix;
+        }
+        if (options.silent !== undefined) {
+            this.options.silent = options.silent;
+        }
+        if (options.showLevel !== undefined) {
+            this.options.showLevel = options.showLevel;
+        }
+        if (options.timestamp !== undefined) {
+            this.options.timestamp = options.timestamp;
+        }
+        if (options.levels !== undefined) {
+            this.options.levels = this.normalizeLevels(options.levels);
+        }
+        if (options.progress !== undefined) {
+            if (options.progress.withTimes !== undefined) {
+                this.options.progressTimes = options.progress.withTimes;
+            }
+            if (options.progress.throttleMs !== undefined) {
+                this.options.progressThrottle = options.progress.throttleMs;
+            }
+        }
+    }
+
+    /**
+     * Initialize logger from context and CLI parameters
+     */
+    static init(context: any, options?: LoggerOptions): Logger {
+        // Define parameter definitions for CLI (with defaults to make them optional)
+        const paramDefs = {
+            mode: "string default text",
+            route: "string default console",
+            prefix: "string",
+            silent: "boolean default false",
+            showLevel: "boolean default true",
+            timestamp: "boolean default false",
+            levels: "string",
+            progressWithTimes: "boolean default false",
+            progressThrottleMs: "number",
+        };
+
+        // Collect parameters from CLI
+        const cliParams = context.params.getAll(paramDefs);
+
+        // Merge CLI params with options (options take precedence)
+        const config: LoggerOptions = {
+            mode: options?.mode ?? cliParams.mode,
+            route: options?.route ?? cliParams.route,
+            prefix: options?.prefix ?? cliParams.prefix,
+            silent: options?.silent ?? cliParams.silent,
+            showLevel: options?.showLevel ?? cliParams.showLevel,
+            timestamp: options?.timestamp ?? cliParams.timestamp,
+            levels: options?.levels ?? (cliParams.levels ? cliParams.levels.split(",") : undefined),
+            progress: options?.progress ?? {
+                withTimes: cliParams.progressWithTimes,
+                throttleMs: cliParams.progressThrottleMs,
+            },
+        };
+
+
+        // Create and return instance
+        const logger = new Logger(context, config);
+        context.logger = logger; // Update context with the new logger instance
+        return logger;
+    }
+
+    private getDefaultOptions(): NormalizedOptions {
+        return {
+            mode: "text",
+            route: this.shouldUseIpcRoute() ? "ipc" : "console",
+            prefix: undefined,
+            silent: false,
+            showLevel: true,
+            timestamp: false,
+            levels: ALL_LEVELS,
+            progressTimes: false,
+            progressThrottle: undefined,
+        };
+    }
+
+    private updateTransport(): void {
         this.transport = this.options.route === "ipc"
             ? new ParentProcessTransport()
             : new ConsoleTransport();
@@ -195,7 +304,7 @@ export class CliToolkitLogger implements Logger {
         }
 
         if (this.options.showLevel) {
-            parts.push(struct.level.toUpperCase());
+            parts.push(struct.level.toUpperCase().padEnd(MAX_LEVEL_LENGTH));
         }
 
         if (struct.level === "progress") {
@@ -239,23 +348,6 @@ export class CliToolkitLogger implements Logger {
             .join(" ");
     }
 
-    private normalizeOptions(options: LoggerOptions): NormalizedOptions {
-        const { route, mode, prefix, silent, showLevel, timestamp, levels, progress } = options;
-        const shouldUseIpc = this.shouldUseIpcRoute();
-        const normalized: NormalizedOptions = {
-            mode: this.isValidMode(mode) ? mode! : "text",
-            route: route ?? (shouldUseIpc ? "ipc" : "console"),
-            prefix,
-            silent: silent ?? false,
-            showLevel: showLevel ?? true,
-            timestamp: timestamp ?? false,
-            levels: this.normalizeLevels(levels),
-            progressTimes: progress?.withTimes ?? false,
-            progressThrottle: progress?.throttleMs
-        };
-        return normalized;
-    }
-
     private shouldUseIpcRoute(): boolean {
         // Don't use IPC in test environments (Vitest workers interfere with process.send)
         if (process.env.VITEST || process.env.NODE_ENV === "test") {
@@ -295,5 +387,4 @@ export class CliToolkitLogger implements Logger {
         return Math.round(value * factor) / factor;
     }
 }
-
 

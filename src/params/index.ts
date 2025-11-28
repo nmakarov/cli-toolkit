@@ -32,23 +32,98 @@ export interface ParamsOptions {
 }
 
 /**
+ * Tracked parameter information for --stopAfter=init
+ */
+interface TrackedParam {
+    key: string;
+    definition: ParamDefinition;
+    value: any;
+    source: "cli" | "options" | "default";
+}
+
+/**
  * Params class for parameter validation and type checking
  * Built on top of Args library with Joi validation
  */
 export class Params {
+    private context: any; // Partial context during initialization
     private params: Record<string, any> = {};
     private definitions: Record<string, any> = {};
     private args: ArgsInstance;
     private paramSetters: ParamSetter[] = [];
     private paramGetters: ParamGetter[] = [];
+    private trackedParams: TrackedParam[] = [];
 
-    constructor({ args }: { args: ArgsInstance }, opts: ParamsOptions = {}) {
-        this.args = args;
+    constructor(context: any, options: ParamsOptions = {}) {
+        // Context might be partial during initialization
+        this.context = context;
+        this.args = context.args;
 
-        for (const [k, v] of Object.entries(opts)) {
+        // Apply initial configuration
+        if (Object.keys(options).length > 0) {
+            this.configure(options);
+        }
+    }
+
+    /**
+     * Configure parameters
+     * Only parameters present in options are updated
+     */
+    configure(options: ParamsOptions): void {
+        for (const [k, v] of Object.entries(options)) {
             // TODO: opt values might be an object with definitions in it, so perhaps `this.set` should be used
             this.params[k] = v;
         }
+    }
+
+    /**
+     * Initialize Params from context and CLI parameters
+     * Note: Params is special - it's initialized early with partial context
+     */
+    static init(context: any, options?: ParamsOptions): Params {
+        return new Params(context, options || {});
+    }
+
+    /**
+     * Track a parameter request for --stopAfter=init feature
+     */
+    private trackParam(key: string, definition: ParamDefinition, value: any, source: "cli" | "options" | "default"): void {
+        this.trackedParams.push({
+            key,
+            definition,
+            value,
+            source
+        });
+    }
+
+    /**
+     * Get all tracked parameters (for --stopAfter=init)
+     */
+    getTrackedParams(): TrackedParam[] {
+        return [...this.trackedParams];
+    }
+
+    /**
+     * Get all figured parameters as a record
+     * Returns all parameters that were collected during initialization,
+     * whether from CLI args, options, or defaults
+     */
+    getAllFigured(): Record<string, { value: any; source: "cli" | "options" | "default" }> {
+        const result: Record<string, { value: any; source: "cli" | "options" | "default" }> = {};
+        for (const param of this.trackedParams) {
+            result[param.key] = {
+                value: param.value,
+                source: param.source,
+            };
+        }
+        return result;
+    }
+
+    /**
+     * Clear tracked parameters
+     */
+    clearTrackedParams(): void {
+        this.trackedParams = [];
     }
 
     /**
@@ -128,9 +203,13 @@ export class Params {
             if (defValObj.error) {
                 throw new ParamError(`default value "${defValObj.value}" type mismatch`);
             }
+            // Joi's default() automatically allows undefined and applies the default
             type = type.default(defValObj.value);
         } else if (str.match(/required/)) {
             type = type.required();
+        } else {
+            // If not required and no default, make it optional
+            type = type.optional();
         }
 
         return type;
@@ -140,8 +219,17 @@ export class Params {
      * Validate a value against a definition
      */
     validate(key: string, val: any, def: any): any {
+        // Convert null to undefined so Joi defaults can be applied
+        // Joi's .default() only works with undefined, not null
+        const normalizedVal = val === null ? undefined : val;
+        
         // Pass current params as context to support cross-parameter references (e.g., @startTime+2h)
-        const { value, error } = def.type.validate(val, { context: { params: this.params } });
+        // Use abortEarly: false to get all errors, and allowUnknown: false for strict validation
+        const { value, error } = def.type.validate(normalizedVal, { 
+            context: { params: this.params },
+            abortEarly: false,
+            allowUnknown: false,
+        });
         if (error) {
             const errs = error.details.map((el: any) => el.message).join(", ");
             throw new ParamError(`"${key}" validation error: ${errs}`);
@@ -163,14 +251,32 @@ export class Params {
         const valFromArgs = this.args.get(key);
         const valFromParams = this.params[key];
 
-        const res = valFromGetters ? this.validate(key, valFromGetters, def) :
-            valFromArgs ? this.validate(key, valFromArgs, def) :
-                this.validate(key, valFromParams, def);
+        let source: "cli" | "options" | "default" = "default";
+        let value: any;
 
-        if (res !== undefined && def.values && !def.values.includes(res)) {
+        if (valFromGetters !== undefined && valFromGetters !== null) {
+            value = this.validate(key, valFromGetters, def);
+            source = "options";
+        } else if (valFromArgs !== undefined && valFromArgs !== null) {
+            value = this.validate(key, valFromArgs, def);
+            source = "cli";
+        } else if (valFromParams !== undefined && valFromParams !== null) {
+            value = this.validate(key, valFromParams, def);
+            source = "options";
+        } else {
+            // Use default from definition - Joi will apply default when value is undefined
+            // We need to pass undefined explicitly so Joi can apply the default
+            value = this.validate(key, undefined, def);
+            source = "default";
+        }
+
+        // Track parameter for --stopAfter=init
+        this.trackParam(key, definition || "string", value, source);
+
+        if (value !== undefined && def.values && !def.values.includes(value)) {
             throw new ParamError(`key ${key} should be one of ${def.values}`);
         }
-        return res;
+        return value;
     }
 
     /**
@@ -210,10 +316,10 @@ export class Params {
      * Run all registered getters for a key
      */
     runAllRegisteredGetters(key: string): any {
-        let val: any = null;
+        let val: any = undefined;
         for (const getter of this.paramGetters) {
             val = getter(key, this.definitions[key]);
-            if (val !== undefined) {
+            if (val !== undefined && val !== null) {
                 break;
             }
         }
@@ -249,23 +355,6 @@ export class Params {
     }
 }
 
-// Singleton instance
-let paramsInstance: Params | null = null;
-
-/**
- * Initialize the singleton Params instance
- */
-export const init = (fns: { args: ArgsInstance }, opts: ParamsOptions = {}): Params => {
-    paramsInstance = new Params(fns, opts);
-    return paramsInstance;
-};
-
-/**
- * Get the current singleton Params instance
- */
-export const getParamsInstance = (): Params | null => paramsInstance;
-
 // Export custom types for external use
 export { joiEdateType, joiStringArrayType };
-
 

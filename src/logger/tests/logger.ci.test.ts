@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { CliToolkitLogger } from "../index.js";
+import { Logger } from "../index.js";
 import { ConsoleFallbackLogger } from "../fallback.js";
+
+// Create a minimal context for testing
+const createTestContext = () => ({} as any);
 
 describe("Logger CI", () => {
     const consoleInfo = vi.spyOn(console, "info");
@@ -9,10 +12,16 @@ describe("Logger CI", () => {
     const consoleError = vi.spyOn(console, "error");
 
     beforeEach(() => {
+        // Reset and mock console methods to suppress output while still tracking calls
         consoleInfo.mockReset();
         consoleWarn.mockReset();
         consoleDebug.mockReset();
         consoleError.mockReset();
+        // Suppress actual output but still track calls
+        consoleInfo.mockImplementation(() => {});
+        consoleWarn.mockImplementation(() => {});
+        consoleDebug.mockImplementation(() => {});
+        consoleError.mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -31,7 +40,8 @@ describe("Logger CI", () => {
     });
 
     it("filters levels, applies prefix and timestamp in text mode", () => {
-        const logger = new CliToolkitLogger({
+        const context = createTestContext();
+        const logger = new Logger(context, {
             prefix: "WORKER",
             timestamp: true,
             levels: ["info", "error"],
@@ -56,7 +66,8 @@ describe("Logger CI", () => {
     });
 
     it("emits JSON mode payloads", () => {
-        const logger = new CliToolkitLogger({ mode: "json", showLevel: false, route: "console" });
+        const context = createTestContext();
+        const logger = new Logger(context, { mode: "json", showLevel: false, route: "console" });
         logger.notice("json-test", { data: 42 });
 
         expect(consoleInfo).toHaveBeenCalledTimes(1);
@@ -84,7 +95,8 @@ describe("Logger CI", () => {
         process.connected = true;
 
         try {
-            const logger = new CliToolkitLogger({ route: "ipc" });
+            const context = createTestContext();
+            const logger = new Logger(context, { route: "ipc" });
             logger.info("ipc-message");
             expect(sendMock).toHaveBeenCalled();
             expect(consoleInfo).not.toHaveBeenCalled();
@@ -108,7 +120,8 @@ describe("Logger CI", () => {
 
     it("throttles progress output and computes elapsed/remaining", () => {
         vi.useFakeTimers();
-        const logger = new CliToolkitLogger({
+        const context = createTestContext();
+        const logger = new Logger(context, {
             progress: { withTimes: true, throttleMs: 1000 },
             route: "console"
         });
@@ -131,7 +144,8 @@ describe("Logger CI", () => {
     });
 
     it("handles request/response inspection", () => {
-        const logger = new CliToolkitLogger({ route: "console" });
+        const context = createTestContext();
+        const logger = new Logger(context, { route: "console" });
         logger.request("op1", { payload: true });
         logger.response("op2", "done");
 
@@ -141,13 +155,15 @@ describe("Logger CI", () => {
     });
 
     it("handles silenced output", () => {
-        const logger = new CliToolkitLogger({ silent: true });
+        const context = createTestContext();
+        const logger = new Logger(context, { silent: true, route: "console" });
         logger.info("should-not-log");
         expect(consoleInfo).not.toHaveBeenCalled();
     });
 
     it("supports dynamic mode switching", () => {
-        const logger = new CliToolkitLogger({ mode: "text", route: "console" });
+        const context = createTestContext();
+        const logger = new Logger(context, { mode: "text", route: "console" });
         logger.setMode("json");
         logger.info("json-switch");
         expect(consoleInfo.mock.calls[0][0]).toMatchObject({ level: "info", message: "json-switch" });

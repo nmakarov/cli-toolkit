@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import { CliToolkitLogger } from "../../src/logger/index.js";
+import { Logger } from "../../src/logger/index.js";
 
 // Run with: npx tsx examples/logger/basic.ts
 
-const logger = new CliToolkitLogger({
+// Create a minimal context for standalone usage
+const context = {} as any;
+const logger = new Logger(context, {
     prefix: "example",
     timestamp: true,
     progress: { withTimes: true }

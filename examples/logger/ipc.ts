@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import { CliToolkitLogger } from "../../src/logger/index.js";
+import { Logger } from "../../src/logger/index.js";
 
 // Run with: npx tsx examples/logger/ipc.ts
 
-const logger = new CliToolkitLogger({ route: "ipc", timestamp: true });
+// Create a minimal context for standalone usage
+const context = {} as any;
+const logger = new Logger(context, { route: "ipc", timestamp: true });
 
 logger.info("Sending message to parent process");
 logger.request("ping", { hello: "world" });

@@ -24,7 +24,7 @@ describe("Init CI Tests", () => {
     });
 
     it("should setup context with Args, Params, and Logger", () => {
-        const context = setupContext();
+        const context = setupContext({ silent: true });
         
         expect(context.args).toBeDefined();
         expect(context.params).toBeDefined();
@@ -42,7 +42,7 @@ describe("Init CI Tests", () => {
             receivedContext = context;
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(receivedContext).toBeDefined();
         expect(receivedContext.args).toBeDefined();
@@ -61,6 +61,7 @@ describe("Init CI Tests", () => {
             overrides: {
                 testKey: "overrideValue",
             },
+            silent: true,
         });
 
         expect(receivedContext.args.get("testKey")).toBe("overrideValue");
@@ -78,6 +79,7 @@ describe("Init CI Tests", () => {
             defaults: {
                 defaultKey: "defaultValue",
             },
+            silent: true,
         });
 
         expect(receivedContext.args.get("defaultKey")).toBe("defaultValue");
@@ -91,11 +93,11 @@ describe("Init CI Tests", () => {
         };
 
         await init(flow, {
-            logger: {
-                mode: "json",
-                route: "ipc",
-                prefix: "test",
-            },
+            mode: "json",
+            route: "ipc",
+            prefix: "test",
+            modules: ["logger"],
+            silent: true,
         });
 
         expect(receivedContext.logger).toBeDefined();
@@ -107,7 +109,7 @@ describe("Init CI Tests", () => {
             throw new ParamError("Test param error");
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(process.exitCode).toBe(3);
     });
@@ -117,7 +119,7 @@ describe("Init CI Tests", () => {
             throw new InitError("Test init error");
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(process.exitCode).toBe(4);
     });
@@ -127,7 +129,7 @@ describe("Init CI Tests", () => {
             throw new Error("Test other error");
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(process.exitCode).toBe(5);
     });
@@ -147,7 +149,7 @@ describe("Init CI Tests", () => {
             });
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(cleanupOrder).toEqual([3, 2, 1]);
     });
@@ -162,7 +164,7 @@ describe("Init CI Tests", () => {
             });
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(cleanupCalled).toBe(true);
     });
@@ -175,7 +177,7 @@ describe("Init CI Tests", () => {
         };
 
         // Should not throw
-        await expect(init(flow)).resolves.not.toThrow();
+        await expect(init(flow, { silent: true })).resolves.not.toThrow();
     });
 
     it("should set isStop function", async () => {
@@ -185,7 +187,7 @@ describe("Init CI Tests", () => {
             receivedContext = context;
         };
 
-        await init(flow);
+        await init(flow, { silent: true });
 
         expect(typeof receivedContext.isStop).toBe("function");
         expect(receivedContext.isStop()).toBe(false);

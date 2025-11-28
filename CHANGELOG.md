@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Test Output Suppression**: Suppressed debug output in all CI tests for cleaner test runs
+  - FileDatabase tests now use silent logger instances
+  - MockServer tests now use silent logger instances
+  - Init tests now use `silent: true` option
+  - Logger tests now mock console methods to suppress output while maintaining test assertions
+  - All tests pass with clean output, no debug messages appearing in test results
+
+### Changed
+- **Code Cleanup**: Removed old and refactored backup files
+  - Deleted `index-old.ts` files from init, logger, and params modules
+  - Deleted `index-refactored.ts` file from logger module
+  - Cleaned up associated coverage HTML files
+
 ### Added
 - **Screen Module CommonJS Support**: Added `load()` function to enable CommonJS usage with ESM-only dependencies (`ink`, `react`)
   - Post-build script (`scripts/fix-cjs-esm-deps.js`) transforms CJS builds to use dynamic imports

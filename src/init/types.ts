@@ -23,6 +23,8 @@ export interface Context {
 
 /**
  * Init options - configuration for initialization
+ * Component-specific options are passed at the top level
+ * The 'modules' key is reserved for specifying which components to auto-instantiate
  */
 export interface InitOptions {
     /**
@@ -36,22 +38,22 @@ export interface InitOptions {
     defaults?: Record<string, any>;
     
     /**
-     * Logger options
-     */
-    logger?: {
-        mode?: "text" | "json";
-        route?: "console" | "ipc";
-        prefix?: string;
-        silent?: boolean;
-        showLevel?: boolean;
-        timestamp?: boolean;
-        levels?: string[];
-    };
-    
-    /**
-     * Modules to initialize (future feature)
+     * Modules to initialize - specifies which components should be auto-instantiated
+     * Reserved key - do not use for component options
      */
     modules?: string[];
+    
+    // Logger component options (when modules includes "logger")
+    mode?: "text" | "json";
+    route?: "console" | "ipc";
+    prefix?: string;
+    silent?: boolean;
+    showLevel?: boolean;
+    timestamp?: boolean;
+    levels?: string[];
+    
+    // Allow other component options to be passed
+    [key: string]: any;
 }
 
 /**

@@ -1,11 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { FileDatabase, FileDatabaseError } from "../index.js";
 import { ParamError } from "../../errors.js";
+import { Logger } from "../../logger/index.js";
 import fs from "fs";
 import path from "path";
 
+// Create a silent logger for tests
+const createTestLogger = () => {
+    const context = {} as any;
+    return new Logger(context, { silent: true, route: "console" });
+};
+
 describe("FileDatabase CI", () => {
     const testBasePath = path.resolve(__dirname, "../../..", "test-data-filedatabase");
+    const testLogger = createTestLogger();
     
     // Clean up test directory after each test
     afterEach(async () => {
@@ -15,12 +23,17 @@ describe("FileDatabase CI", () => {
     });
 
     it("throws ParamError when basePath is missing", () => {
-        expect(() => new FileDatabase({} as any)).toThrow(ParamError);
-        expect(() => new FileDatabase({} as any)).toThrow("basePath is required");
+        expect(() => new FileDatabase({
+            logger: testLogger,} as any)).toThrow(ParamError);
+        expect(() => new FileDatabase({
+            logger: testLogger,} as any)).toThrow("basePath is required");
     });
 
     it("creates FileDatabase instance with minimal config", () => {
-        const store = new FileDatabase({ basePath: testBasePath });
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            logger: testLogger,
+        });
         expect(store).toBeDefined();
         expect(store.getCurrentVersion()).toBeNull();
     });
@@ -31,6 +44,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "test-table",
             pageSize: 100,
+            logger: testLogger,
         });
 
         const testData = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `Item ${i + 1}` }));
@@ -52,6 +66,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "large-data",
             pageSize: 100, // Small page size to test chunking
+            logger: testLogger,
         });
 
         // Create 250 records (should split into 3 files: 100, 100, 50)
@@ -78,6 +93,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "paginated",
             pageSize: 1000,
+            logger: testLogger,
         });
 
         const testData = Array.from({ length: 500 }, (_, i) => ({ id: i + 1 }));
@@ -107,6 +123,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "versioned",
             maxVersions: 3,
+            logger: testLogger,
         });
 
         // Write version 1
@@ -144,6 +161,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "rotation",
             maxVersions: 2,
+            logger: testLogger,
         });
 
         // Create 3 versions
@@ -168,6 +186,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "object-data",
+            logger: testLogger,
         });
 
         const testData = { name: "Test Object", value: 42, nested: { key: "value" } };
@@ -186,6 +205,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "text-data",
+            logger: testLogger,
         });
 
         const testData = "This is a plain text file.\nWith multiple lines.\nAnd some content.";
@@ -204,6 +224,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "with-metadata",
             useMetadata: true,
+            logger: testLogger,
         });
 
         const testData = Array.from({ length: 10 }, (_, i) => ({ id: i + 1 }));
@@ -227,6 +248,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "no-metadata",
             useMetadata: false,
+            logger: testLogger,
         });
 
         const testData = Array.from({ length: 10 }, (_, i) => ({ id: i + 1 }));
@@ -248,6 +270,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "synopsis",
             pageSize: 50,
+            logger: testLogger,
         });
 
         // Set synopsis function to track min/max IDs
@@ -284,6 +307,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "version-synopsis",
+            logger: testLogger,
         });
 
         store.setVersionSynopsisFunction((metadata) => {
@@ -312,6 +336,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "append",
             pageSize: 100,
+            logger: testLogger,
         });
 
         // First write
@@ -339,6 +364,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "empty",
+            logger: testLogger,
         });
 
         await expect(store.read({ version: "2025-01-01T00:00:00Z" })).rejects.toThrow(FileDatabaseError);
@@ -350,6 +376,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "beyond",
+            logger: testLogger,
         });
 
         await store.write(Array.from({ length: 50 }, (_, i) => ({ id: i + 1 })));
@@ -368,6 +395,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "filenames",
             pageSize: 10,
+            logger: testLogger,
         });
 
         const testData = Array.from({ length: 35 }, (_, i) => ({ id: i + 1 }));
@@ -387,6 +415,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "latest-version",
+            logger: testLogger,
         });
 
         // No versions yet
@@ -404,6 +433,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "has-data-versioned",
+            logger: testLogger,
         });
 
         // No data yet
@@ -420,6 +450,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "has-data-nonversioned",
             versioned: false,
+            logger: testLogger,
         });
 
         // No data yet
@@ -435,6 +466,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "detect-format",
+            logger: testLogger,
         });
 
         // Empty table
@@ -456,6 +488,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "non-versioned",
             versioned: false,
+            logger: testLogger,
         });
 
         const testData = [{ id: 1, name: "test" }];
@@ -471,6 +504,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "error-test",
             versioned: false,
+            logger: testLogger,
         });
 
         await expect(store.getLatestVersion()).rejects.toThrow("getLatestVersion() only works in versioned mode");
@@ -482,6 +516,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "error-test",
             versioned: false,
+            logger: testLogger,
         });
 
         await expect(store.write([{ id: 1 }], { forceNewVersion: true })).rejects.toThrow("Cannot use forceNewVersion in non-versioned mode");
@@ -493,6 +528,7 @@ describe("FileDatabase CI", () => {
             namespace: "test-namespace",
             tableName: "versions-test",
             versioned: false,
+            logger: testLogger,
         });
 
         const versions = await store.getVersions();
@@ -504,6 +540,7 @@ describe("FileDatabase CI", () => {
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "default-test",
+            logger: testLogger,
         });
 
         // We can't directly access the private versioned property, but we can test behavior
