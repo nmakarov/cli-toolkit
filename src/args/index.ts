@@ -285,7 +285,10 @@ export class Args {
      */
     get(key: string): any {
         const resolvedKey = this.aliases[key] || key;
-        this.usedKeys.add(resolvedKey);
+        // Mark the lowercase version as used since args are stored in lowercase
+        // This ensures getUnused() correctly identifies used keys
+        const lcKey = resolvedKey.toLowerCase();
+        this.usedKeys.add(lcKey);
 
         // Precedence order: overrides > CLI args > config files > env vars > defaults
         if (this.overrides[resolvedKey] !== undefined) {
@@ -293,7 +296,6 @@ export class Args {
         }
 
         // Case-insensitive lookup for CLI args (like legacy)
-        const lcKey = resolvedKey.toLowerCase();
 
         // Try environment-specific CLI args first (e.g., --silent_local, --debug_production)
         const lcKeyWithEnv = `${lcKey}${this.env ? `_${this.env.toLowerCase()}` : ""}`;

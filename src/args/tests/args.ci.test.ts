@@ -109,7 +109,7 @@ describe("Args CI", () => {
         expect(Array.from(parsed.usedKeys)).toContain("output");
 
         const used = args.getUsed();
-        expect(used).toEqual(expect.arrayContaining(["output", "configKey", "customValue"]));
+        expect(used).toEqual(expect.arrayContaining(["output", "configkey", "customvalue"]));
 
         const unused = args.getUnused();
         expect(unused).toEqual(expect.arrayContaining(["y", "z", "feature_local"]));
