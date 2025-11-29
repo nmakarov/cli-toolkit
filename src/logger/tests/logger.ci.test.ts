@@ -44,6 +44,7 @@ describe("Logger CI", () => {
         const logger = new Logger(context, {
             prefix: "WORKER",
             timestamp: true,
+            showLevel: true,
             levels: ["info", "error"],
             progress: { withTimes: true },
             route: "console"
@@ -122,6 +123,7 @@ describe("Logger CI", () => {
         vi.useFakeTimers();
         const context = createTestContext();
         const logger = new Logger(context, {
+            showLevel: true,
             progress: { withTimes: true, throttleMs: 1000 },
             route: "console"
         });
@@ -145,7 +147,7 @@ describe("Logger CI", () => {
 
     it("handles request/response inspection", () => {
         const context = createTestContext();
-        const logger = new Logger(context, { route: "console" });
+        const logger = new Logger(context, { showLevel: true, route: "console" });
         logger.request("op1", { payload: true });
         logger.response("op2", "done");
 

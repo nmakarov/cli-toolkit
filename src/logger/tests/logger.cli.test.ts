@@ -42,7 +42,7 @@ describe("Logger CLI", () => {
     });
 
     it("applies custom level selection", () => {
-        const logger = makeLogger({ levels: ["error", "warn"] });
+        const logger = makeLogger({ levels: ["error", "warn"], showLevel: true });
         logger.debug("debug message");
         logger.warn("warn message");
         logger.error("error message");
