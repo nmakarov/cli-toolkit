@@ -136,6 +136,15 @@ console.log(args.get('features'));  // ["auth", "logging"]
 
 ### Environment Variables
 
+Args automatically converts parameter names to environment variable format using SNAKE_CASE. For example:
+- `apiKey` → `API_KEY`
+- `clientId` → `CLIENT_ID`
+- `trestleIdxplus2Id` → `TRESTLE_IDXPLUS_2_ID`
+
+**Alternative Format Support**: If the exact env var name is not found, Args will also try an alternative format by removing underscores before numbers. This handles cases where env var names don't follow the standard conversion:
+- `TRESTLE_IDXPLUS_2_ID` (standard) → also tries `TRESTLE_IDXPLUS2_ID` (alternative)
+- This allows compatibility with env vars like `TRESTLE_IDXPLUS2_ID` that don't follow the standard pattern
+
 ```typescript
 // .env
 PORT=9000

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Args Environment Variable Alternative Format Support**: Enhanced `Args.get()` to support alternative environment variable name formats
+  - Automatically tries alternative format by removing underscores before numbers (e.g., `TRESTLE_IDXPLUS_2_ID` -> `TRESTLE_IDXPLUS2_ID`)
+  - Handles cases where env var names don't follow standard camelCase->SNAKE_CASE conversion
+  - Falls back to alternative format only if exact match is not found
+  - Maintains backward compatibility with standard naming conventions
+
 ### Fixed
 - **Test Output Suppression**: Suppressed debug output in all CI tests for cleaner test runs
   - FileDatabase tests now use silent logger instances

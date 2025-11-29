@@ -248,6 +248,8 @@ export class Params {
             valFromGetters = this.runAllRegisteredGetters(key);
         }
         
+        // Always call args.get() to mark the key as used, even if it doesn't exist
+        // This ensures flags are marked as used regardless of when they're parsed
         const valFromArgs = this.args.get(key);
         const valFromParams = this.params[key];
 

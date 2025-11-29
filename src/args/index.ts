@@ -285,18 +285,22 @@ export class Args {
      */
     get(key: string): any {
         const resolvedKey = this.aliases[key] || key;
-        // Mark the lowercase version as used since args are stored in lowercase
-        // This ensures getUnused() correctly identifies used keys
+        // Normalize key to lowercase for case-insensitive lookups
+        // This ensures that params.get("showAuthRequest") works regardless of how
+        // the key was provided (CLI: --showAuthRequest, --showauthrequest, env: SHOW_AUTH_REQUEST)
         const lcKey = resolvedKey.toLowerCase();
         this.usedKeys.add(lcKey);
 
         // Precedence order: overrides > CLI args > config files > env vars > defaults
-        if (this.overrides[resolvedKey] !== undefined) {
-            return this.overrides[resolvedKey];
+        // All lookups are case-insensitive using lcKey
+        
+        // Case-insensitive lookup for overrides
+        const overrideKey = Object.keys(this.overrides).find(k => k.toLowerCase() === lcKey);
+        if (overrideKey !== undefined) {
+            return this.overrides[overrideKey];
         }
 
-        // Case-insensitive lookup for CLI args (like legacy)
-
+        // Case-insensitive lookup for CLI args
         // Try environment-specific CLI args first (e.g., --silent_local, --debug_production)
         const lcKeyWithEnv = `${lcKey}${this.env ? `_${this.env.toLowerCase()}` : ""}`;
         if (this.env && this.args[lcKeyWithEnv] !== undefined) {
@@ -305,12 +309,14 @@ export class Args {
             return this.args[lcKey];
         }
 
-        // Config file values (case-sensitive)
-        if (this.configValues[resolvedKey] !== undefined) {
-            return this.configValues[resolvedKey];
+        // Case-insensitive lookup for config file values
+        const configKey = Object.keys(this.configValues).find(k => k.toLowerCase() === lcKey);
+        if (configKey !== undefined) {
+            return this.configValues[configKey];
         }
 
         // Environment variable (convert key to ENV_VAR format)
+        // Use resolvedKey (original case) for env var conversion to preserve camelCase -> SNAKE_CASE
         const envKey = this.toEnvKey(resolvedKey);
         const envKeyWithEnv = `${envKey}${this.env ? `_${this.env.toUpperCase()}` : ""}`;
 
@@ -318,21 +324,31 @@ export class Args {
         const envSpecificKey = Object.keys(process.env).find(
             (k) => this.env && k.toUpperCase() === envKeyWithEnv
         );
+        
+        // Try exact match first (case-insensitive)
         const envKeyFound = Object.keys(process.env).find((k) => k.toUpperCase() === envKey);
+        
+        // If not found, try alternative formats (e.g., TRESTLE_IDXPLUS_2_ID -> TRESTLE_IDXPLUS2_ID)
+        // This handles cases where env var names don't follow standard camelCase->SNAKE_CASE conversion
+        const envKeyAlt = envKey.replace(/_([0-9])/g, "$1"); // Remove underscore before numbers
+        const envKeyAltFound = !envKeyFound ? Object.keys(process.env).find((k) => k.toUpperCase() === envKeyAlt) : null;
 
         if (envSpecificKey) {
             return process.env[envSpecificKey];
         } else if (envKeyFound) {
             return process.env[envKeyFound];
+        } else if (envKeyAltFound) {
+            return process.env[envKeyAltFound];
         }
 
-        // Default value
-        if (this.defaults[resolvedKey] !== undefined) {
-            return this.defaults[resolvedKey];
+        // Case-insensitive lookup for defaults
+        const defaultKey = Object.keys(this.defaults).find(k => k.toLowerCase() === lcKey);
+        if (defaultKey !== undefined) {
+            return this.defaults[defaultKey];
         }
 
         // NODE_ENV fallback for 'env' key (like legacy)
-        if (resolvedKey === "env" && process.env.NODE_ENV !== undefined) {
+        if (lcKey === "env" && process.env.NODE_ENV !== undefined) {
             return process.env.NODE_ENV;
         }
 
@@ -384,8 +400,16 @@ export class Args {
 
     /**
      * Convert key to environment variable format
+     * Converts camelCase to SNAKE_CASE
      */
     private toEnvKey(key: string): string {
+        // If already in SNAKE_CASE (contains underscores and is uppercase), return as-is
+        if (key.includes("_") && key === key.toUpperCase()) {
+            return key;
+        }
+
+        // Convert camelCase to SNAKE_CASE
+        // Standard conversion: add underscore before capitals and numbers
         return key
             .replace(/[A-Z0-9]/g, (match, offset) =>
                 offset === 0 ? match : "_" + match.toLowerCase()

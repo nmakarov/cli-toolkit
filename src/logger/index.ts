@@ -160,7 +160,7 @@ export class Logger implements Logger {
             route: this.shouldUseIpcRoute() ? "ipc" : "console",
             prefix: undefined,
             silent: false,
-            showLevel: true,
+            showLevel: false,
             timestamp: false,
             levels: ALL_LEVELS,
             progressTimes: false,
