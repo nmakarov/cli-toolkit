@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **FileDatabase Init Pattern**: Added `fileDatabaseInit()` function following the same pattern as `mlsClientInit`
+  - Accepts `Context` as first parameter for consistent initialization pattern
+  - Reads configuration from `context.params` with sensible defaults (basePath: "./data", namespace: "default", pageSize: 5000, maxVersions: 5)
+  - Allows options parameter to override params values
+  - Maintains full backward compatibility with legacy config object pattern
+  - Enables early validation and fail-fast behavior during initialization
 - **Args Environment Variable Alternative Format Support**: Enhanced `Args.get()` to support alternative environment variable name formats
   - Automatically tries alternative format by removing underscores before numbers (e.g., `TRESTLE_IDXPLUS_2_ID` -> `TRESTLE_IDXPLUS2_ID`)
   - Handles cases where env var names don't follow standard camelCase->SNAKE_CASE conversion

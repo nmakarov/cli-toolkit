@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { FileDatabase, FileDatabaseError } from "../index.js";
+import { FileDatabase, FileDatabaseError, fileDatabaseInit } from "../index.js";
 import { ParamError } from "../../errors.js";
 import { Logger } from "../../logger/index.js";
+import { Args } from "../../args/index.js";
+import { Params } from "../../params/index.js";
 import fs from "fs";
 import path from "path";
 
@@ -545,6 +547,95 @@ describe("FileDatabase CI", () => {
 
         // We can't directly access the private versioned property, but we can test behavior
         expect(() => store.getLatestVersion()).not.toThrow(); // Should not throw since it's versioned by default
+    });
+
+    describe("fileDatabaseInit", () => {
+        it("creates FileDatabase instance from context with params", () => {
+            const testArgs = new Args({
+                args: [],
+                overrides: {
+                    basePath: testBasePath,
+                    namespace: "test-namespace",
+                    tableName: "init-test",
+                    pageSize: 200,
+                    maxVersions: 3,
+                },
+                defaults: {},
+            });
+            const testParams = new Params({ args: testArgs });
+            const context = {
+                args: testArgs,
+                params: testParams,
+                logger: testLogger,
+                emitter: {} as any,
+                isStop: () => false,
+                cleanupFunctions: [],
+                registerCleanup: () => {},
+            };
+
+            const store = fileDatabaseInit(context);
+            expect(store).toBeDefined();
+            expect(store.getCurrentVersion()).toBeNull();
+        });
+
+        it("uses options to override context.params", () => {
+            const testArgs = new Args({
+                args: [],
+                overrides: {
+                    basePath: testBasePath,
+                    namespace: "default-namespace",
+                    pageSize: 100,
+                },
+                defaults: {},
+            });
+            const testParams = new Params({ args: testArgs });
+            const context = {
+                args: testArgs,
+                params: testParams,
+                logger: testLogger,
+                emitter: {} as any,
+                isStop: () => false,
+                cleanupFunctions: [],
+                registerCleanup: () => {},
+            };
+
+            const store = fileDatabaseInit(context, {
+                namespace: "override-namespace",
+                tableName: "override-table",
+                pageSize: 500,
+            });
+            expect(store).toBeDefined();
+        });
+
+        it("writes and reads data using fileDatabaseInit", async () => {
+            const testArgs = new Args({
+                args: [],
+                overrides: {
+                    basePath: testBasePath,
+                    namespace: "init-namespace",
+                    tableName: "init-table",
+                },
+                defaults: {},
+            });
+            const testParams = new Params({ args: testArgs });
+            const context = {
+                args: testArgs,
+                params: testParams,
+                logger: testLogger,
+                emitter: {} as any,
+                isStop: () => false,
+                cleanupFunctions: [],
+                registerCleanup: () => {},
+            };
+
+            const store = fileDatabaseInit(context);
+            const testData = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, name: `Item ${i + 1}` }));
+
+            await store.write(testData);
+            const readData = await store.read();
+            expect(readData).toEqual(testData);
+            expect(readData).toHaveLength(25);
+        });
     });
 });
 

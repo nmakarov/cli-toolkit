@@ -130,26 +130,30 @@ if (response.status === 'success') {
 ### FileDatabase - Structured File Storage
 
 ```typescript
+import { init } from '@nmakarov/cli-toolkit/init';
+import { fileDatabaseInit } from '@nmakarov/cli-toolkit/filedatabase';
+
+// Recommended: Using init pattern with context
+const flow = async (context) => {
+    const db = fileDatabaseInit(context, {
+        tableName: 'responses',
+        // basePath, namespace, pageSize, maxVersions read from context.params
+    });
+    
+    await db.write(userData);
+    const data = await db.read();
+};
+
+init(flow);
+
+// Legacy: Direct instantiation (still supported)
 import { FileDatabase } from '@nmakarov/cli-toolkit/filedatabase';
 
-// Versioned mode (default) - creates timestamped folders
 const db = new FileDatabase({
     basePath: './data',
     namespace: 'api',
     tableName: 'responses'
 });
-
-// Non-versioned mode - for single objects
-const db = new FileDatabase({
-    basePath: './data',
-    namespace: 'cache',
-    tableName: 'user-profile',
-    versioned: false
-});
-
-await db.write(userData);
-const data = await db.read(); // Auto-detects latest version
-const hasData = await db.hasData();
 ```
 
 ```bash

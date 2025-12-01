@@ -75,6 +75,28 @@ export interface FileDatabaseConfig {
 }
 
 /**
+ * Options for FileDatabase initialization
+ */
+export interface FileDatabaseOptions {
+    /** Base path for all file storage - if not provided, will be read from context.params */
+    basePath?: string;
+    /** Namespace subfolder - if not provided, will be read from context.params */
+    namespace?: string;
+    /** Table/collection name - if not provided, will be read from context.params */
+    tableName?: string;
+    /** Storage mode - default: "versioned" */
+    versioned?: boolean;
+    /** Maximum number of versions to keep - if not provided, will be read from context.params */
+    maxVersions?: number;
+    /** Page size for chunked file writes - if not provided, will be read from context.params */
+    pageSize?: number;
+    /** Whether to use metadata.json files - default: true */
+    useMetadata?: boolean;
+    /** Minimum free disk space threshold in bytes - default: 100MB */
+    freeSpaceThreshold?: number;
+}
+
+/**
  * Options for read operations
  */
 export interface ReadOptions {
@@ -117,6 +139,11 @@ export interface WriteContext {
     /** Filename to write to */
     fileName: string;
 }
+
+/**
+ * Export FileDatabaseOptions for use in init function
+ */
+export type { FileDatabaseOptions };
 
 /**
  * Catalog entry for catalog-based storage (API mocks)

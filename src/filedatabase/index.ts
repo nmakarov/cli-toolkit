@@ -11,8 +11,10 @@
 
 import fs from "fs";
 import path from "path";
+import type { Context } from "../init/types.js";
 import type {
     FileDatabaseConfig,
+    FileDatabaseOptions,
     VersionMetadata,
     FileEntry,
     ReadOptions,
@@ -60,7 +62,47 @@ export class FileDatabase {
     private fileSynopsisFunction: FileSynopsisFunction | null = null;
     private versionSynopsisFunction: VersionSynopsisFunction | null = null;
 
-    constructor(config: FileDatabaseConfig) {
+    /**
+     * Constructor - accepts context as first parameter (new pattern)
+     * or config object (legacy pattern for backward compatibility)
+     */
+    constructor(contextOrConfig: Context | FileDatabaseConfig, options?: FileDatabaseOptions) {
+        let config: FileDatabaseConfig;
+        
+        // Check if first parameter is Context (has params property)
+        if (contextOrConfig && typeof contextOrConfig === "object" && "params" in contextOrConfig) {
+            // New pattern: context is first parameter
+            const context = contextOrConfig as Context;
+            const opts = options || {};
+            
+            // Get configuration from context.params (with defaults)
+            const defs = {
+                basePath: "string default ./data",
+                namespace: "string default default",
+                tableName: "string",
+                maxVersions: "number default 5",
+                pageSize: "number default 5000",
+            };
+            
+            const paramsConfig = context.params.getAll(defs);
+            
+            // Merge: params < options < explicit values
+            config = {
+                basePath: opts.basePath ?? paramsConfig.basePath,
+                namespace: opts.namespace ?? paramsConfig.namespace,
+                tableName: opts.tableName ?? paramsConfig.tableName ?? null,
+                versioned: opts.versioned ?? true,
+                maxVersions: opts.maxVersions ?? paramsConfig.maxVersions,
+                pageSize: opts.pageSize ?? paramsConfig.pageSize,
+                useMetadata: opts.useMetadata ?? true,
+                freeSpaceThreshold: opts.freeSpaceThreshold ?? 100 * 1024 * 1024,
+                logger: context.logger,
+            };
+        } else {
+            // Legacy pattern: config object
+            config = contextOrConfig as FileDatabaseConfig;
+        }
+        
         // Validate required configuration
         if (!config.basePath) {
             throw new ParamError("[FileDatabase] basePath is required");
@@ -975,3 +1017,18 @@ export type {
 
 // Export synopsis functions
 export { defaultFileSynopsisFunction, defaultVersionSynopsisFunction } from "./synopsis-functions.js";
+
+/**
+ * Initialize FileDatabase from context
+ * Similar to mlsClientInit pattern
+ * 
+ * @param context - Context from init()
+ * @param options - Optional configuration (takes precedence over context.params)
+ * @returns Initialized FileDatabase instance
+ */
+export function fileDatabaseInit(
+    context: Context,
+    options: FileDatabaseOptions = {}
+): FileDatabase {
+    return new FileDatabase(context, options);
+}
