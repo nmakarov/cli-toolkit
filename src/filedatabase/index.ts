@@ -586,6 +586,17 @@ export class FileDatabase {
         let dataToWrite: any;
         let dataLeftOver: any[] | null;
 
+        // Detect data type from incoming data if not already set
+        // This ensures correct file extension is used when creating new files
+        if (!this.metadata.dataType) {
+            this.metadata.dataType = detectDataType(data);
+        }
+
+        // If no files exist yet, create the first file
+        if (this.metadata.files.length === 0) {
+            this.makeNewFile();
+        }
+
         const lastFile = this.metadata.files[this.metadata.files.length - 1];
         const lastFileRecordsCount = lastFile.recordsCount;
 
