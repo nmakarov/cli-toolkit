@@ -586,10 +586,11 @@ export class FileDatabase {
         let dataToWrite: any;
         let dataLeftOver: any[] | null;
 
-        // Detect data type from incoming data if not already set
-        // This ensures correct file extension is used when creating new files
-        if (!this.metadata.dataType) {
-            this.metadata.dataType = detectDataType(data);
+        // Detect data type from incoming data
+        // Always use the incoming data's type to ensure correct file extension
+        const incomingDataType = detectDataType(data);
+        if (this.metadata.dataType !== incomingDataType) {
+            this.metadata.dataType = incomingDataType;
         }
 
         // If no files exist yet, create the first file
@@ -599,6 +600,23 @@ export class FileDatabase {
 
         const lastFile = this.metadata.files[this.metadata.files.length - 1];
         const lastFileRecordsCount = lastFile.recordsCount;
+        
+        // For non-array data (text/xml/object), check if we need a new file with correct extension
+        if (!Array.isArray(data)) {
+            const lastFileExtension = path.extname(lastFile.fileName);
+            const expectedExtension = `.${getFileExtension(incomingDataType)}`;
+            // If the last file has wrong extension, create a new file with correct extension
+            // Check even if recordsCount is 0 (empty file) - we want correct extension for new writes
+            if (lastFileExtension !== expectedExtension) {
+                // Only create new file if the existing one has content, otherwise we'll use it
+                if (lastFileRecordsCount > 0) {
+                    this.makeNewFile();
+                } else {
+                    // File is empty, update its name to have correct extension
+                    lastFile.fileName = `${this.currentFileNumber.toString().padStart(6, "0")}.${getFileExtension(incomingDataType)}`;
+                }
+            }
+        }
 
         if (Array.isArray(data)) {
             // For arrays, handle pagination
@@ -830,14 +848,21 @@ export class FileDatabase {
             throw new FileDatabaseError("Cannot use forceNewVersion in non-versioned mode");
         }
 
-        // Prepare for writing
+        // Prepare for writing (this may load existing metadata)
         await this.prepare({ write: true });
+
+        // Always detect data type from incoming data AFTER prepare()
+        // This ensures we use the correct type even if existing metadata has a different type
+        const incomingDataType = detectDataType(data);
+        this.metadata.dataType = incomingDataType;
 
         // Force new version if requested (versioned mode only)
         if (options.forceNewVersion) {
             await this.makeNewVersion();
             this.metadata = this.getDefaultMetadata();
             this.metadata.version = this.currentVersion;
+            // Set data type from incoming data
+            this.metadata.dataType = incomingDataType;
             this.makeNewFile();
         }
 
