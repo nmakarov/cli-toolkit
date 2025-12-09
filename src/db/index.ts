@@ -7,7 +7,8 @@
 
 import knex, { Knex } from 'knex';
 import { ParamError } from '../errors.js';
-import type { DbConfig, DatabaseClient, QueryLogEntry, DbInstance } from './types.js';
+import type { Context } from '../init/types.js';
+import type { DbConfig, DbOptions, DatabaseClient, QueryLogEntry, DbInstance } from './types.js';
 
 /**
  * Database client wrapper around Knex
@@ -33,6 +34,10 @@ export class Db {
     private queriesLog: QueryLogEntry[] = [];
     private isConnected: boolean = false;
 
+    /**
+     * Constructor - accepts config object
+     * Use dbInit() function to initialize with Context
+     */
     constructor(config: DbConfig) {
         if (!config.connectionString) {
             throw new ParamError('Db: connectionString is required');
@@ -399,5 +404,173 @@ export class Db {
     isConnectedToDb(): boolean {
         return this.isConnected && this.knexInstance !== null;
     }
+}
+
+/**
+ * Helper function to capitalize first letter of a string
+ */
+function capitalizeFirstLetter(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Connect to database - creates Db instance, connects, registers cleanup, attaches profiler
+ * 
+ * This is a dedicated connect function that handles:
+ * - Creating Db instance with proper configuration
+ * - Connecting to database
+ * - Registering cleanup function
+ * - Attaching profiler if needed
+ * - Better error handling
+ */
+export async function dbConnect(
+    context: Context,
+    connectionString: string,
+    name?: string,
+    dbProfile?: boolean
+): Promise<Db> {
+    // Get configuration from params
+    const defs = {
+        testDbConnection: 'boolean default true',
+        name: 'string',
+        poolMin: 'number default 2',
+        poolMax: 'number default 10',
+        acquireConnectionTimeout: 'number default 10000',
+        sslRejectUnauthorized: 'boolean default false',
+    };
+    
+    const paramsConfig = context.params.getAll(defs);
+    
+    // Create config
+    const config: DbConfig = {
+        connectionString,
+        name: paramsConfig.name || name || 'default',
+        testConnection: paramsConfig.testDbConnection,
+        profile: dbProfile ?? false,
+        pool: {
+            min: paramsConfig.poolMin,
+            max: paramsConfig.poolMax,
+        },
+        acquireConnectionTimeout: paramsConfig.acquireConnectionTimeout,
+        ssl: {
+            rejectUnauthorized: paramsConfig.sslRejectUnauthorized,
+        },
+        logger: context.logger,
+    };
+    
+    try {
+        // Create Db instance
+        const db = new Db(config);
+        
+        // Register cleanup function
+        context.registerCleanup(async () => {
+            await db.disconnect();
+            context.logger.debug(`[Db] instance "${name || connectionString}" destroyed`);
+        });
+        
+        // Connect to database (profiler is attached automatically if config.profile is true)
+        await db.connect();
+        
+        context.logger.debug(`[Db] instance "${name || connectionString}" initialized`);
+        
+        return db;
+    } catch (error: any) {
+        // Better error handling
+        if (error instanceof ParamError) {
+            throw error;
+        }
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        throw new ParamError(`[Db] connect error: ${errorMsg}`);
+    }
+}
+
+/**
+ * Find and connect to database - resolves database name or connection string
+ * 
+ * This function handles:
+ * - Direct connection string (postgresql://... or mysql://...)
+ * - Database name/label that gets resolved to dbConnectionString${CapitalizedName}
+ * - Reading from params if no second parameter provided
+ */
+export async function dbFindAndConnect(
+    context: Context,
+    dbNameOrConnectionString?: string
+): Promise<Db> {
+    let dbName: string | undefined;
+    let dbConnectionString: string | undefined;
+    let dbProfile: boolean | undefined;
+    
+    // If second parameter is provided
+    if (dbNameOrConnectionString) {
+        // Check if it looks like a connection string (postgresql:// or mysql://)
+        if (dbNameOrConnectionString.match(/^(postgresql|mysql):\/\/[^\s]+:[^\s]+@[^\s]+:\d+\/[^\s]+$/)) {
+            dbName = undefined;
+            dbConnectionString = dbNameOrConnectionString;
+        } else {
+            // Treat it as a database name/label
+            dbName = dbNameOrConnectionString;
+        }
+    } else {
+        // No second parameter - read from params
+        const defs = {
+            dbName: 'string',
+            dbConnectionString: 'string',
+            dbProfile: 'boolean default false',
+        };
+        
+        const paramsConfig = context.params.getAll(defs);
+        dbName = paramsConfig.dbName;
+        dbConnectionString = paramsConfig.dbConnectionString;
+        dbProfile = paramsConfig.dbProfile;
+    }
+    
+    // Validate that we have either dbName or dbConnectionString
+    if (!dbName && !dbConnectionString) {
+        throw new ParamError('Db: either dbName or dbConnectionString must be specified');
+    }
+    
+    // If dbName is provided, resolve it to connection string
+    if (dbName) {
+        const paramName = `dbConnectionString${capitalizeFirstLetter(dbName)}`;
+        dbConnectionString = await context.params.get(paramName, 'string');
+        if (!dbConnectionString) {
+            throw new ParamError(
+                `Db: cannot find dbConnectionString for dbName="${dbName}" (looked for param "${paramName}")`
+            );
+        }
+    }
+    
+    // Connect using dedicated connect function
+    const db = await dbConnect(context, dbConnectionString!, dbName, dbProfile);
+    
+    // Test connection (connect() already tests if testConnection is true, but we can test explicitly here too)
+    // The test is already done in db.connect() if config.testConnection is true
+    
+    return db;
+}
+
+/**
+ * Initialize Db instance with context (auto-connects)
+ * 
+ * This is the standard "init" function that auto-initializes the DB component.
+ * It calls dbFindAndConnect, optionally passing a second parameter.
+ * 
+ * Usage:
+ * ```typescript
+ * // Auto-initialize from params:
+ * const db = await dbInit(context);
+ * 
+ * // Or with database name/label:
+ * const db = await dbInit(context, 'local');
+ * 
+ * // Or with direct connection string:
+ * const db = await dbInit(context, 'postgresql://user:pass@host:5432/dbname');
+ * ```
+ */
+export async function dbInit(
+    context: Context,
+    dbNameOrConnectionString?: string
+): Promise<Db> {
+    return await dbFindAndConnect(context, dbNameOrConnectionString);
 }
 

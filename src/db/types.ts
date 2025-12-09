@@ -22,6 +22,21 @@ export interface DbConfig {
     logger?: any;
 }
 
+export interface DbOptions {
+    connectionString?: string;
+    name?: string;
+    testConnection?: boolean;
+    profile?: boolean;
+    pool?: {
+        min?: number;
+        max?: number;
+    };
+    acquireConnectionTimeout?: number;
+    ssl?: {
+        rejectUnauthorized?: boolean;
+    };
+}
+
 export interface QueryLogEntry {
     sql: string;
     bindings: any[];

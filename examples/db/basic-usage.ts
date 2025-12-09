@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { Db } from "../../src/db.js";
+import { init } from "../../src/init/index.js";
+import { dbInit } from "../../src/db.js";
 import chalk from "chalk";
 
 // Run with: npx tsx examples/db/basic-usage.ts
@@ -9,124 +10,122 @@ import chalk from "chalk";
 // Db Basic Usage - demonstrates low-level SQL database operations with Knex
 //
 // This example shows:
-// - Creating a Db instance with connection configuration
+// - Using dbInit() with context (new pattern)
 // - Using db() directly like a Knex instance: db('table').select()
 // - Accessing Knex methods: db.schema, db.raw, db.transaction()
 // - Connection management: connect(), disconnect(), testConnection()
 // - Query profiling and logging
 // - Utility methods: tableExists(), getQueryLog()
 
-async function main() {
-    console.info(chalk.yellow("🗄️  Db Basic Usage Example"));
-    console.info(chalk.yellow("=".repeat(50)));
-    console.info("");
+const flow = async (context) => {
+    const { logger } = context;
 
-    // Example connection string (replace with your actual database)
-    // PostgreSQL: postgresql://user:password@localhost:5432/dbname
-    // MySQL: mysql://user:password@localhost:3306/dbname
+    logger.info(chalk.yellow("🗄️  Db Basic Usage Example"));
+    logger.info(chalk.yellow("=".repeat(50)));
+    logger.info("");
+
+    // Example 1: Using dbInit with context (new pattern - auto-connects)
+    logger.info(chalk.bold.green("✓ Example 1: Using dbInit with context"));
+    logger.info(chalk.dim("─".repeat(50)));
+    logger.info("  dbInit() can read from params (dbConnectionString or dbName)");
+    logger.info("  or accept a second parameter (connection string or dbName)");
+    logger.info("  and automatically connects to the database");
+    logger.info("");
+    
+    // Option 1: Use dbInit(context) - reads from params
+    // Option 2: Use dbInit(context, 'dbName') - resolves dbName to dbConnectionString${Name}
+    // Option 3: Use dbInit(context, 'postgresql://...') - direct connection string
     const connectionString = process.env.DB_CONNECTION_STRING || "postgresql://root:root@localhost:6032/mlsfarm";
-
-    if (connectionString === "postgresql://user:pass@localhost:5432/testdb") {
-        console.warn(chalk.yellow("⚠️  Using default connection string. Set DB_CONNECTION_STRING env var to use your database."));
-        console.warn(chalk.yellow("   Example: DB_CONNECTION_STRING='postgresql://user:pass@localhost:5432/mydb' npx tsx examples/db/basic-usage.ts"));
-        console.info("");
-    }
-
-    const db = new Db({
-        connectionString,
-        name: "example-db",
-        testConnection: true,
-        profile: true, // Enable query profiling
-        logger: {
-            debug: (msg: string) => console.info(chalk.dim(`[DB] ${msg}`)),
-            warn: (msg: string) => console.warn(chalk.yellow(`[DB] ${msg}`)),
-            error: (msg: string) => console.error(chalk.red(`[DB] ${msg}`)),
-        },
-    });
+    
+    // For this example, we'll use dbInit with a direct connection string
+    // In real usage, you'd use dbInit(context) and set dbConnectionString param
+    const db = await dbInit(context, connectionString);
 
     try {
-        // Example 1: Connect to database
-        console.info(chalk.bold.green("✓ Example 1: Connecting to database"));
-        console.info(chalk.dim("─".repeat(50)));
-        await db.connect();
-        console.info(`  ${chalk.green("✓ Connected successfully")}`);
-        console.info("");
+        // dbFindAndConnect already connected, so we skip the connect step
+        logger.info(`  ${chalk.green("✓ Connected successfully")}`);
+        logger.info("");
 
-        // Example 2: Use db directly like Knex - SELECT query
-        console.info(chalk.bold.blue("✓ Example 2: Using db() like Knex"));
-        console.info(chalk.dim("─".repeat(50)));
-        console.info("  You can use db('table') exactly like a Knex instance:");
-        console.info(chalk.dim('  const users = await db("users").select("*");'));
-        console.info(chalk.dim('  await db("posts").insert({ title: "Hello" });'));
-        console.info(chalk.dim('  await db("users").where({ id: 1 }).update({ name: "John" });'));
-        console.info("");
+        // Example 2: Using db() like Knex
+
+        logger.info("  You can use db('table') exactly like a Knex instance:");
+        logger.info(chalk.dim('  const users = await db("users").select("*");'));
+        logger.info(chalk.dim('  await db("posts").insert({ title: "Hello" });'));
+        logger.info(chalk.dim('  await db("users").where({ id: 1 }).update({ name: "John" });'));
+        logger.info("");
 
         // Example 3: Access Knex methods directly
-        console.info(chalk.bold.magenta("✓ Example 3: Accessing Knex methods"));
-        console.info(chalk.dim("─".repeat(50)));
-        console.info("  All Knex methods are available:");
-        console.info(chalk.dim('  db.schema.hasTable("users")'));
-        console.info(chalk.dim('  db.raw("SELECT NOW()")'));
-        console.info(chalk.dim('  db.transaction(async (trx) => { ... })'));
-        console.info("");
+        logger.info(chalk.bold.magenta("✓ Example 3: Accessing Knex methods"));
+        logger.info(chalk.dim("─".repeat(50)));
+        logger.info("  All Knex methods are available:");
+        logger.info(chalk.dim('  db.schema.hasTable("users")'));
+        logger.info(chalk.dim('  db.raw("SELECT NOW()")'));
+        logger.info(chalk.dim('  db.transaction(async (trx) => { ... })'));
+        logger.info("");
 
         // Example 4: Check if table exists
-        console.info(chalk.bold.yellow("✓ Example 4: Utility methods"));
-        console.info(chalk.dim("─".repeat(50)));
+        logger.info(chalk.bold.yellow("✓ Example 4: Utility methods"));
+        logger.info(chalk.dim("─".repeat(50)));
         const tableName = "example_table";
         const exists = await db.tableExists(tableName);
-        console.info(`  Table "${tableName}" exists: ${exists ? chalk.green("Yes") : chalk.red("No")}`);
-        console.info("");
+        logger.info(`  Table "${tableName}" exists: ${exists ? chalk.green("Yes") : chalk.red("No")}`);
+        logger.info("");
 
         // Example 5: Query profiling
-        console.info(chalk.bold.cyan("✓ Example 5: Query profiling"));
-        console.info(chalk.dim("─".repeat(50)));
+        logger.info(chalk.bold.cyan("✓ Example 5: Query profiling"));
+        logger.info(chalk.dim("─".repeat(50)));
         if (db.isConnectedToDb()) {
             // Execute a test query
             try {
-                await db.raw("SELECT 1 as test");
+                await (db as any).raw("SELECT 1 as test");
                 const queryLog = db.getQueryLog();
-                console.info(`  Queries executed: ${queryLog.length}`);
+                logger.info(`  Queries executed: ${queryLog.length}`);
                 if (queryLog.length > 0) {
-                    console.info(`  Last query: ${chalk.dim(queryLog[queryLog.length - 1].sql)}`);
-                    console.info(`  Duration: ${chalk.dim(queryLog[queryLog.length - 1].executionTimeMs)}ms`);
+                    logger.info(`  Last query: ${chalk.dim(queryLog[queryLog.length - 1].sql)}`);
+                    logger.info(`  Duration: ${chalk.dim(queryLog[queryLog.length - 1].executionTimeMs)}ms`);
                 }
             } catch (error: any) {
-                console.warn(chalk.yellow(`  Could not execute test query: ${error.message}`));
+                logger.warn(chalk.yellow(`  Could not execute test query: ${error.message}`));
             }
         }
-        console.info("");
+        logger.info("");
 
     } catch (error: any) {
-        console.error(chalk.red("❌ Error:"), error.message);
+        logger.error(chalk.red("❌ Error:"), error.message);
         if (error.message.includes("ECONNREFUSED") || error.message.includes("ENOTFOUND")) {
-            console.error(chalk.yellow("\n💡 Tip: Make sure your database is running and the connection string is correct."));
+            logger.error(chalk.yellow("\n💡 Tip: Make sure your database is running and the connection string is correct."));
         }
     } finally {
         // Example 6: Disconnect
-        console.info(chalk.bold("🧹 Cleanup"));
-        console.info(chalk.dim("─".repeat(50)));
+        logger.info(chalk.bold("🧹 Cleanup"));
+        logger.info(chalk.dim("─".repeat(50)));
         try {
             await db.disconnect();
-            console.info(`  ${chalk.green("✓ Disconnected successfully")}`);
+            logger.info(`  ${chalk.green("✓ Disconnected successfully")}`);
         } catch (error: any) {
-            console.error(`  ${chalk.red("✗ Error disconnecting:")} ${error.message}`);
+            logger.error(`  ${chalk.red("✗ Error disconnecting:")} ${error.message}`);
         }
-        console.info("");
-        console.info(chalk.green("🎉 Db demonstration completed!"));
-        console.info("");
-        console.info(chalk.dim("💡 Key Features Demonstrated:"));
-        console.info(chalk.dim("  • Callable instance: db('table').select()"));
-        console.info(chalk.dim("  • Direct Knex method access: db.schema, db.raw, etc."));
-        console.info(chalk.dim("  • Connection management: connect(), disconnect()"));
-        console.info(chalk.dim("  • Query profiling and logging"));
-        console.info(chalk.dim("  • Utility methods: tableExists(), testConnection()"));
-        console.info("");
+        logger.info("");
+        logger.info(chalk.green("🎉 Db demonstration completed!"));
+        logger.info("");
+        logger.info(chalk.dim("💡 Key Features Demonstrated:"));
+        logger.info(chalk.dim("  • dbInit() with context (new pattern)"));
+        logger.info(chalk.dim("  • dbInit(context, dbNameOrConnectionString) - optional second parameter"));
+        logger.info(chalk.dim("  • Database name resolution (dbName -> dbConnectionString${Name})"));
+        logger.info(chalk.dim("  • Dedicated dbConnect() function for better error handling"));
+        logger.info(chalk.dim("  • Automatic cleanup registration"));
+        logger.info(chalk.dim("  • Callable instance: db('table').select()"));
+        logger.info(chalk.dim("  • Direct Knex method access: db.schema, db.raw, etc."));
+        logger.info(chalk.dim("  • Auto-connection on init"));
+        logger.info(chalk.dim("  • Query profiling and logging"));
+        logger.info(chalk.dim("  • Utility methods: tableExists(), testConnection()"));
+        logger.info("");
     }
-}
+};
 
-main().catch((error) => {
-    console.error(chalk.red("❌ Fatal error:"), error);
-    process.exit(1);
+init(flow, {
+    mode: "text",
+    route: "console",
+    modules: ["logger"],
 });
 
