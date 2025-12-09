@@ -1,17 +1,18 @@
 import { init } from "../../src/init/index.js";
 import { dbInit } from "../../src/db.js";
 
-// npx tsx examples/db/connectOptions.ts
+// npx tsx examples/db/connectOptions.ts --dbName=local
+// npx tsx examples/db/connectOptions.ts --dbName=everystate
 
 const flow = async (context) => {
-    const { logger } = context;
-    const db = await dbInit(context);
+    context.db = await dbInit(context);
+    const { logger, db } = context;
 
-    const fourResult = await context.db.raw("select 2 + 2 as result");
+    const fourResult = await db.raw("select 2 + 2 as result");
     if (fourResult) {
-        context.logger.info("four:", fourResult.rows[0].result);
+        logger.info("four:", fourResult.rows[0].result);
     } else {
-        context.logger.info("database problems");
+        logger.info("database problems");
     } 
 };
 
