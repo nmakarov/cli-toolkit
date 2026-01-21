@@ -59,10 +59,27 @@ Legend:
   - Challenges: detecting data types and building metadata on-the-fly without explicit configuration.
 - ✅ Custom synopsis functions for data analysis and statistics
   - Challenges: providing flexible calculation framework while maintaining performance for large datasets.
+- ✅ Custom metadata support with `findData()` method
+  - Added `customMetadata` option to `WriteOptions` for storing arbitrary metadata fields
+  - Custom metadata fields stored directly in FileEntry objects for efficient searching
+  - `findData(searchCriteria)` method searches files by custom metadata across versions
+  - Intelligent file creation/overwriting based on custom metadata matching
+  - Challenges: ensuring correct file numbering, maintaining search performance, handling metadata updates.
 - ✅ Comprehensive CI tests covering all storage modes and edge cases (26 tests, 80%+ coverage)
   - Challenges: testing file system operations and ensuring proper cleanup between test runs.
 - ✅ Interactive examples with data inspection and format detection
   - Challenges: creating sample datasets that demonstrate real-world usage patterns and performance characteristics.
+
+## DB Module
+- ✅ Complete refactoring following consistent init pattern
+  - `dbInit(context, dbNameOrConnectionString?)` function that auto-connects to databases
+  - `dbFindAndConnect(context, dbNameOrConnectionString?)` for database name resolution
+  - `dbConnect(context, connectionString, name?, dbProfile?)` dedicated connect function
+  - Database name resolution: `dbName` → `dbConnectionString${CapitalizedName}`
+  - Supports direct connection strings (postgresql:// or mysql://) or database name labels
+  - Auto-connects, tests connection, and registers cleanup functions
+  - Better error handling with dedicated connect function
+  - Challenges: maintaining backward compatibility while introducing new patterns, ensuring consistent API design.
 
 ## Error Classes
 - ✅ CI test for inheritance/name wiring of custom errors

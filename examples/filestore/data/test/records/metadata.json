@@ -1,0 +1,28 @@
+{
+    "version": null,
+    "files": [
+        {
+            "number": 1,
+            "recordsCount": 1,
+            "fileName": "000001.json",
+            "ListingId": "1"
+        },
+        {
+            "number": 2,
+            "recordsCount": 1,
+            "fileName": "000002.json",
+            "ListingId": "2"
+        },
+        {
+            "number": 3,
+            "recordsCount": 1,
+            "fileName": "000003.json",
+            "ListingId": "3"
+        }
+    ],
+    "createdAt": "2025-12-10T19:40:37.110Z",
+    "modifiedAt": "2025-12-10T19:41:09.485Z",
+    "totalRecords": 3,
+    "synopsis": null,
+    "dataType": "json-object"
+}

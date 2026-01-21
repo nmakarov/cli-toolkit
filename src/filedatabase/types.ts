@@ -116,6 +116,8 @@ export interface WriteOptions {
     version?: string;
     /** Force creation of a new version */
     forceNewVersion?: boolean;
+    /** Custom metadata fields to add to the file entry (e.g., { ListingKey: "123", id: "456" }) */
+    customMetadata?: Record<string, any>;
 }
 
 /**

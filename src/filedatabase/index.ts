@@ -581,8 +581,11 @@ export class FileDatabase {
 
     /**
      * Figure out what data to write and which file to use (for pagination)
+     * @param data - Data to write
+     * @param targetFileIndex - Optional index of existing file to overwrite (when customMetadata matches)
+     * @param forceNewFile - If true, always create a new file (when customMetadata provided but no match)
      */
-    private figureOutDataAndFileToWrite(data: any): WriteContext {
+    private figureOutDataAndFileToWrite(data: any, targetFileIndex: number | null = null, forceNewFile: boolean = false): WriteContext {
         let dataToWrite: any;
         let dataLeftOver: any[] | null;
 
@@ -593,16 +596,51 @@ export class FileDatabase {
             this.metadata.dataType = incomingDataType;
         }
 
-        // If no files exist yet, create the first file
-        if (this.metadata.files.length === 0) {
+        // If targetFileIndex is provided, use that file (overwrite existing file with matching customMetadata)
+        if (targetFileIndex !== null && targetFileIndex < this.metadata.files.length) {
+            const targetFile = this.metadata.files[targetFileIndex];
+            // For non-array data, overwrite the file
+            if (!Array.isArray(data)) {
+                dataToWrite = data;
+                dataLeftOver = null;
+                return { dataToWrite, dataLeftOver, fileName: targetFile.fileName };
+            } else {
+                // For arrays, start fresh in the target file (don't append)
+                dataToWrite = data.slice(0, this.pageSize);
+                dataLeftOver = data.slice(this.pageSize);
+                this.lastFileData = dataToWrite;
+                return { dataToWrite, dataLeftOver, fileName: targetFile.fileName };
+            }
+        }
+
+        // If forceNewFile is true (customMetadata provided but no match), create a new file
+        // Skip the initial file creation if forceNewFile is true to avoid creating an extra empty file
+        let newlyCreatedFileIndex: number | null = null;
+        if (forceNewFile) {
+            const filesBeforeCreate = this.metadata.files.length;
+            this.makeNewFile();
+            newlyCreatedFileIndex = filesBeforeCreate; // Index of the newly created file
+            this.logger.debug?.(`[FileDatabase] Creating new file for unique custom metadata combination, fileNumber: ${this.currentFileNumber}`);
+        } else if (this.metadata.files.length === 0) {
+            // If no files exist yet and we're not forcing a new file, create the first file
             this.makeNewFile();
         }
 
+        // Get the last file (which might be the one we just created)
         const lastFile = this.metadata.files[this.metadata.files.length - 1];
         const lastFileRecordsCount = lastFile.recordsCount;
         
+        // Verify that if we created a new file, we're using it
+        if (forceNewFile && newlyCreatedFileIndex !== null) {
+            const newlyCreatedFile = this.metadata.files[newlyCreatedFileIndex];
+            if (newlyCreatedFile && newlyCreatedFile.fileName !== lastFile.fileName) {
+                this.logger.warn?.(`[FileDatabase] Warning: Newly created file ${newlyCreatedFile.fileName} doesn't match last file ${lastFile.fileName}`);
+            }
+        }
+        
         // For non-array data (text/xml/object), check if we need a new file with correct extension
-        if (!Array.isArray(data)) {
+        // But skip this check if forceNewFile is true - we already created the file we need
+        if (!Array.isArray(data) && !forceNewFile) {
             const lastFileExtension = path.extname(lastFile.fileName);
             const expectedExtension = `.${getFileExtension(incomingDataType)}`;
             // If the last file has wrong extension, create a new file with correct extension
@@ -616,31 +654,47 @@ export class FileDatabase {
                     lastFile.fileName = `${this.currentFileNumber.toString().padStart(6, "0")}.${getFileExtension(incomingDataType)}`;
                 }
             }
+        } else if (!Array.isArray(data) && forceNewFile) {
+            // If forceNewFile is true, ensure the newly created file has the correct extension
+            const lastFileExtension = path.extname(lastFile.fileName);
+            const expectedExtension = `.${getFileExtension(incomingDataType)}`;
+            if (lastFileExtension !== expectedExtension) {
+                lastFile.fileName = `${this.currentFileNumber.toString().padStart(6, "0")}.${getFileExtension(incomingDataType)}`;
+            }
         }
 
         if (Array.isArray(data)) {
             // For arrays, handle pagination
-            if (lastFileRecordsCount < this.pageSize) {
+            // If forceNewFile is true, write fresh data to the new file (don't append)
+            if (forceNewFile) {
+                // Write fresh data to the newly created file
+                dataToWrite = data.slice(0, this.pageSize);
+                dataLeftOver = data.slice(this.pageSize);
+                this.lastFileData = dataToWrite;
+            } else if (lastFileRecordsCount < this.pageSize) {
                 // Try to append to existing file if there's space
                 dataToWrite = [...(this.lastFileData || []), ...data.slice(0, this.pageSize - lastFileRecordsCount)];
                 dataLeftOver = data.slice(this.pageSize - lastFileRecordsCount);
+                this.lastFileData = dataToWrite;
             } else {
                 // Last file is full, create a new file
                 this.makeNewFile();
                 dataToWrite = data.slice(0, this.pageSize);
                 dataLeftOver = data.slice(this.pageSize);
+                this.lastFileData = dataToWrite;
             }
-            this.lastFileData = dataToWrite;
         } else {
             // For non-arrays, write as-is
             dataToWrite = data;
             dataLeftOver = null;
         }
 
+        // Get the file name - if forceNewFile is true, we just created a new file, so use that one
+        // Otherwise, use the last file (which might have been created earlier or is being reused)
         const fileName = this.metadata.files[this.metadata.files.length - 1].fileName;
 
         this.logger.debug?.(
-            `[FileDatabase] figureOutDataAndFileToWrite: filename=${fileName}, dataToWrite.length=${Array.isArray(dataToWrite) ? dataToWrite.length : "N/A"}, lastFileRecordsCount=${lastFileRecordsCount}`
+            `[FileDatabase] figureOutDataAndFileToWrite: filename=${fileName}, forceNewFile=${forceNewFile}, targetFileIndex=${targetFileIndex}, dataToWrite.length=${Array.isArray(dataToWrite) ? dataToWrite.length : "N/A"}, lastFileRecordsCount=${lastFileRecordsCount}`
         );
 
         return { dataToWrite, dataLeftOver, fileName };
@@ -672,7 +726,7 @@ export class FileDatabase {
     /**
      * Update metadata after writing data
      */
-    private updateMetadata(dataToWrite: any, fileName?: string): void {
+    private updateMetadata(dataToWrite: any, fileName?: string, customMetadata?: Record<string, any>): void {
         let currentFile: FileEntry;
 
         if (fileName) {
@@ -694,6 +748,11 @@ export class FileDatabase {
 
         // Update existing file entry with the correct records count
         currentFile.recordsCount = recordsCount;
+
+        // Add custom metadata fields if provided
+        if (customMetadata) {
+            Object.assign(currentFile, customMetadata);
+        }
 
         // Find the file index for synopsis calculation
         const fileIndex = this.metadata.files.indexOf(currentFile);
@@ -759,9 +818,15 @@ export class FileDatabase {
                     this.makeNewFile();
                 } else {
                     // For existing versions, load the metadata if not already loaded
-                    if (!this.metadata.files.length) {
-                        this.metadata = await this.figureMetadata(this.currentVersion);
+                if (!this.metadata.files.length) {
+                    this.metadata = await this.figureMetadata(this.currentVersion);
+                    // Initialize currentFileNumber from existing files
+                    if (this.metadata.files && this.metadata.files.length > 0) {
+                        this.currentFileNumber = Math.max(...this.metadata.files.map(f => f.number || 0));
+                    } else {
+                        this.currentFileNumber = 0;
                     }
+                }
                 }
             } else {
                 // Non-versioned mode - ensure table directory exists
@@ -775,17 +840,27 @@ export class FileDatabase {
                         try {
                             const rawData = await fs.promises.readFile(metadataPath, 'utf8');
                             this.metadata = JSON.parse(rawData);
+                            // Initialize currentFileNumber from existing files
+                            if (this.metadata.files && this.metadata.files.length > 0) {
+                                this.currentFileNumber = Math.max(...this.metadata.files.map(f => f.number || 0));
+                            } else {
+                                this.currentFileNumber = 0;
+                            }
                         } catch (e) {
                             this.metadata = this.getDefaultMetadata();
+                            this.currentFileNumber = 0;
                         }
                     } else {
+                        // Don't create a file here - let the write logic handle it
+                        // This prevents creating an empty file when customMetadata is provided
                         this.metadata = this.getDefaultMetadata();
-                        this.makeNewFile();
+                        this.currentFileNumber = 0;
                     }
                 } else {
                     // No metadata mode - just create default metadata
+                    // Don't create a file here either - let the write logic handle it
                     this.metadata = this.getDefaultMetadata();
-                    this.makeNewFile();
+                    this.currentFileNumber = 0;
                 }
             }
         } else if (read) {
@@ -807,6 +882,12 @@ export class FileDatabase {
 
                 if (!this.metadata.files.length) {
                     this.metadata = await this.figureMetadata(this.currentVersion!);
+                    // Initialize currentFileNumber from existing files
+                    if (this.metadata.files && this.metadata.files.length > 0) {
+                        this.currentFileNumber = Math.max(...this.metadata.files.map(f => f.number || 0));
+                    } else {
+                        this.currentFileNumber = 0;
+                    }
                 }
             } else {
                 // Non-versioned mode
@@ -825,6 +906,12 @@ export class FileDatabase {
                         try {
                             const rawData = await fs.promises.readFile(metadataPath, 'utf8');
                             this.metadata = JSON.parse(rawData);
+                            // Initialize currentFileNumber from existing files
+                            if (this.metadata.files && this.metadata.files.length > 0) {
+                                this.currentFileNumber = Math.max(...this.metadata.files.map(f => f.number || 0));
+                            } else {
+                                this.currentFileNumber = 0;
+                            }
                         } catch (e) {
                             throw new FileDatabaseError(`Failed to read metadata: ${(e as Error).message}`);
                         }
@@ -834,6 +921,12 @@ export class FileDatabase {
                 } else {
                     // Figure metadata from files
                     this.metadata = await this.figureMetadataFromVersionFiles('');
+                    // Initialize currentFileNumber from existing files
+                    if (this.metadata.files && this.metadata.files.length > 0) {
+                        this.currentFileNumber = Math.max(...this.metadata.files.map(f => f.number || 0));
+                    } else {
+                        this.currentFileNumber = 0;
+                    }
                 }
             }
         }
@@ -866,18 +959,61 @@ export class FileDatabase {
             this.makeNewFile();
         }
 
-        let { dataToWrite, dataLeftOver, fileName } = this.figureOutDataAndFileToWrite(data);
+        // Check if customMetadata is provided and find existing file with matching metadata
+        let targetFileIndex: number | null = null;
+        const hasCustomMetadata = options.customMetadata && Object.keys(options.customMetadata).length > 0;
+        
+        if (hasCustomMetadata) {
+            // Search through existing files for matching custom metadata
+            for (let i = 0; i < this.metadata.files.length; i++) {
+                const fileEntry = this.metadata.files[i];
+                // Check if all customMetadata fields match
+                // A file matches if it has all the customMetadata keys and their values match
+                const matches = Object.keys(options.customMetadata!).every(key => {
+                    // File must have the key and the value must match
+                    return key in fileEntry && fileEntry[key] === options.customMetadata![key];
+                });
+                if (matches) {
+                    targetFileIndex = i;
+                    this.logger.debug?.(`[FileDatabase] Found existing file with matching custom metadata: ${fileEntry.fileName}, metadata: ${JSON.stringify(options.customMetadata)}`);
+                    break;
+                } else {
+                    this.logger.debug?.(`[FileDatabase] File ${fileEntry.fileName} does not match custom metadata: ${JSON.stringify(options.customMetadata)}`);
+                }
+            }
+            if (targetFileIndex === null) {
+                this.logger.debug?.(`[FileDatabase] No existing file found with custom metadata: ${JSON.stringify(options.customMetadata)}, will create new file`);
+            }
+        } else {
+            this.logger.debug?.(`[FileDatabase] No custom metadata provided, will create new file`);
+        }
+
+        // If we found a matching file, prepare to overwrite it
+        if (targetFileIndex !== null) {
+            const targetFile = this.metadata.files[targetFileIndex];
+            // Set current file number to match the target file
+            this.currentFileNumber = targetFile.number;
+            // Reset pagination state since we're overwriting
+            this.lastFileData = null;
+            this.currentRecord = 0;
+            this.hasReadFirstPage = false;
+        }
+
+        // Pass flag indicating if we should force a new file (when customMetadata provided but no match)
+        const forceNewFile = hasCustomMetadata && targetFileIndex === null;
+        let { dataToWrite, dataLeftOver, fileName } = this.figureOutDataAndFileToWrite(data, targetFileIndex, forceNewFile);
 
         // Write first batch
         const destPath = this.getDestinationPath(this.currentVersion || undefined);
         await this.safeWrite(path.join(destPath, fileName), dataToWrite);
-        this.updateMetadata(dataToWrite, fileName);
+        this.updateMetadata(dataToWrite, fileName, options.customMetadata);
 
         // Handle pagination for remaining data (arrays only)
-        while (dataLeftOver && dataLeftOver.length > 0) {
+        // Note: For customMetadata matches, we only write to the target file, so no pagination needed
+        while (dataLeftOver && dataLeftOver.length > 0 && targetFileIndex === null) {
             const writeContext = this.figureOutDataAndFileToWrite(dataLeftOver);
             await this.safeWrite(path.join(destPath, writeContext.fileName), writeContext.dataToWrite);
-            this.updateMetadata(writeContext.dataToWrite, writeContext.fileName);
+            this.updateMetadata(writeContext.dataToWrite, writeContext.fileName, options.customMetadata);
             dataLeftOver = writeContext.dataLeftOver;
         }
 
@@ -1035,6 +1171,95 @@ export class FileDatabase {
     getMetadata(): VersionMetadata {
         return { ...this.metadata };
     }
+
+    /**
+     * Find data by custom metadata fields
+     * Searches through all versions and files to find entries matching the search criteria
+     * 
+     * @param searchCriteria - Object with field names and values to search for (e.g., { ListingKey: "123", id: "456" })
+     * @returns Array of found entries with their file paths and metadata
+     */
+    async findData(searchCriteria: Record<string, any>): Promise<Array<{
+        filePath: string;
+        fileName: string;
+        version: string | null;
+        metadata: FileEntry;
+        data: any;
+    }>> {
+        const results: Array<{
+            filePath: string;
+            fileName: string;
+            version: string | null;
+            metadata: FileEntry;
+            data: any;
+        }> = [];
+
+        // Handle non-versioned mode separately
+        if (!this.versioned) {
+            // Load metadata for non-versioned mode
+            await this.prepare({ read: true });
+            const metadata = this.getMetadata();
+            
+            // Search through files
+            for (const fileEntry of metadata.files) {
+                // Check if file entry matches search criteria
+                const matches = Object.keys(searchCriteria).every(key => {
+                    return fileEntry[key] === searchCriteria[key];
+                });
+
+                if (matches) {
+                    // Read the file data
+                    const destPath = this.getDestinationPath();
+                    const filePath = path.join(destPath, fileEntry.fileName);
+                    const fileData = await fs.promises.readFile(filePath, 'utf8');
+                    const data = deserializeData(fileData, metadata.dataType || 'json-object');
+
+                    results.push({
+                        filePath,
+                        fileName: fileEntry.fileName,
+                        version: null,
+                        metadata: fileEntry,
+                        data,
+                    });
+                }
+            }
+        } else {
+            // Versioned mode: search through all versions
+            const versions = await this.getVersions();
+            
+            for (const version of versions) {
+                // Load metadata for this version
+                await this.prepare({ read: true, version });
+                const metadata = this.getMetadata();
+
+                // Search through files in this version
+                for (const fileEntry of metadata.files) {
+                    // Check if file entry matches search criteria
+                    const matches = Object.keys(searchCriteria).every(key => {
+                        return fileEntry[key] === searchCriteria[key];
+                    });
+
+                    if (matches) {
+                        // Read the file data
+                        const destPath = this.getDestinationPath(version);
+                        const filePath = path.join(destPath, fileEntry.fileName);
+                        const fileData = await fs.promises.readFile(filePath, 'utf8');
+                        const data = deserializeData(fileData, metadata.dataType || 'json-object');
+
+                        results.push({
+                            filePath,
+                            fileName: fileEntry.fileName,
+                            version,
+                            metadata: fileEntry,
+                            data,
+                        });
+                    }
+                }
+            }
+        }
+
+        return results;
+    }
 }
 
 // Export types
@@ -1062,6 +1287,53 @@ export { defaultFileSynopsisFunction, defaultVersionSynopsisFunction } from "./s
  * @param options - Optional configuration (takes precedence over context.params)
  * @returns Initialized FileDatabase instance
  */
+/**
+ * List all table names in a given namespace
+ * Scans the filesystem to find all table directories
+ *
+ * @param basePath - Base path for file storage
+ * @param namespace - Namespace to scan (e.g., "harvested", "fromMLS")
+ * @returns Array of table names (directory names)
+ */
+export function listTables(basePath: string, namespace: string): string[] {
+    const namespacePath = path.join(basePath, namespace);
+
+    if (!fs.existsSync(namespacePath)) {
+        return [];
+    }
+
+    try {
+        return fs.readdirSync(namespacePath, { withFileTypes: true })
+            .filter(dirent => dirent.isDirectory())
+            .map(dirent => dirent.name);
+    } catch (error) {
+        // Return empty array if can't read directory
+        return [];
+    }
+}
+
+/**
+ * List all sources (namespaces) in a given base path
+ * Scans the filesystem to find all namespace directories
+ *
+ * @param basePath - Base path for file storage
+ * @returns Array of source names (directory names)
+ */
+export function listSources(basePath: string): string[] {
+    if (!fs.existsSync(basePath)) {
+        return [];
+    }
+
+    try {
+        return fs.readdirSync(basePath, { withFileTypes: true })
+            .filter(dirent => dirent.isDirectory())
+            .map(dirent => dirent.name);
+    } catch (error) {
+        // Return empty array if can't read directory
+        return [];
+    }
+}
+
 export function fileDatabaseInit(
     context: Context,
     options: FileDatabaseOptions = {}

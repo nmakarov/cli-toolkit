@@ -61,6 +61,11 @@
       "types": "./dist/db.d.ts",
       "import": "./dist/db.js",
       "require": "./dist/db.cjs"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.js",
+      "require": "./dist/utils.cjs"
     }
   },
   "scripts": {

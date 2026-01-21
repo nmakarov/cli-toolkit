@@ -7,6 +7,7 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 /**
  * Ensure a directory path exists, creating it if necessary
@@ -50,5 +51,24 @@ export function getFileExtension(dataType: string): string {
         default:
             return "json";
     }
+}
+
+/**
+ * Get __dirname equivalent for ES modules
+ * 
+ * Returns the directory path of the module file
+ * Useful for resolving relative paths in ES modules where __dirname is not available
+ * 
+ * @param metaUrl - The import.meta.url from the calling module (must be passed from calling module)
+ * @returns The directory path of the module
+ * 
+ * @example
+ * ```typescript
+ * import { getDirname } from "@nmakarov/cli-toolkit/utils";
+ * const __dirname = getDirname(import.meta.url);
+ * ```
+ */
+export function getDirname(metaUrl: string | URL): string {
+    return path.dirname(fileURLToPath(metaUrl));
 }
 

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **DB Module Refactoring**: Complete architectural refactoring following consistent init pattern
+  - Added `dbInit(context, dbNameOrConnectionString?)` function that auto-connects to databases
+  - Added `dbFindAndConnect(context, dbNameOrConnectionString?)` for database name resolution
+  - Added `dbConnect(context, connectionString, name?, dbProfile?)` dedicated connect function
+  - Database name resolution: `dbName` → `dbConnectionString${CapitalizedName}` (e.g., "local" → `dbConnectionStringLocal`)
+  - Supports direct connection strings (postgresql:// or mysql://) or database name labels
+  - Auto-connects, tests connection, and registers cleanup functions
+  - Better error handling with dedicated connect function
+- **FileDatabase Custom Metadata Support**: Enhanced FileDatabase with custom metadata capabilities
+  - Added `customMetadata` option to `WriteOptions` interface
+  - Custom metadata fields stored directly in FileEntry objects
+  - Added `findData(searchCriteria)` method to search files by custom metadata fields
+  - Supports searching across all versions and files
+  - Returns file paths, metadata, and data for found entries
+- **FileDatabase Write Logic Fixes**: Improved file creation and overwriting behavior
+  - When customMetadata provided, searches existing files for matching keys/values
+  - If exact match found, overwrites existing file; if no match, creates new file
+  - Ensures each unique customMetadata combination gets its own file
+  - Fixed file numbering initialization from existing metadata
 - **FileDatabase Init Pattern**: Added `fileDatabaseInit()` function following the same pattern as `mlsClientInit`
   - Accepts `Context` as first parameter for consistent initialization pattern
   - Reads configuration from `context.params` with sensible defaults (basePath: "./data", namespace: "default", pageSize: 5000, maxVersions: 5)

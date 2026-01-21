@@ -13,7 +13,8 @@ export default defineConfig({
     "http-client": "src/http-client.ts",
     "mock-server": "src/mock-server.ts",
     db: "src/db.ts",
-    init: "src/init.ts"
+    init: "src/init.ts",
+    utils: "src/utils.ts"
   },
     format: ["esm", "cjs"],
     dts: false,
