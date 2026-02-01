@@ -346,6 +346,9 @@ export async function showScreen(config: ShowScreenConfig): Promise<any> {
                         keyMatches = true;
                     } else if (input === binding.key) {
                         keyMatches = true;
+                    } else if (key?.name === binding.key) {
+                        // Ink sets `key.name` for regular character keys; `input` can be empty in some terminals.
+                        keyMatches = true;
                     }
 
                     if (keyMatches) {
