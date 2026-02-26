@@ -76,10 +76,9 @@ export class Logger implements Logger {
     }
 
     /**
-     * Configure logger options
-     * Only parameters present in options are updated
+     * Configure logger options. Accepts both LoggerOptions shape and flat param names (levels string, progressWithTimes, progressThrottleMs).
      */
-    configure(options: Partial<LoggerOptions>): void {
+    configure(options: Partial<LoggerOptions> & { progressWithTimes?: boolean; progressThrottleMs?: number; levels?: string | string[] }): void {
         if (options.mode !== undefined) {
             this.options.mode = this.isValidMode(options.mode) ? options.mode : "text";
         }
@@ -87,36 +86,27 @@ export class Logger implements Logger {
             this.options.route = options.route;
             this.updateTransport();
         }
-        if (options.prefix !== undefined) {
-            this.options.prefix = options.prefix;
-        }
-        if (options.silent !== undefined) {
-            this.options.silent = options.silent;
-        }
-        if (options.showLevel !== undefined) {
-            this.options.showLevel = options.showLevel;
-        }
-        if (options.timestamp !== undefined) {
-            this.options.timestamp = options.timestamp;
-        }
+        if (options.prefix !== undefined) this.options.prefix = options.prefix;
+        if (options.silent !== undefined) this.options.silent = options.silent;
+        if (options.showLevel !== undefined) this.options.showLevel = options.showLevel;
+        if (options.timestamp !== undefined) this.options.timestamp = options.timestamp;
         if (options.levels !== undefined) {
-            this.options.levels = this.normalizeLevels(options.levels);
+            const levels = typeof options.levels === "string" ? options.levels.split(",") : options.levels;
+            this.options.levels = this.normalizeLevels(levels);
         }
         if (options.progress !== undefined) {
-            if (options.progress.withTimes !== undefined) {
-                this.options.progressTimes = options.progress.withTimes;
-            }
-            if (options.progress.throttleMs !== undefined) {
-                this.options.progressThrottle = options.progress.throttleMs;
-            }
+            if (options.progress.withTimes !== undefined) this.options.progressTimes = options.progress.withTimes;
+            if (options.progress.throttleMs !== undefined) this.options.progressThrottle = options.progress.throttleMs;
         }
+        const flat = options as { progressWithTimes?: boolean; progressThrottleMs?: number };
+        if (flat.progressWithTimes !== undefined) this.options.progressTimes = flat.progressWithTimes;
+        if (flat.progressThrottleMs !== undefined) this.options.progressThrottle = flat.progressThrottleMs;
     }
 
     /**
-     * Initialize logger from context and CLI parameters
+     * Initialize logger from context and CLI parameters. Whatever is in options goes (after discovered params).
      */
     static init(context: any, options?: LoggerOptions): Logger {
-        // Define parameter definitions for CLI (with defaults to make them optional)
         const paramDefs = {
             mode: "string default text",
             route: "string default console",
@@ -128,29 +118,10 @@ export class Logger implements Logger {
             progressWithTimes: "boolean default false",
             progressThrottleMs: "number",
         };
-
-        // Collect parameters from CLI
-        const cliParams = context.params.getAll(paramDefs);
-
-        // Merge CLI params with options (options take precedence)
-        const config: LoggerOptions = {
-            mode: options?.mode ?? cliParams.mode,
-            route: options?.route ?? cliParams.route,
-            prefix: options?.prefix ?? cliParams.prefix,
-            silent: options?.silent ?? cliParams.silent,
-            showLevel: options?.showLevel ?? cliParams.showLevel,
-            timestamp: options?.timestamp ?? cliParams.timestamp,
-            levels: options?.levels ?? (cliParams.levels ? cliParams.levels.split(",") : undefined),
-            progress: options?.progress ?? {
-                withTimes: cliParams.progressWithTimes,
-                throttleMs: cliParams.progressThrottleMs,
-            },
-        };
-
-
-        // Create and return instance
+        const discovered = context.params.getAllForModule(paramDefs);
+        const config = { ...discovered, ...options } as LoggerOptions & { progressWithTimes?: boolean; progressThrottleMs?: number };
         const logger = new Logger(context, config);
-        context.logger = logger; // Update context with the new logger instance
+        context.logger = logger;
         return logger;
     }
 
@@ -179,6 +150,11 @@ export class Logger implements Logger {
             throw new Error(`Unsupported logger mode: ${mode}`);
         }
         this.options.mode = mode;
+    }
+
+    /** Returns a styled string (bright white) for highlighting; keeps chalk inside logger. */
+    highlight(text: string): string {
+        return chalk.whiteBright(text);
     }
 
     debug(message?: any, ...chunks: any[]): void {

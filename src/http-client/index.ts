@@ -19,55 +19,38 @@ import type {
     HttpClientStatus,
     RetryContext
 } from './types.js';
+import { HttpClientError } from '../errors.js';
 import { classifyError, getErrorDescription } from './errors.js';
 import { calculateRetryDelay, sleep, shouldRetryError, createRetryContext, updateRetryContext } from './retry.js';
 
-/**
- * HttpClient Error class
- */
-export class HttpClientError extends Error {
-    constructor(message: string, public readonly cause?: Error) {
-        super(message);
-        this.name = 'HttpClientError';
-    }
-}
+export { HttpClientError };
 
 /**
- * Resilient HTTP Client with automatic retry logic
+ * Resilient HTTP Client with automatic retry logic.
+ * Use HttpClient.init(context, options) when running with init/context; constructor(config) for standalone.
  */
 export class HttpClient {
     private axiosInstance: AxiosInstance;
-    private config: Required<HttpClientConfig>;
+    private config: HttpClientConfig;
     private logger: any;
 
-    constructor(config: HttpClientConfig = {}) {
-        this.config = {
-            timeout: 30000,           // 30 seconds
-            retryCount: 3,            // 3 retry attempts
-            retryDelay: 1000,         // 1 second base delay
-            maxRetryDelay: 30000,     // 30 second max delay
-            retryJitter: 0.1,         // 10% jitter
-            userAgent: 'HttpClient/v1.0',
-            validateSSL: true,
-            maxRedirects: 5,
-            logger: console,
-            ...config
-        };
+    constructor(contextOrConfig: any = {}, config?: HttpClientConfig) {
+        const hasContext = config !== undefined;
+        const options: HttpClientConfig = hasContext ? config! : (contextOrConfig || {});
+        const context = hasContext ? contextOrConfig : undefined;
 
+        this.config = {
+            ...options,
+            logger: context?.logger ?? options.logger ?? console,
+        };
         this.logger = this.config.logger;
 
-        // Create axios instance with base configuration
         this.axiosInstance = axios.create({
             timeout: this.config.timeout,
-            validateStatus: () => true, // Never throw on HTTP status codes
+            validateStatus: () => true,
             maxRedirects: this.config.maxRedirects,
-            headers: {
-                'User-Agent': this.config.userAgent
-            },
-            // SSL validation
-            httpsAgent: this.config.validateSSL ? undefined : {
-                rejectUnauthorized: false
-            } as any
+            headers: { 'User-Agent': this.config.userAgent },
+            httpsAgent: this.config.validateSSL ? undefined : { rejectUnauthorized: false } as any,
         });
 
         // Add response interceptor for logging (optional - only if debug enabled)
@@ -79,6 +62,25 @@ export class HttpClient {
                 return Promise.reject(error);
             }
         );
+    }
+
+    /**
+     * Static init - discovers params via getAllForModule(defs). Whatever is in options goes.
+     */
+    static init(context: any, options: HttpClientConfig = {}): HttpClient {
+        const defs: Record<string, string> = {
+            timeout: 'number default 30000',
+            retryCount: 'number default 3',
+            retryDelay: 'number default 1000',
+            maxRetryDelay: 'number default 30000',
+            retryJitter: 'number default 0.1',
+            userAgent: 'string default HttpClient/v1.0',
+            validateSSL: 'boolean default true',
+            maxRedirects: 'number default 5',
+        };
+        const discovered = context?.params?.getAllForModule?.(defs) ?? {};
+        const merged: HttpClientConfig = { ...discovered, ...options, logger: options.logger ?? context?.logger };
+        return new HttpClient(context, merged);
     }
 
     /**
@@ -96,9 +98,9 @@ export class HttpClient {
         const requestConfig: AxiosRequestConfig = {
             method,
             url,
-            timeout: options.timeout || this.config.timeout,
+            timeout: options.timeout ?? this.config.timeout,
             headers: {
-                'User-Agent': options.userAgent || this.config.userAgent,
+                'User-Agent': options.userAgent ?? this.config.userAgent,
                 ...options.headers
             },
             params: options.params,

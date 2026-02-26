@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { init } from "../../src/init/index.js";
-import { fileDatabaseInit } from "../../src/filedatabase.js";
+import { FileDatabase } from "../../src/filedatabase.js";
 import chalk from "chalk";
 
 // npx tsx examples/filestore/write-with-metadata.ts --data="first listing" --ListingId=1
@@ -35,7 +35,7 @@ const flow = async (context) => {
     logger.info("");
 
     // Initialize FileDatabase with non-versioned mode
-    const fileDb = fileDatabaseInit(context, {
+    const fileDb = FileDatabase.init(context, {
         basePath,
         namespace,
         tableName,

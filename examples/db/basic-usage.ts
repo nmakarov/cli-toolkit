@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { init } from "../../src/init/index.js";
-import { dbInit } from "../../src/db.js";
+import { Db } from "../../src/db.js";
 import chalk from "chalk";
 
 // Run with: npx tsx examples/db/basic-usage.ts
@@ -10,7 +10,7 @@ import chalk from "chalk";
 // Db Basic Usage - demonstrates low-level SQL database operations with Knex
 //
 // This example shows:
-// - Using dbInit() with context (new pattern)
+// - Using Db.init() with context (module pattern)
 // - Using db() directly like a Knex instance: db('table').select()
 // - Accessing Knex methods: db.schema, db.raw, db.transaction()
 // - Connection management: connect(), disconnect(), testConnection()
@@ -24,22 +24,19 @@ const flow = async (context) => {
     logger.info(chalk.yellow("=".repeat(50)));
     logger.info("");
 
-    // Example 1: Using dbInit with context (new pattern - auto-connects)
-    logger.info(chalk.bold.green("✓ Example 1: Using dbInit with context"));
+    // Example 1: Using Db.init with context (module pattern - auto-connects)
+    logger.info(chalk.bold.green("✓ Example 1: Using Db.init with context"));
     logger.info(chalk.dim("─".repeat(50)));
-    logger.info("  dbInit() can read from params (dbConnectionString or dbName)");
-    logger.info("  or accept a second parameter (connection string or dbName)");
-    logger.info("  and automatically connects to the database");
+    logger.info("  Db.init() can read from params (getAllForModule('db', defs)) or accept a second parameter");
+    logger.info("  (connection string or dbName) and automatically connects to the database");
     logger.info("");
     
-    // Option 1: Use dbInit(context) - reads from params
-    // Option 2: Use dbInit(context, 'dbName') - resolves dbName to dbConnectionString${Name}
-    // Option 3: Use dbInit(context, 'postgresql://...') - direct connection string
+    // Option 1: Db.init(context) - reads from params
+    // Option 2: Db.init(context, 'dbName') - resolves dbName to dbConnectionString${Name}
+    // Option 3: Db.init(context, 'postgresql://...') - direct connection string
     const connectionString = process.env.DB_CONNECTION_STRING || "postgresql://root:root@localhost:6032/mlsfarm";
     
-    // For this example, we'll use dbInit with a direct connection string
-    // In real usage, you'd use dbInit(context) and set dbConnectionString param
-    const db = await dbInit(context, connectionString);
+    const db = await Db.init(context, connectionString);
 
     try {
         // dbFindAndConnect already connected, so we skip the connect step
@@ -109,8 +106,8 @@ const flow = async (context) => {
         logger.info(chalk.green("🎉 Db demonstration completed!"));
         logger.info("");
         logger.info(chalk.dim("💡 Key Features Demonstrated:"));
-        logger.info(chalk.dim("  • dbInit() with context (new pattern)"));
-        logger.info(chalk.dim("  • dbInit(context, dbNameOrConnectionString) - optional second parameter"));
+        logger.info(chalk.dim("  • Db.init() with context (module pattern)"));
+        logger.info(chalk.dim("  • Db.init(context, dbNameOrConnectionString) - optional second parameter"));
         logger.info(chalk.dim("  • Database name resolution (dbName -> dbConnectionString${Name})"));
         logger.info(chalk.dim("  • Dedicated dbConnect() function for better error handling"));
         logger.info(chalk.dim("  • Automatic cleanup registration"));

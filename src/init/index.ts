@@ -17,7 +17,7 @@ import { EventEmitter } from "events";
  * Components are added as they're created
  */
 interface PartialContext {
-    args: Args;
+    args?: Args;
     params?: Params;
     logger?: any;
     emitter: EventEmitter;
@@ -48,15 +48,8 @@ function extractComponentOptions(opts: InitOptions, componentName: string): Reco
  * Uses staged initialization to handle circular dependencies
  */
 function setup(opts: InitOptions = {}): Context {
-    // Stage 1: Initialize Args (no dependencies)
-    const args = Args.init({
-        overrides: opts.overrides || {},
-        defaults: opts.defaults || {},
-    });
-
-    // Stage 2: Create partial context with Args
+    // Stage 1: Create partial context first (Args will register its cleanup on it)
     const partialContext: PartialContext = {
-        args,
         emitter: new EventEmitter(),
         isStop: () => false,
         cleanupFunctions: [],
@@ -64,6 +57,13 @@ function setup(opts: InitOptions = {}): Context {
             partialContext.cleanupFunctions.push(fn);
         },
     };
+
+    // Stage 2: Initialize Args with partial context so it can register unused-args cleanup
+    const args = Args.init(partialContext as any, {
+        overrides: opts.overrides || {},
+        defaults: opts.defaults || {},
+    });
+    partialContext.args = args;
 
     // Stage 3: Initialize Params with partial context
     const params = Params.init(partialContext as any, opts.overrides || {});
@@ -172,8 +172,10 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
         // Setup modules (future feature)
         context = await setupModules(context, opts);
 
-        // Check for --stopAfter=init
+        // Resolve params used by init (stopAfter, stopAllowance) early
         const stopAfter = context.args.get("stopAfter");
+        const stopAllowance = context.params.get("stopAllowance", "number default 5");
+
         if (stopAfter === "init") {
             printAllParameters(context);
             process.exit(0);
@@ -186,17 +188,8 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
                 process.exit(2);
             }
             stop = true;
-            
-            // Get stop allowance from params
-            let allowance = 5; // default
-            try {
-                allowance = context!.params.get("stopAllowance", "number default 5");
-            } catch {
-                // Use default if not provided
-            }
-            
-            context!.logger.info(`>> emitting stop with allowance ${allowance}`);
-            context!.emitter.emit("stop", allowance);
+            context!.logger.info(`>> emitting stop with allowance ${stopAllowance}`);
+            context!.emitter.emit("stop", stopAllowance);
         });
 
         // Execute the flow function
@@ -236,12 +229,6 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
                 } catch (error) {
                     context.logger.warn("[cleanup] error in cleanup function:", error);
                 }
-            }
-
-            // Warn about unused CLI args
-            const unusedArgs = context.args.getUnused();
-            if (unusedArgs.length > 0) {
-                context.logger.warn("Unused CLI args:", unusedArgs.join(", "));
             }
         }
     }

@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { init, setupContext } from "../index.js";
 import { ParamError, InitError } from "../../errors.js";
+import { Logger } from "../../logger/index.js";
 
 describe("Init CI Tests", () => {
     let originalExitCode: number | undefined;
@@ -191,6 +192,47 @@ describe("Init CI Tests", () => {
 
         expect(typeof receivedContext.isStop).toBe("function");
         expect(receivedContext.isStop()).toBe(false);
+    });
+
+    it("setupContext with overrides and defaults", () => {
+        const context = setupContext({
+            overrides: { overrideKey: "overrideVal" },
+            defaults: { defaultKey: "defaultVal" },
+            silent: true,
+        });
+        expect(context.args.get("overrideKey")).toBe("overrideVal");
+        expect(context.args.get("defaultKey")).toBe("defaultVal");
+    });
+
+    it("setupModules logs when modules option is provided", async () => {
+        const flow = async (context: any) => {
+            expect(context.logger).toBeDefined();
+        };
+        const debugSpy = vi.spyOn(Logger.prototype, "debug").mockImplementation(() => {});
+        await init(flow, { modules: ["db", "screen"], silent: true });
+        expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining("setupModules"));
+        debugSpy.mockRestore();
+    });
+
+    it("runs cleanup when flow throws", async () => {
+        const cleanupOrder: number[] = [];
+        const flow = async (context: any) => {
+            context.registerCleanup(() => cleanupOrder.push(1));
+            throw new Error("flow error");
+        };
+        await init(flow, { silent: true });
+        expect(cleanupOrder).toEqual([1]);
+    });
+
+    it("--stopAfter=init prints params and exits", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as any);
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        const flow = async () => {};
+        await init(flow, { overrides: { stopAfter: "init" }, silent: true });
+        expect(exitSpy).toHaveBeenCalledWith(0);
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Figured Parameters"));
+        exitSpy.mockRestore();
+        logSpy.mockRestore();
     });
 });
 

@@ -45,7 +45,12 @@ export class Args {
     private configsLoaded: string[] = [];
     private env: string = "local";
 
-    constructor(config: ArgsConfig = {}) {
+    constructor(contextOrConfig: any = {}, config?: ArgsConfig) {
+        // Support (context, config) or (config) for backward compatibility
+        const hasContext = config !== undefined;
+        const configToUse: ArgsConfig = hasContext ? (config ?? {}) : (contextOrConfig ?? {});
+        const context = hasContext ? contextOrConfig : undefined;
+
         // Set defaults first
         this.aliases = {};
         this.overrides = {};
@@ -53,12 +58,12 @@ export class Args {
         this.prefixes = ["not", "no"];
 
         // Apply configuration
-        if (Object.keys(config).length > 0) {
-            this.configure(config);
+        if (Object.keys(configToUse).length > 0) {
+            this.configure(configToUse);
         }
 
         // Parse arguments first to get environment
-        const args = config.args || process.argv.slice(2);
+        const args = configToUse.args || process.argv.slice(2);
         this.parseArgs(args);
 
         // Set environment from parsed args
@@ -72,6 +77,16 @@ export class Args {
 
         // Check for conflicts (short + long form of same option)
         this.checkConflicts();
+
+        // Register cleanup to warn about unused CLI args on exit (when context has registerCleanup)
+        if (context && typeof context.registerCleanup === "function") {
+            context.registerCleanup((ctx: any) => {
+                const unusedArgs = ctx.args.getUnused();
+                if (unusedArgs.length > 0) {
+                    ctx.logger.warn("Unused CLI args:", unusedArgs.join(", "));
+                }
+            });
+        }
     }
 
     /**
@@ -96,12 +111,15 @@ export class Args {
     }
 
     /**
-     * Initialize Args instance
-     * Note: Args is special - it's initialized first, so it can't take context
-     * This static method is for consistency with other components
+     * Initialize Args instance.
+     * Args.init(context, config) when used from init/setup: context has registerCleanup, Args registers unused-args cleanup.
+     * Args.init(config) for standalone use (no cleanup).
      */
-    static init(config: ArgsConfig = {}): Args {
-        return new Args(config);
+    static init(contextOrConfig?: any, config?: ArgsConfig): Args {
+        if (config !== undefined) {
+            return new Args(contextOrConfig, config);
+        }
+        return new Args(contextOrConfig ?? {});
     }
 
     /**
@@ -351,6 +369,39 @@ export class Args {
         if (lcKey === "env" && process.env.NODE_ENV !== undefined) {
             return process.env.NODE_ENV;
         }
+
+        return undefined;
+    }
+
+    /**
+     * Return which layer provided the value for get(key): overrides, cli, config, env, or default.
+     * Does not add key to usedKeys. Use after get(key) when you need the origin.
+     */
+    getSource(key: string): "overrides" | "cli" | "config" | "env" | "default" | undefined {
+        const resolvedKey = this.aliases[key] || key;
+        const lcKey = resolvedKey.toLowerCase();
+
+        const overrideKey = Object.keys(this.overrides).find(k => k.toLowerCase() === lcKey);
+        if (overrideKey !== undefined) return "overrides";
+
+        const lcKeyWithEnv = `${lcKey}${this.env ? `_${this.env.toLowerCase()}` : ""}`;
+        if (this.env && this.args[lcKeyWithEnv] !== undefined) return "cli";
+        if (this.args[lcKey] !== undefined) return "cli";
+
+        const configKey = Object.keys(this.configValues).find(k => k.toLowerCase() === lcKey);
+        if (configKey !== undefined) return "config";
+
+        const envKey = this.toEnvKey(resolvedKey);
+        const envKeyWithEnv = `${envKey}${this.env ? `_${this.env.toUpperCase()}` : ""}`;
+        const envSpecificKey = Object.keys(process.env).find(k => this.env && k.toUpperCase() === envKeyWithEnv);
+        const envKeyFound = Object.keys(process.env).find(k => k.toUpperCase() === envKey);
+        const envKeyAlt = envKey.replace(/_([0-9])/g, "$1");
+        const envKeyAltFound = !envKeyFound ? Object.keys(process.env).find(k => k.toUpperCase() === envKeyAlt) : null;
+        if (envSpecificKey || envKeyFound || envKeyAltFound) return "env";
+
+        const defaultKey = Object.keys(this.defaults).find(k => k.toLowerCase() === lcKey);
+        if (defaultKey !== undefined) return "default";
+        if (lcKey === "env" && process.env.NODE_ENV !== undefined) return "env";
 
         return undefined;
     }

@@ -37,3 +37,17 @@ export class ControlFlowError extends Error {
     }
 }
 
+export class HttpClientError extends FrameworkError {
+    constructor(message: string, public readonly cause?: Error) {
+        super(message);
+        this.name = "HttpClientError";
+    }
+}
+
+export class FileDatabaseError extends FrameworkError {
+    constructor(message: string) {
+        super(message);
+        this.name = "FileDatabaseError";
+    }
+}
+

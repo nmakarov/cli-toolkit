@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { Db } from "../index.js";
+import { Db, dbConnect, dbFindAndConnect, dbInit } from "../index.js";
 import { ParamError } from "../../errors.js";
 
 // Mock knex - must be hoisted, cannot reference external functions
@@ -821,6 +821,150 @@ describe("Db CI", () => {
                     queryError
                 );
             }
+        });
+    });
+
+    describe("dbConnect / dbFindAndConnect / dbInit", () => {
+        const defaultParams = {
+            name: "default",
+            testDbConnection: false,
+            poolMin: 2,
+            poolMax: 10,
+            acquireConnectionTimeout: 10000,
+            sslRejectUnauthorized: false,
+        };
+
+        it("dbConnect creates Db, connects, registers cleanup", async () => {
+            const registerCleanup = vi.fn();
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue(defaultParams) },
+                logger: mockLogger,
+                registerCleanup,
+            } as any;
+            const connected = await dbConnect(context, "postgresql://user:pass@localhost:5432/testdb", undefined, false);
+            expect(connected).toBeDefined();
+            expect(connected.isConnectedToDb()).toBe(true);
+            expect(registerCleanup).toHaveBeenCalled();
+        });
+
+        it("dbFindAndConnect with connection string", async () => {
+            const registerCleanup = vi.fn();
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue(defaultParams) },
+                logger: mockLogger,
+                registerCleanup,
+            } as any;
+            const connected = await dbFindAndConnect(context, "postgresql://user:pass@localhost:5432/testdb");
+            expect(connected).toBeDefined();
+            expect(connected.isConnectedToDb()).toBe(true);
+        });
+
+        it("dbFindAndConnect with dbName resolves param and connects", async () => {
+            const registerCleanup = vi.fn();
+            const context = {
+                params: {
+                    getAllForModule: vi.fn()
+                        .mockReturnValueOnce({ dbName: "local", dbConnectionString: undefined, dbProfile: false })
+                        .mockReturnValue(defaultParams),
+                    get: vi.fn().mockResolvedValue("postgresql://user:pass@localhost:5432/localdb"),
+                },
+                logger: mockLogger,
+                registerCleanup,
+            } as any;
+            const connected = await dbFindAndConnect(context, "local");
+            expect(connected).toBeDefined();
+            expect(context.params.get).toHaveBeenCalledWith("dbConnectionStringLocal", "string");
+        });
+
+        it("dbFindAndConnect with no second arg reads from params", async () => {
+            const registerCleanup = vi.fn();
+            const context = {
+                params: {
+                    getAllForModule: vi.fn()
+                        .mockReturnValueOnce({ dbName: undefined, dbConnectionString: "postgresql://user:pass@localhost:5432/fromparams", dbProfile: false })
+                        .mockReturnValue(defaultParams),
+                },
+                logger: mockLogger,
+                registerCleanup,
+            } as any;
+            const connected = await dbFindAndConnect(context);
+            expect(connected).toBeDefined();
+            expect(connected.isConnectedToDb()).toBe(true);
+        });
+
+        it("dbFindAndConnect throws when neither dbName nor connection string", async () => {
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue({ dbName: undefined, dbConnectionString: undefined, dbProfile: false }) },
+                logger: mockLogger,
+                registerCleanup: vi.fn(),
+            } as any;
+            await expect(dbFindAndConnect(context)).rejects.toThrow(ParamError);
+        });
+
+        it("dbFindAndConnect throws when dbName given but param missing", async () => {
+            const context = {
+                params: {
+                    getAllForModule: vi.fn().mockReturnValueOnce({ dbName: "local", dbConnectionString: undefined, dbProfile: false }),
+                    get: vi.fn().mockResolvedValue(undefined),
+                },
+                logger: mockLogger,
+                registerCleanup: vi.fn(),
+            } as any;
+            await expect(dbFindAndConnect(context, "local")).rejects.toThrow(ParamError);
+            await expect(dbFindAndConnect(context, "local")).rejects.toThrow("cannot find dbConnectionString");
+        });
+
+        it("dbInit delegates to dbFindAndConnect", async () => {
+            const registerCleanup = vi.fn();
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue(defaultParams) },
+                logger: mockLogger,
+                registerCleanup,
+            } as any;
+            const connected = await dbInit(context, "postgresql://user:pass@localhost:5432/testdb");
+            expect(connected).toBeDefined();
+        });
+
+        it("Db.init delegates to dbFindAndConnect", async () => {
+            const registerCleanup = vi.fn();
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue(defaultParams) },
+                logger: mockLogger,
+                registerCleanup,
+            } as any;
+            const connected = await Db.init(context, "postgresql://user:pass@localhost:5432/testdb");
+            expect(connected).toBeDefined();
+        });
+
+        it("dbConnect rethrows ParamError", async () => {
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue(defaultParams) },
+                logger: mockLogger,
+                registerCleanup: vi.fn(),
+            } as any;
+            mockKnex.mockImplementationOnce(() => {
+                throw new ParamError("bad param");
+            });
+            await expect(dbConnect(context, "postgresql://u:p@h:5432/d")).rejects.toThrow(ParamError);
+        });
+
+        it("dbConnect wraps non-ParamError in ParamError", async () => {
+            const context = {
+                params: { getAllForModule: vi.fn().mockReturnValue(defaultParams) },
+                logger: mockLogger,
+                registerCleanup: vi.fn(),
+            } as any;
+            mockKnex.mockImplementationOnce(() => {
+                throw new Error("connection refused");
+            });
+            let caught: any;
+            try {
+                await dbConnect(context, "postgresql://u:p@h:5432/d");
+            } catch (e) {
+                caught = e;
+            }
+            expect(caught).toBeInstanceOf(ParamError);
+            expect(caught.message).toContain("connection refused");
         });
     });
 });

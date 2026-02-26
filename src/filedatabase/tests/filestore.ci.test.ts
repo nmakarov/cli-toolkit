@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { FileDatabase, FileDatabaseError, fileDatabaseInit } from "../index.js";
+import { FileDatabase, FileDatabaseError } from "../index.js";
 import { ParamError } from "../../errors.js";
 import { Logger } from "../../logger/index.js";
 import { Args } from "../../args/index.js";
@@ -549,7 +549,7 @@ describe("FileDatabase CI", () => {
         expect(() => store.getLatestVersion()).not.toThrow(); // Should not throw since it's versioned by default
     });
 
-    describe("fileDatabaseInit", () => {
+    describe("FileDatabase.init", () => {
         it("creates FileDatabase instance from context with params", () => {
             const testArgs = new Args({
                 args: [],
@@ -573,7 +573,7 @@ describe("FileDatabase CI", () => {
                 registerCleanup: () => {},
             };
 
-            const store = fileDatabaseInit(context);
+            const store = FileDatabase.init(context);
             expect(store).toBeDefined();
             expect(store.getCurrentVersion()).toBeNull();
         });
@@ -599,7 +599,7 @@ describe("FileDatabase CI", () => {
                 registerCleanup: () => {},
             };
 
-            const store = fileDatabaseInit(context, {
+            const store = FileDatabase.init(context, {
                 namespace: "override-namespace",
                 tableName: "override-table",
                 pageSize: 500,
@@ -607,7 +607,7 @@ describe("FileDatabase CI", () => {
             expect(store).toBeDefined();
         });
 
-        it("writes and reads data using fileDatabaseInit", async () => {
+        it("writes and reads data using FileDatabase.init", async () => {
             const testArgs = new Args({
                 args: [],
                 overrides: {
@@ -628,7 +628,7 @@ describe("FileDatabase CI", () => {
                 registerCleanup: () => {},
             };
 
-            const store = fileDatabaseInit(context);
+            const store = FileDatabase.init(context);
             const testData = Array.from({ length: 25 }, (_, i) => ({ id: i + 1, name: `Item ${i + 1}` }));
 
             await store.write(testData);

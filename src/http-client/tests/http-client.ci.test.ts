@@ -28,6 +28,18 @@ import axios from 'axios';
 // Control whether to use real timeouts or fake timers for faster CI tests
 const USE_REAL_TIMEOUTS = process.env.HTTP_CLIENT_REAL_TIMEOUTS === 'true';
 
+/** Full config (matches defs defaults) when creating client without init() */
+const FULL_CONFIG = {
+    timeout: 5000,
+    retryCount: 2,
+    retryDelay: 1000,
+    maxRetryDelay: 30000,
+    retryJitter: 0.1,
+    userAgent: 'HttpClient/v1.0',
+    validateSSL: true,
+    maxRedirects: 5,
+};
+
 describe("HttpClient CI", () => {
     let client: HttpClient;
     let mockAxiosInstance: any;
@@ -59,15 +71,14 @@ describe("HttpClient CI", () => {
         };
         (axios.create as any).mockReturnValue(mockAxiosInstance);
 
-        client = new HttpClient({
-            timeout: 5000,
-            retryCount: 2,
-            logger: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() }
-        });
+        client = new HttpClient(
+            { logger: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() } },
+            { ...FULL_CONFIG, timeout: 5000, retryCount: 2 }
+        );
     });
 
     it("creates HttpClient instance with default config", () => {
-        const defaultClient = new HttpClient();
+        const defaultClient = new HttpClient({}, FULL_CONFIG);
         expect(defaultClient).toBeDefined();
         expect(axios.create).toHaveBeenCalled();
     });
@@ -77,9 +88,8 @@ describe("HttpClient CI", () => {
             timeout: 5000,
             validateStatus: expect.any(Function),
             maxRedirects: 5,
-            headers: {
-                'User-Agent': 'HttpClient/v1.0'
-            }
+            headers: { 'User-Agent': 'HttpClient/v1.0' },
+            httpsAgent: undefined
         });
     });
 
@@ -334,7 +344,7 @@ describe("HttpClient CI", () => {
 
     it("handles debug mode", async () => {
         const logger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn() };
-        const debugClient = new HttpClient({ logger });
+        const debugClient = new HttpClient({ logger }, { ...FULL_CONFIG });
 
         mockAxiosInstance.request.mockResolvedValue({
             status: 200,
@@ -711,30 +721,24 @@ describe("HttpClient CI", () => {
     });
 
     it("handles null config gracefully", () => {
-        const nullClient = new HttpClient(null as any);
+        const nullClient = new HttpClient(null as any, FULL_CONFIG);
         expect(nullClient).toBeDefined();
     });
 
     it("handles custom base URL", () => {
-        const baseUrlClient = new HttpClient({
-            baseURL: 'https://api.example.com'
-        });
+        const baseUrlClient = new HttpClient({}, { ...FULL_CONFIG, baseURL: 'https://api.example.com' });
 
         expect(baseUrlClient).toBeDefined();
     });
 
     it("handles custom user agent", () => {
-        const uaClient = new HttpClient({
-            userAgent: 'CustomAgent/1.0'
-        });
+        const uaClient = new HttpClient({}, { ...FULL_CONFIG, userAgent: 'CustomAgent/1.0' });
 
         expect(uaClient).toBeDefined();
     });
 
     it("handles SSL validation disable", () => {
-        const sslClient = new HttpClient({
-            validateSSL: false
-        });
+        const sslClient = new HttpClient({}, { ...FULL_CONFIG, validateSSL: false });
 
         expect(sslClient).toBeDefined();
     });

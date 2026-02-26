@@ -31,14 +31,18 @@ export interface ParamsOptions {
     [key: string]: any;
 }
 
+/** Origin of a parameter value: CLI args, env var, config file, options/overrides, or definition default */
+export type ParamSource = "cli" | "env" | "config" | "options" | "default";
+
 /**
- * Tracked parameter information for --stopAfter=init
+ * Tracked parameter information for --stopAfter=init and --showUsedParams
  */
 interface TrackedParam {
     key: string;
     definition: ParamDefinition;
     value: any;
-    source: "cli" | "options" | "default";
+    source: ParamSource;
+    module: string;
 }
 
 /**
@@ -48,11 +52,15 @@ interface TrackedParam {
 export class Params {
     private context: any; // Partial context during initialization
     private params: Record<string, any> = {};
+    private paramSources: Record<string, ParamSource> = {};
     private definitions: Record<string, any> = {};
     private args: ArgsInstance;
     private paramSetters: ParamSetter[] = [];
     private paramGetters: ParamGetter[] = [];
     private trackedParams: TrackedParam[] = [];
+    private _currentModule: string = "script";
+    /** Resolved early in constructor so cleanup does not read params lazily */
+    private _showUsedParams: boolean = false;
 
     constructor(context: any, options: ParamsOptions = {}) {
         // Context might be partial during initialization
@@ -63,6 +71,43 @@ export class Params {
         if (Object.keys(options).length > 0) {
             this.configure(options);
         }
+
+        // Resolve showUsedParams early (fail fast, consistent with "params figured in init")
+        this._showUsedParams = this.get("showUsedParams", "boolean default false");
+
+        if (context && typeof context.registerCleanup === "function") {
+            context.registerCleanup((ctx: any) => {
+                if (!ctx.params.getShowUsedParams()) return;
+                const byModule = ctx.params.getFiguredByModule();
+                const modules = Object.keys(byModule).sort();
+                if (modules.length === 0) return;
+                const logger = ctx.logger;
+                logger.debug("[Params]: list of used params:");
+                type Entry = { value: any; source: ParamSource };
+                if (typeof logger.highlight !== "function") {
+                    for (const mod of modules) {
+                        logger.debug(`  [${mod}]`);
+                        for (const [key, entry] of Object.entries(byModule[mod]) as [string, Entry][]) {
+                            logger.debug(`    ${key}: ${JSON.stringify(entry.value)} (${entry.source})`);
+                        }
+                    }
+                    return;
+                }
+                for (const mod of modules) {
+                    logger.debug(`  [${mod}]`);
+                    for (const [key, entry] of Object.entries(byModule[mod]) as [string, Entry][]) {
+                        const valueStr = JSON.stringify(entry.value);
+                        const display = entry.source === "default" ? valueStr : logger.highlight(valueStr);
+                        logger.debug(`    ${key}: ${display} (${entry.source})`);
+                    }
+                }
+            });
+        }
+    }
+
+    /** Whether --showUsedParams was requested (resolved in constructor). */
+    getShowUsedParams(): boolean {
+        return this._showUsedParams;
     }
 
     /**
@@ -85,14 +130,15 @@ export class Params {
     }
 
     /**
-     * Track a parameter request for --stopAfter=init feature
+     * Track a parameter request for --stopAfter=init and --showUsedParams
      */
-    private trackParam(key: string, definition: ParamDefinition, value: any, source: "cli" | "options" | "default"): void {
+    private trackParam(key: string, definition: ParamDefinition, value: any, source: ParamSource, moduleName?: string): void {
         this.trackedParams.push({
             key,
             definition,
             value,
-            source
+            source,
+            module: moduleName ?? this._currentModule,
         });
     }
 
@@ -104,12 +150,12 @@ export class Params {
     }
 
     /**
-     * Get all figured parameters as a record
+     * Get all figured parameters as a record (flat, last occurrence per key)
      * Returns all parameters that were collected during initialization,
      * whether from CLI args, options, or defaults
      */
-    getAllFigured(): Record<string, { value: any; source: "cli" | "options" | "default" }> {
-        const result: Record<string, { value: any; source: "cli" | "options" | "default" }> = {};
+    getAllFigured(): Record<string, { value: any; source: ParamSource }> {
+        const result: Record<string, { value: any; source: ParamSource }> = {};
         for (const param of this.trackedParams) {
             result[param.key] = {
                 value: param.value,
@@ -117,6 +163,20 @@ export class Params {
             };
         }
         return result;
+    }
+
+    /**
+     * Get figured parameters grouped by module name.
+     * Same param can appear in multiple modules (e.g. source, resource).
+     */
+    getFiguredByModule(): Record<string, Record<string, { value: any; source: ParamSource }>> {
+        const byModule: Record<string, Record<string, { value: any; source: ParamSource }>> = {};
+        for (const param of this.trackedParams) {
+            const mod = param.module;
+            if (!byModule[mod]) byModule[mod] = {};
+            byModule[mod][param.key] = { value: param.value, source: param.source };
+        }
+        return byModule;
     }
 
     /**
@@ -249,11 +309,10 @@ export class Params {
         }
         
         // Always call args.get() to mark the key as used, even if it doesn't exist
-        // This ensures flags are marked as used regardless of when they're parsed
         const valFromArgs = this.args.get(key);
         const valFromParams = this.params[key];
 
-        let source: "cli" | "options" | "default" = "default";
+        let source: ParamSource = "default";
         let value: any;
 
         if (valFromGetters !== undefined && valFromGetters !== null) {
@@ -261,18 +320,21 @@ export class Params {
             source = "options";
         } else if (valFromArgs !== undefined && valFromArgs !== null) {
             value = this.validate(key, valFromArgs, def);
-            source = "cli";
+            const argsSource = (this.args as { getSource?(k: string): string }).getSource?.(key);
+            if (argsSource === "overrides") source = "options";
+            else if (argsSource === "cli" || argsSource === "env" || argsSource === "config") source = argsSource;
+            else if (argsSource === "default") source = "default";
+            else source = "cli";
         } else if (valFromParams !== undefined && valFromParams !== null) {
             value = this.validate(key, valFromParams, def);
-            source = "options";
+            source = this.paramSources[key] ?? "options";
         } else {
-            // Use default from definition - Joi will apply default when value is undefined
-            // We need to pass undefined explicitly so Joi can apply the default
             value = this.validate(key, undefined, def);
             source = "default";
         }
 
-        // Track parameter for --stopAfter=init
+        this.paramSources[key] = source;
+        // Track parameter for --stopAfter=init and --showUsedParams
         this.trackParam(key, definition || "string", value, source);
 
         if (value !== undefined && def.values && !def.values.includes(value)) {
@@ -298,20 +360,65 @@ export class Params {
     }
 
     /**
-     * Get all parameters from definitions
-     * Processes parameters left-to-right to support cross-parameter references
+     * Get all parameters from definitions (main script).
+     * Same as getAllForModule("script", defs). Processes left-to-right for cross-parameter references.
      */
     getAll(defs: Record<string, ParamDefinition>): Record<string, any> {
-        const res: Record<string, any> = {};
-        for (const [k, def] of Object.entries(defs)) {
-            const value = this.get(k, def);
-            res[k] = value;
-            // Store validated value in params so subsequent params can reference it
-            if (value !== undefined) {
-                this.params[k] = value;
-            }
+        return this.getAllForModule("script", defs);
+    }
+
+    /**
+     * Get all parameters from definitions for a given module name.
+     * Figured params are grouped by module when using --showUsedParams.
+     * Processes parameters left-to-right to support cross-parameter references.
+     * If moduleName is omitted, it is inferred from the caller's file path (directory name under src/).
+     */
+    getAllForModule(moduleNameOrDefs: string | Record<string, ParamDefinition>, defs?: Record<string, ParamDefinition>): Record<string, any> {
+        let moduleName: string;
+        let definitions: Record<string, ParamDefinition>;
+        if (defs !== undefined) {
+            moduleName = moduleNameOrDefs as string;
+            definitions = defs;
+        } else {
+            definitions = moduleNameOrDefs as Record<string, ParamDefinition>;
+            moduleName = this._inferModuleNameFromStack();
         }
-        return res;
+        const prev = this._currentModule;
+        this._currentModule = moduleName;
+        try {
+            const res: Record<string, any> = {};
+            for (const [k, def] of Object.entries(definitions)) {
+                const value = this.get(k, def);
+                res[k] = value;
+                if (value !== undefined) {
+                    this.params[k] = value;
+                }
+            }
+            return res;
+        } finally {
+            this._currentModule = prev;
+        }
+    }
+
+    /**
+     * Infer module name from call stack: first caller outside params/index gives path like .../src/<moduleName>/...
+     */
+    private _inferModuleNameFromStack(): string {
+        const stack = new Error().stack;
+        if (!stack) return "script";
+        const lines = stack.split("\n");
+        const paramsIndexPath = "params" + (typeof process !== "undefined" && process.platform === "win32" ? "\\" : "/") + "index.";
+        for (const line of lines) {
+            const parenMatch = line.match(/\(([^)]+)\)/);
+            if (!parenMatch) continue;
+            const parts = parenMatch[1].split(":");
+            if (parts.length < 3) continue;
+            const path = parts.slice(0, -2).join(":").replace(/^file:\/\//, "");
+            if (!path || path.includes(paramsIndexPath)) continue;
+            const srcMatch = path.match(/[/\\]src[/\\]([^/\\]+)(?:[/\\]|$)/);
+            if (srcMatch) return srcMatch[1];
+        }
+        return "script";
     }
 
     /**

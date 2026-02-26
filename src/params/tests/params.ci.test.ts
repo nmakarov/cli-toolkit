@@ -167,6 +167,34 @@ describe("Params CI", () => {
         expect(instance).toBeInstanceOf(Params);
         expect(instance.get("port", "number")).toBe(8080);
     });
+
+    it("getAllForModule tracks params by module", () => {
+        const params = new Params({ args: argsStub });
+        const scriptVals = params.getAllForModule("script", { port: "number", fromArgs: "string" });
+        expect(scriptVals.port).toBe(8080);
+        expect(scriptVals.fromArgs).toBe("fromArgsValue");
+        const modVals = params.getAllForModule("my-module", { port: "number" });
+        expect(modVals.port).toBe(8080);
+        const byModule = params.getFiguredByModule();
+        expect(byModule.script).toBeDefined();
+        expect(byModule["my-module"]).toBeDefined();
+        expect(byModule.script.port).toEqual({ value: 8080, source: expect.any(String) });
+    });
+
+    it("getFiguredByModule and getTrackedParams", () => {
+        const params = new Params({ args: argsStub });
+        params.get("port", "number");
+        params.getAllForModule("a", { fromArgs: "string" });
+        const tracked = params.getTrackedParams();
+        expect(tracked.length).toBeGreaterThanOrEqual(2);
+        expect(tracked.some((p) => p.module === "script")).toBe(true);
+        expect(tracked.some((p) => p.module === "a")).toBe(true);
+        const figured = params.getAllFigured();
+        expect(figured.port).toBeDefined();
+        params.clearTrackedParams();
+        expect(params.getTrackedParams()).toHaveLength(0);
+    });
+
 });
 
 

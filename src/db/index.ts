@@ -404,6 +404,14 @@ export class Db {
     isConnectedToDb(): boolean {
         return this.isConnected && this.knexInstance !== null;
     }
+
+    /**
+     * Initialize Db with context (connects and registers disconnect cleanup).
+     * Params are read via getAllForModule("db", defs). Same as dbInit(context, dbNameOrConnectionString).
+     */
+    static async init(context: Context, dbNameOrConnectionString?: string): Promise<Db> {
+        return dbFindAndConnect(context, dbNameOrConnectionString);
+    }
 }
 
 /**
@@ -439,8 +447,8 @@ export async function dbConnect(
         sslRejectUnauthorized: 'boolean default false',
     };
     
-    const paramsConfig = context.params.getAll(defs);
-    
+    const paramsConfig = context.params.getAllForModule(defs);
+
     // Create config
     const config: DbConfig = {
         connectionString,
@@ -518,7 +526,7 @@ export async function dbFindAndConnect(
             dbProfile: 'boolean default false',
         };
         
-        const paramsConfig = context.params.getAll(defs);
+        const paramsConfig = context.params.getAllForModule(defs);
         dbName = paramsConfig.dbName;
         dbConnectionString = paramsConfig.dbConnectionString;
         dbProfile = paramsConfig.dbProfile;

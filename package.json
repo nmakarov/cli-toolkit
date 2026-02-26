@@ -32,6 +32,11 @@
       "import": "./dist/http-client.js",
       "require": "./dist/http-client.cjs"
     },
+    "./http-client2": {
+      "types": "./dist/http-client2.d.ts",
+      "import": "./dist/http-client2.js",
+      "require": "./dist/http-client2.cjs"
+    },
     "./mock-server": {
       "types": "./dist/mock-server.d.ts",
       "import": "./dist/mock-server.js",
@@ -75,7 +80,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:coverage:open": "vitest --coverage && open coverage/index.html",
-    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts src/filedatabase/tests/filestore.ci.test.ts src/filedatabase/tests/synopsis-functions.ci.test.ts src/http-client/tests/http-client.ci.test.ts src/mock-server/tests/mock-server.ci.test.ts src/db/tests/db.ci.test.ts src/utils/tests/format-utils.ci.test.ts src/utils/tests/date-utils.ci.test.ts src/utils/tests/crypto-utils.ci.test.ts src/utils/tests/fs-utils.ci.test.ts src/init/tests/init.ci.test.ts --coverage",
+    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts src/filedatabase/tests/filestore.ci.test.ts src/filedatabase/tests/synopsis-functions.ci.test.ts src/http-client/tests/http-client.ci.test.ts src/http-client2/tests/http-client2.ci.test.ts src/mock-server/tests/mock-server.ci.test.ts src/db/tests/db.ci.test.ts src/utils/tests/format-utils.ci.test.ts src/utils/tests/date-utils.ci.test.ts src/utils/tests/crypto-utils.ci.test.ts src/utils/tests/fs-utils.ci.test.ts src/utils/tests/os-utils.ci.test.ts src/init/tests/init.ci.test.ts --coverage",
     "test:args": "vitest run src/args/tests",
     "test:args:ci": "vitest run src/args/tests/args.ci.test.ts --coverage",
     "test:params": "vitest run src/params/tests",
@@ -93,6 +98,8 @@
     "test:http-client": "vitest run src/http-client/tests",
     "test:http-client:ci": "vitest run src/http-client/tests/http-client.ci.test.ts --coverage",
     "test:http-client:ci:real-timeouts": "HTTP_CLIENT_REAL_TIMEOUTS=true vitest run src/http-client/tests/http-client.ci.test.ts --coverage",
+    "test:http-client2": "vitest run src/http-client2/tests",
+    "test:http-client2:ci": "vitest run src/http-client2/tests/http-client2.ci.test.ts --coverage",
     "test:mock-server": "vitest run src/mock-server/tests",
     "test:mock-server:ci": "vitest run src/mock-server/tests/mock-server.ci.test.ts --coverage",
     "test:mock-server:coverage": "vitest run src/mock-server/tests --coverage",

@@ -87,13 +87,10 @@ describe("Logger CI", () => {
         const originalNODE_ENV = process.env.NODE_ENV;
         const originalConnected = (process as any).connected;
         
-        // Temporarily disable test environment checks and mock process.connected
         delete process.env.VITEST;
         delete process.env.NODE_ENV;
-        // @ts-expect-error - assigning mock for test
-        process.send = sendMock;
-        // @ts-expect-error - mocking process.connected for test
-        process.connected = true;
+        (process as any).send = sendMock;
+        (process as any).connected = true;
 
         try {
             const context = createTestContext();
@@ -102,21 +99,46 @@ describe("Logger CI", () => {
             expect(sendMock).toHaveBeenCalled();
             expect(consoleInfo).not.toHaveBeenCalled();
         } finally {
-            // @ts-expect-error - restore original type
-            process.send = originalSend;
-            // @ts-expect-error - restore original connected
-            process.connected = originalConnected;
-            if (originalVITEST !== undefined) {
-                process.env.VITEST = originalVITEST;
-            } else {
-                delete process.env.VITEST;
-            }
-            if (originalNODE_ENV !== undefined) {
-                process.env.NODE_ENV = originalNODE_ENV;
-            } else {
-                delete process.env.NODE_ENV;
-            }
+            (process as any).send = originalSend;
+            (process as any).connected = originalConnected;
+            if (originalVITEST !== undefined) process.env.VITEST = originalVITEST;
+            else delete process.env.VITEST;
+            if (originalNODE_ENV !== undefined) process.env.NODE_ENV = originalNODE_ENV;
+            else delete process.env.NODE_ENV;
         }
+    });
+
+    it("falls back to console when route is ipc but process not connected", () => {
+        const originalVITEST = process.env.VITEST;
+        const originalNODE_ENV = process.env.NODE_ENV;
+        const originalSend = process.send;
+        const originalConnected = (process as any).connected;
+        delete process.env.VITEST;
+        delete process.env.NODE_ENV;
+        (process as any).send = () => {};
+        (process as any).connected = false;
+
+        try {
+            const context = createTestContext();
+            const logger = new Logger(context, { route: "ipc" });
+            logger.info("fallback-ipc");
+            expect(consoleInfo).toHaveBeenCalledWith(expect.any(String));
+        } finally {
+            (process as any).send = originalSend;
+            (process as any).connected = originalConnected;
+            if (originalVITEST !== undefined) process.env.VITEST = originalVITEST;
+            else delete process.env.VITEST;
+            if (originalNODE_ENV !== undefined) process.env.NODE_ENV = originalNODE_ENV;
+            else delete process.env.NODE_ENV;
+        }
+    });
+
+    it("uses console when route is ipc in test environment (VITEST set)", () => {
+        // With VITEST set, ParentProcessTransport.write uses console.info to avoid IPC in workers
+        const context = createTestContext();
+        const logger = new Logger(context, { route: "ipc" });
+        logger.info("test-env-ipc");
+        expect(consoleInfo).toHaveBeenCalledWith(expect.any(String));
     });
 
     it("throttles progress output and computes elapsed/remaining", () => {

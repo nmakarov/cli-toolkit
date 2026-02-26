@@ -37,6 +37,8 @@ export interface Logger {
     response(operation: string, ...chunks: any[]): void;
     progress(message: string, progress: LoggerProgressOptions): void;
     setMode(mode: LoggerMode): void;
+    /** Returns a styled string (e.g. bright white) for highlighting; no chalk outside logger. */
+    highlight(text: string): string;
 }
 
 export type LevelName =

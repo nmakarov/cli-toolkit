@@ -26,17 +26,9 @@ import type {
 } from "./types.js";
 import { ensurePath, generateVersionName, getFileExtension, getFreeDiskSpace, bytesToHumanReadable, isTimestampFolder } from "./utils.js";
 import { detectDataType, serializeData, deserializeData } from "./serializers.js";
-import { ParamError } from "../errors.js";
+import { ParamError, FileDatabaseError } from "../errors.js";
 
-/**
- * FileDatabase Error class
- */
-export class FileDatabaseError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "FileDatabaseError";
-    }
-}
+export { FileDatabaseError };
 
 export class FileDatabase {
     private basePath: string;
@@ -75,7 +67,7 @@ export class FileDatabase {
             const context = contextOrConfig as Context;
             const opts = options || {};
             
-            // Get configuration from context.params (with defaults)
+            // Get configuration from context.params (module "filedatabase" for --showUsedParams grouping)
             const defs = {
                 basePath: "string default ./data",
                 namespace: "string default default",
@@ -83,21 +75,8 @@ export class FileDatabase {
                 maxVersions: "number default 5",
                 pageSize: "number default 5000",
             };
-            
-            const paramsConfig = context.params.getAll(defs);
-            
-            // Merge: params < options < explicit values
-            config = {
-                basePath: opts.basePath ?? paramsConfig.basePath,
-                namespace: opts.namespace ?? paramsConfig.namespace,
-                tableName: opts.tableName ?? paramsConfig.tableName ?? null,
-                versioned: opts.versioned ?? true,
-                maxVersions: opts.maxVersions ?? paramsConfig.maxVersions,
-                pageSize: opts.pageSize ?? paramsConfig.pageSize,
-                useMetadata: opts.useMetadata ?? true,
-                freeSpaceThreshold: opts.freeSpaceThreshold ?? 100 * 1024 * 1024,
-                logger: context.logger,
-            };
+            const discovered = context.params.getAllForModule(defs);
+            config = { ...discovered, ...opts, logger: context.logger } as FileDatabaseConfig;
         } else {
             // Legacy pattern: config object
             config = contextOrConfig as FileDatabaseConfig;
@@ -120,6 +99,14 @@ export class FileDatabase {
 
         // Initialize metadata
         this.metadata = this.getDefaultMetadata();
+    }
+
+    /**
+     * Initialize FileDatabase from context and options.
+     * Params are read via getAllForModule("filedatabase", defs) for --showUsedParams grouping.
+     */
+    static init(context: Context, options?: FileDatabaseOptions): FileDatabase {
+        return new FileDatabase(context, options ?? {});
     }
 
     /**
@@ -1332,11 +1319,4 @@ export function listSources(basePath: string): string[] {
         // Return empty array if can't read directory
         return [];
     }
-}
-
-export function fileDatabaseInit(
-    context: Context,
-    options: FileDatabaseOptions = {}
-): FileDatabase {
-    return new FileDatabase(context, options);
 }
