@@ -79,24 +79,21 @@ async function main() {
         };
 
         // Store mock responses
-        const filename1 = await mockServer.storeMock(
+        await mockServer.storeMock(
             'https://api.example.com/users/1',
             null,
             mockResponse1,
-            'getUser',
-            'Get User Profile'
+            'getUser'
         );
 
-        const filename2 = await mockServer.storeMock(
+        await mockServer.storeMock(
             'https://api.example.com/users',
             { name: 'Jane Smith', email: 'jane@example.com' },
             mockResponse2,
-            'createUser',
-            'Create New User'
+            'createUser'
         );
 
-        console.info(`  ${chalk.bold("Stored mock 1:")} ${chalk.white(filename1)}`);
-        console.info(`  ${chalk.bold("Stored mock 2:")} ${chalk.white(filename2)}`);
+        console.info(`  ${chalk.bold("Stored 2 mocks")}`);
         console.info("");
 
         // Example 3: Query stored mocks
@@ -175,15 +172,14 @@ async function main() {
             }
         };
 
-        const maskedFilename = await mockServer.storeMock(
+        await mockServer.storeMock(
             'https://api.example.com/user/profile',
             { api_key: 'sk-1234567890abcdef', password: 'secret123' },
             sensitiveResponse,
-            'getProfile',
-            'Get User Profile with Sensitive Data'
+            'getProfile'
         );
 
-        console.info(`  ${chalk.bold("Masked data stored as:")} ${chalk.white(maskedFilename)}`);
+        console.info(`  ${chalk.bold("Masked data stored")}`);
         console.info(`  ${chalk.bold("Sensitive fields masked with MD5 hashes")}`);
         console.info(`  ${chalk.dim("Original values are NOT stored - only hashes for matching")}`);
         console.info("");

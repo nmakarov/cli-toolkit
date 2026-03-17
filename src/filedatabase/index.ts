@@ -198,7 +198,7 @@ export class FileDatabase {
         const versions = await this.getVersions();
         while (versions.length > this.maxVersions) {
             const versionToDelete = path.resolve(this.getDestinationPath(), versions.shift()!);
-            this.logger.debug?.(`[FileDatabase] Deleting old version: ${versionToDelete}`);
+            this.logger.silly?.(`[FileDatabase] Deleting old version: ${versionToDelete}`);
             await fs.promises.rm(versionToDelete, { recursive: true, force: true });
         }
 
@@ -563,7 +563,7 @@ export class FileDatabase {
         this.metadata.files.push(fileEntry);
         this.lastFileData = null;
 
-        this.logger.debug?.(`[FileDatabase] Created new file: ${fileEntry.fileName}, fileNumber: ${this.currentFileNumber}`);
+        this.logger.silly?.(`[FileDatabase] Created new file: ${fileEntry.fileName}, fileNumber: ${this.currentFileNumber}`);
     }
 
     /**
@@ -607,7 +607,7 @@ export class FileDatabase {
             const filesBeforeCreate = this.metadata.files.length;
             this.makeNewFile();
             newlyCreatedFileIndex = filesBeforeCreate; // Index of the newly created file
-            this.logger.debug?.(`[FileDatabase] Creating new file for unique custom metadata combination, fileNumber: ${this.currentFileNumber}`);
+            this.logger.silly?.(`[FileDatabase] Creating new file for unique custom metadata combination, fileNumber: ${this.currentFileNumber}`);
         } else if (this.metadata.files.length === 0) {
             // If no files exist yet and we're not forcing a new file, create the first file
             this.makeNewFile();
@@ -680,7 +680,7 @@ export class FileDatabase {
         // Otherwise, use the last file (which might have been created earlier or is being reused)
         const fileName = this.metadata.files[this.metadata.files.length - 1].fileName;
 
-        this.logger.debug?.(
+        this.logger.silly?.(
             `[FileDatabase] figureOutDataAndFileToWrite: filename=${fileName}, forceNewFile=${forceNewFile}, targetFileIndex=${targetFileIndex}, dataToWrite.length=${Array.isArray(dataToWrite) ? dataToWrite.length : "N/A"}, lastFileRecordsCount=${lastFileRecordsCount}`
         );
 
@@ -755,7 +755,7 @@ export class FileDatabase {
         // Recalculate total records by summing all file records counts
         this.metadata.totalRecords = this.metadata.files.reduce((sum, file) => sum + (file.recordsCount || 0), 0);
 
-        this.logger.debug?.(
+        this.logger.silly?.(
             `[FileDatabase] Updated metadata for file ${currentFile.fileName}: recordsCount=${recordsCount}, totalRecords=${this.metadata.totalRecords}`
         );
     }
@@ -784,7 +784,7 @@ export class FileDatabase {
 
         try {
             await fs.promises.writeFile(filePath, serializedData, "utf8");
-            this.logger.debug?.(`[FileDatabase] Wrote ${bytesToHumanReadable(requiredBytes)} to ${filePath}`);
+            this.logger.silly?.(`[FileDatabase] Wrote ${bytesToHumanReadable(requiredBytes)} to ${filePath}`);
         } catch (error) {
             throw new FileDatabaseError(`Failed to write file ${filePath}: ${(error as Error).message}`);
         }
@@ -888,7 +888,8 @@ export class FileDatabase {
 
                 if (this.useMetadata) {
                     // Load metadata from root
-                    const metadataPath = path.join(this.getDestinationPath(), 'metadata.json');
+                    const destPath = this.getDestinationPath();
+                    const metadataPath = path.join(destPath, 'metadata.json');
                     if (fs.existsSync(metadataPath)) {
                         try {
                             const rawData = await fs.promises.readFile(metadataPath, 'utf8');
@@ -903,7 +904,9 @@ export class FileDatabase {
                             throw new FileDatabaseError(`Failed to read metadata: ${(e as Error).message}`);
                         }
                     } else {
-                        throw new FileDatabaseError("[FileDatabase] No metadata found in non-versioned mode");
+                        throw new FileDatabaseError(
+                            `[FileDatabase] No metadata found in non-versioned mode. Looked for: ${metadataPath} (table path: ${destPath})`
+                        );
                     }
                 } else {
                     // Figure metadata from files
@@ -923,6 +926,15 @@ export class FileDatabase {
      * Write data to the file database
      */
     async write(data: any, options: WriteOptions = {}): Promise<void> {
+        // Catalog mode: write to specific filename in destination path
+        if (options.filename) {
+            const destPath = this.getDestinationPath();
+            await ensurePath(destPath);
+            const filePath = path.join(destPath, options.filename);
+            await this.safeWrite(filePath, data);
+            return;
+        }
+
         // Check for forceNewVersion in non-versioned mode
         if (options.forceNewVersion && !this.versioned) {
             throw new FileDatabaseError("Cannot use forceNewVersion in non-versioned mode");
@@ -962,17 +974,17 @@ export class FileDatabase {
                 });
                 if (matches) {
                     targetFileIndex = i;
-                    this.logger.debug?.(`[FileDatabase] Found existing file with matching custom metadata: ${fileEntry.fileName}, metadata: ${JSON.stringify(options.customMetadata)}`);
+                    this.logger.silly?.(`[FileDatabase] Found existing file with matching custom metadata: ${fileEntry.fileName}, metadata: ${JSON.stringify(options.customMetadata)}`);
                     break;
                 } else {
-                    this.logger.debug?.(`[FileDatabase] File ${fileEntry.fileName} does not match custom metadata: ${JSON.stringify(options.customMetadata)}`);
+                    this.logger.silly?.(`[FileDatabase] File ${fileEntry.fileName} does not match custom metadata: ${JSON.stringify(options.customMetadata)}`);
                 }
             }
             if (targetFileIndex === null) {
-                this.logger.debug?.(`[FileDatabase] No existing file found with custom metadata: ${JSON.stringify(options.customMetadata)}, will create new file`);
+                this.logger.silly?.(`[FileDatabase] No existing file found with custom metadata: ${JSON.stringify(options.customMetadata)}, will create new file`);
             }
         } else {
-            this.logger.debug?.(`[FileDatabase] No custom metadata provided, will create new file`);
+            this.logger.silly?.(`[FileDatabase] No custom metadata provided, will create new file`);
         }
 
         // If we found a matching file, prepare to overwrite it
@@ -1017,7 +1029,19 @@ export class FileDatabase {
      * Read data from the file database
      */
     async read(options: ReadOptions = {}): Promise<any> {
-        const { version, nextPage = false, pageSize } = options;
+        const { version, nextPage = false, pageSize, filename } = options;
+
+        // Catalog mode: read specific file by name
+        if (filename) {
+            const destPath = this.getDestinationPath(version);
+            const filePath = path.join(destPath, filename);
+            try {
+                const rawData = await fs.promises.readFile(filePath, "utf8");
+                return JSON.parse(rawData);
+            } catch (error) {
+                throw new FileDatabaseError(`Failed to read file ${filename}: ${(error as Error).message}`);
+            }
+        }
 
         // Prepare for reading
         await this.prepare({ read: true, version });
@@ -1129,6 +1153,76 @@ export class FileDatabase {
     resetPagination(): void {
         this.currentRecord = 0;
         this.hasReadFirstPage = false;
+    }
+
+    /**
+     * List filenames in the table directory.
+     * For catalog/key-value usage (files written with { filename }).
+     * Returns data file names (.json, .txt, .xml) excluding metadata.json.
+     */
+    async listFilenames(): Promise<string[]> {
+        const destPath = this.versioned && this.currentVersion
+            ? path.join(this.getDestinationPath(), this.currentVersion)
+            : this.getDestinationPath();
+        try {
+            const entries = await fs.promises.readdir(destPath, { withFileTypes: true });
+            return entries
+                .filter((e) => e.isFile() && e.name !== "metadata.json" && /\.(json|txt|xml)$/i.test(e.name))
+                .map((e) => e.name);
+        } catch (err: any) {
+            if (err?.code === "ENOENT") return [];
+            throw new FileDatabaseError(`Failed to list files: ${(err as Error).message}`);
+        }
+    }
+
+    /**
+     * Remove a file from the table directory (catalog mode).
+     * Use with listFilenames() to manage individual files.
+     */
+    async removeFile(filename: string): Promise<void> {
+        const destPath = this.versioned && this.currentVersion
+            ? path.join(this.getDestinationPath(), this.currentVersion)
+            : this.getDestinationPath();
+        const filePath = path.join(destPath, filename);
+        try {
+            await fs.promises.unlink(filePath);
+        } catch (err: any) {
+            if (err?.code === "ENOENT") return;
+            throw new FileDatabaseError(`Failed to remove file ${filename}: ${(err as Error).message}`);
+        }
+    }
+
+    /**
+     * Remove a file and its metadata entry (non-versioned mode with useMetadata).
+     * Use with findData() to get fileName, then call removeFileEntry to delete.
+     */
+    async removeFileEntry(filename: string): Promise<void> {
+        if (this.versioned) {
+            throw new FileDatabaseError("removeFileEntry is only supported in non-versioned mode");
+        }
+        await this.prepare({ read: true });
+        const idx = this.metadata.files.findIndex((f) => f.fileName === filename);
+        if (idx === -1) {
+            throw new FileDatabaseError(`File entry ${filename} not found in metadata`);
+        }
+        const entry = this.metadata.files[idx];
+        const recordsCount = entry.recordsCount || 0;
+        this.metadata.files.splice(idx, 1);
+        this.metadata.totalRecords = Math.max(0, (this.metadata.totalRecords || 0) - recordsCount);
+        const destPath = this.getDestinationPath();
+        const filePath = path.join(destPath, filename);
+        try {
+            await fs.promises.unlink(filePath);
+        } catch (err: any) {
+            if (err?.code === "ENOENT") {
+                this.logger.warn?.(`[FileDatabase] File ${filename} already missing on disk`);
+            } else {
+                throw new FileDatabaseError(`Failed to remove file ${filename}: ${(err as Error).message}`);
+            }
+        }
+        if (this.useMetadata) {
+            await this.saveVersionMetadata(this.metadata);
+        }
     }
 
     /**

@@ -15,6 +15,8 @@ export default defineConfig({
     "mock-server": "src/mock-server.ts",
     db: "src/db.ts",
     init: "src/init.ts",
+    tasks: "src/tasks.ts",
+    "cli-runner": "src/scripts/cli-runner.ts",
     utils: "src/utils.ts"
   },
     format: ["esm", "cjs"],

@@ -1,0 +1,30 @@
+{
+    "version": null,
+    "files": [
+        {
+            "number": 1,
+            "recordsCount": 1,
+            "fileName": "000001.json",
+            "method": "GET",
+            "host": "httpbin.org",
+            "pathname": "/get",
+            "query": "",
+            "requestBody": ""
+        },
+        {
+            "number": 2,
+            "recordsCount": 1,
+            "fileName": "000002.json",
+            "method": "GET",
+            "host": "httpbin.org",
+            "pathname": "/get",
+            "query": "param1=abc&param2=135&param3=%7Bkey1%3A%22value1%22%7D",
+            "requestBody": ""
+        }
+    ],
+    "createdAt": "2026-03-03T19:18:04.198Z",
+    "modifiedAt": "2026-03-03T19:19:22.606Z",
+    "totalRecords": 2,
+    "synopsis": null,
+    "dataType": "json-object"
+}

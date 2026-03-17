@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
+import path from "path";
 import { init } from "../../src/init/index.js";
 import { FileDatabase } from "../../src/filedatabase.js";
 import chalk from "chalk";
 
-// Run with: npx tsx examples/filestore/search-by-metadata.ts --ListingId="12345"
-// Or with custom params: npx tsx examples/filestore/search-by-metadata.ts --basePath="./testData" --namespace="test" --tableName="records" --ListingId="67890"
+// Run with: npx tsx examples/filestore/search-by-metadata.ts --ListingId="1"
+// (uses default basePath=./examples/filestore/data where the example data lives)
+// Or with custom path: npx tsx examples/filestore/search-by-metadata.ts --basePath="./examples/filestore/data" --namespace="test" --tableName="records" --ListingId="67890"
+// Note: basePath is resolved from the current working directory. Use the same basePath you used when writing.
 
 const flow = async (context) => {
     const { logger, params } = context;
@@ -39,6 +42,11 @@ const flow = async (context) => {
         versioned: false, // Non-versioned for test data
         useMetadata: true,
     });
+
+    // Resolved table path (basePath is relative to cwd)
+    const resolvedPath = path.resolve(basePath, namespace, tableName);
+    logger.info(chalk.dim(`  Resolved table path: ${resolvedPath}`));
+    logger.info("");
 
     logger.info(chalk.bold.blue("🔍 Searching for records..."));
     logger.info(chalk.dim("─".repeat(60)));

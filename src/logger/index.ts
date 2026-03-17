@@ -2,7 +2,7 @@ import chalk from "chalk";
 import util from "util";
 
 import {
-    Logger,
+    Logger as LoggerInterface,
     LoggerOptions,
     LoggerProgressOptions,
     LogPayload,
@@ -26,6 +26,7 @@ const ALL_LEVELS: LevelName[] = [
     "response",
     "progress"
 ];
+const DEFAULT_LEVELS: LevelName[] = ALL_LEVELS.filter((l) => l !== "silly");
 
 // Calculate maximum level name length for alignment
 const MAX_LEVEL_LENGTH = Math.max(...ALL_LEVELS.map(level => level.toUpperCase().length));
@@ -56,10 +57,10 @@ interface NormalizedOptions {
     progressThrottle?: number;
 }
 
-export class Logger implements Logger {
+export class Logger implements LoggerInterface {
     private context: any; // Partial context during initialization
     private options: NormalizedOptions;
-    private transport: LoggerTransport;
+    private transport!: LoggerTransport;
     private readonly startTimes: Record<string, number> = {};
     private readonly lastProgressTimes: Record<string, number> = {};
 
@@ -133,7 +134,7 @@ export class Logger implements Logger {
             silent: false,
             showLevel: false,
             timestamp: false,
-            levels: ALL_LEVELS,
+            levels: DEFAULT_LEVELS,
             progressTimes: false,
             progressThrottle: undefined,
         };
@@ -337,20 +338,28 @@ export class Logger implements Logger {
 
     private normalizeLevels(levels?: string[]): LevelName[] {
         if (!levels || !levels.length) {
-            return ALL_LEVELS;
+            return DEFAULT_LEVELS;
         }
 
-        const includes = levels.filter(level => !level.startsWith("-")) as LevelName[];
-        const excludes = levels
-            .filter(level => level.startsWith("-"))
-            .map(level => level.slice(1)) as LevelName[];
+        const tokens = levels.map((t) => String(t).trim()).filter(Boolean);
+        const explicitIncludes = tokens
+            .filter((t) => !t.startsWith("+") && !t.startsWith("-"))
+            .map((t) => t as LevelName);
+        const addIncludes = tokens
+            .filter((t) => t.startsWith("+"))
+            .map((t) => t.slice(1) as LevelName);
+        const excludes = tokens
+            .filter((t) => t.startsWith("-"))
+            .map((t) => t.slice(1) as LevelName);
 
-        const unknown = [...includes, ...excludes].filter(level => !ALL_LEVELS.includes(level));
+        const unknown = [...explicitIncludes, ...addIncludes, ...excludes].filter(level => !ALL_LEVELS.includes(level));
         if (unknown.length) {
             console.warn(`[Logger] Unknown level(s): ${unknown.join(", ")}`);
         }
 
-        const base = includes.length ? includes : ALL_LEVELS;
+        const base = explicitIncludes.length
+            ? explicitIncludes
+            : Array.from(new Set<LevelName>([...DEFAULT_LEVELS, ...addIncludes]));
         return base.filter(level => !excludes.includes(level));
     }
 

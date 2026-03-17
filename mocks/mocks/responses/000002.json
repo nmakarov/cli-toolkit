@@ -1,0 +1,30 @@
+{
+    "status": 200,
+    "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "*",
+        "connection": "keep-alive",
+        "content-length": "494",
+        "content-type": "application/json",
+        "date": "Tue, 03 Mar 2026 19:19:22 GMT",
+        "server": "gunicorn/19.9.0"
+    },
+    "data": {
+        "args": {
+            "param1": "abc",
+            "param2": "135",
+            "param3": "{key1:\"value1\"}"
+        },
+        "headers": {
+            "Accept": "*/*",
+            "Accept-Encoding": "br, gzip, deflate",
+            "Accept-Language": "*",
+            "Host": "httpbin.org",
+            "Sec-Fetch-Mode": "cors",
+            "User-Agent": "HttpClient/v1.0",
+            "X-Amzn-Trace-Id": "Root=1-69a7343a-2dabeedc350503684baa8eb4"
+        },
+        "origin": "170.203.205.120",
+        "url": "https://httpbin.org/get?param1=abc&param2=135&param3={key1:\"value1\"}"
+    }
+}

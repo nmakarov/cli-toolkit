@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { MockServer, createMockServer } from "../index.js";
-import { MockCatalog } from "../catalog.js";
 import { Logger } from "../../logger/index.js";
 import {
     maskValue,
@@ -12,7 +11,7 @@ import {
     sanitizeRequest
 } from "../sanitization.js";
 import type { MockServerConfig } from "../types.js";
-import type { MockResponseData, RequestMatchCriteria } from "../types.js";
+import type { MockResponseData } from "../types.js";
 
 // Create a silent logger for tests
 const createTestLogger = () => {
@@ -65,11 +64,8 @@ vi.mock('morgan', () => ({
 vi.mock('fs/promises');
 vi.mock('path');
 
-// FileDatabase will be mocked in beforeEach to avoid global mocking interference with coverage
-
 import express from 'express';
 import http from 'http';
-import { FileDatabase } from '../../filedatabase/index.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -339,39 +335,23 @@ describe("MockServer CI", () => {
     });
 
     it("removes mock responses", async () => {
-        // Create a server with mocked FileDatabase for this test
-        const mockFileDb = {
-            write: vi.fn().mockResolvedValue(undefined),
-            read: vi.fn(),
-            hasData: vi.fn(),
-            getLatestVersion: vi.fn(),
-            getVersions: vi.fn()
-        };
-
         const testServer = new MockServer({
             basePath: '/tmp/test-remove',
             port: 5031,
-            logger: testLogger,
-            fileDb: mockFileDb
+            logger: testLogger
         });
 
-        // Mock catalog.removeEntry to return true
-        const catalog = (testServer as any).catalog;
-        catalog.removeEntry = vi.fn().mockResolvedValue(true);
+        const storage = (testServer as any).storage;
+        storage.remove = vi.fn().mockResolvedValue(true);
 
         const result = await testServer.removeMock('test_mock');
         expect(result).toBe(true);
-        expect(catalog.removeEntry).toHaveBeenCalledWith('test_mock');
+        expect(storage.remove).toHaveBeenCalledWith('test_mock');
     });
 
     it("performs maintenance operations", async () => {
-        // Mock catalog.maintenance
-        const catalog = (server as any).catalog;
-        catalog.maintenance = vi.fn().mockResolvedValue({ cleaned: 3 });
-
         const result = await server.maintenance();
-        expect(result.cleaned).toBe(3);
-        expect(catalog.maintenance).toHaveBeenCalled();
+        expect(result.cleaned).toBe(0);
     });
 
     it("creates and starts server with createMockServer", async () => {
@@ -388,363 +368,6 @@ describe("MockServer CI", () => {
 
         // Clean up
         await instance.close();
-    });
-});
-
-describe("MockCatalog CI", () => {
-    let catalog: MockCatalog;
-    let mockFileDb: any;
-
-    beforeEach(() => {
-        vi.clearAllMocks();
-
-        // Create a mock FileDatabase instance
-        mockFileDb = {
-            write: vi.fn(),
-            read: vi.fn(),
-            hasData: vi.fn(),
-            getLatestVersion: vi.fn(),
-            getVersions: vi.fn()
-        };
-
-        // Setup fs and path mocks
-        vi.mocked(fs.mkdir).mockResolvedValue(undefined);
-        vi.mocked(fs.writeFile).mockResolvedValue(undefined);
-        vi.mocked(fs.readFile).mockResolvedValue('[]');
-        vi.mocked(fs.readdir).mockResolvedValue([]);
-        vi.mocked(fs.unlink).mockResolvedValue(undefined);
-        vi.mocked(fs.access).mockResolvedValue(undefined);
-        vi.mocked(path.join).mockImplementation((...args) => args.join('/'));
-        vi.mocked(path.dirname).mockImplementation((p) => p.split('/').slice(0, -1).join('/'));
-
-        catalog = new MockCatalog(mockFileDb, '/test-path', testLogger);
-    });
-
-    describe("storeMock", () => {
-        it("should store mock response successfully", async () => {
-            const responseData: MockResponseData = {
-                status: 200,
-                headers: { 'content-type': 'application/json' },
-                data: { id: 1, name: 'test' }
-            };
-
-            mockFileDb.write.mockResolvedValue(undefined);
-
-            const filename = await catalog.storeMock(
-                'https://api.example.com/users/1',
-                null,
-                responseData,
-                'getUser',
-                'Get User'
-            );
-
-            expect(filename).toBeDefined();
-            expect(typeof filename).toBe('string');
-            expect(mockFileDb.write).toHaveBeenCalledTimes(1);
-            expect(vi.mocked(fs.writeFile)).toHaveBeenCalledTimes(1);
-        });
-
-        it("should handle different HTTP methods", async () => {
-            const responseData: MockResponseData = {
-                status: 201,
-                headers: { 'content-type': 'application/json' },
-                data: { created: true }
-            };
-
-            mockFileDb.write.mockResolvedValue(undefined);
-
-            // Test with POST method (method is hardcoded to GET in current impl, but test structure)
-            const filename = await catalog.storeMock(
-                'https://api.example.com/users',
-                { name: 'John' },
-                responseData,
-                'createUser',
-                'Create User'
-            );
-
-            expect(filename).toBeDefined();
-            expect(mockFileDb.write).toHaveBeenCalledTimes(1);
-        });
-
-        it("should sanitize sensitive data", async () => {
-            const responseData: MockResponseData = {
-                status: 200,
-                headers: { 'content-type': 'application/json', 'authorization': 'Bearer token123' },
-                data: { id: 1, name: 'test' }
-            };
-
-            mockFileDb.write.mockResolvedValue(undefined);
-
-            await catalog.storeMock(
-                'https://api.example.com/secure',
-                { client_id: 'client123', password: 'pass123' },
-                responseData,
-                undefined,
-                undefined,
-                ['client_id', 'password', 'authorization']
-            );
-
-            // Check that sensitive data was sanitized in the catalog entry
-            const writeFileCall = vi.mocked(fs.writeFile).mock.calls[0];
-            const storedData = JSON.parse(writeFileCall[1]);
-
-            expect(storedData.requestData).toHaveProperty('client_id');
-            expect(storedData.requestData.client_id).toMatch(/^\[md5:[a-f0-9]{32}\]$/);
-        });
-
-        it("should handle storage errors", async () => {
-            const responseData: MockResponseData = {
-                status: 500,
-                headers: {},
-                data: { error: true }
-            };
-
-            mockFileDb.write.mockRejectedValue(new Error('Storage error'));
-
-            await expect(catalog.storeMock(
-                'https://api.example.com/error',
-                null,
-                responseData
-            )).rejects.toThrow('Storage error');
-        });
-    });
-
-    describe("findMock", () => {
-        it("should find exact match", async () => {
-            const mockEntry = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users/1',
-                query: '',
-                file: 'response_123.json',
-                timestamp: new Date().toISOString()
-            };
-
-            const mockResponse: MockResponseData = {
-                status: 200,
-                headers: { 'content-type': 'application/json' },
-                data: { id: 1, name: 'John' }
-            };
-
-            vi.mocked(fs.readdir).mockResolvedValue(['mock_123.json']);
-            vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockEntry));
-            mockFileDb.read.mockResolvedValue(mockResponse);
-
-            const criteria: RequestMatchCriteria = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users/1',
-                query: ''
-            };
-
-            const result = await catalog.findMock(criteria);
-            expect(result).toEqual(mockResponse);
-            expect(mockFileDb.read).toHaveBeenCalledWith({ filename: 'response_123.json' });
-        });
-
-        it("should return null when no match found", async () => {
-            vi.mocked(fs.readdir).mockResolvedValue([]);
-            vi.mocked(fs.readFile).mockResolvedValue('[]');
-
-            const criteria: RequestMatchCriteria = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/notfound',
-                query: ''
-            };
-
-            const result = await catalog.findMock(criteria);
-            expect(result).toBeNull();
-        });
-
-        it("should perform fuzzy matching when exact match fails", async () => {
-            const mockEntry = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users',
-                query: 'filter=active',
-                file: 'response_456.json',
-                timestamp: new Date().toISOString()
-            };
-
-            const mockResponse: MockResponseData = {
-                status: 200,
-                headers: {},
-                data: { users: [] }
-            };
-
-            vi.mocked(fs.readdir).mockResolvedValue(['mock_456.json']);
-            vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockEntry));
-            mockFileDb.read.mockResolvedValue(mockResponse);
-
-            const criteria: RequestMatchCriteria = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users',
-                query: 'filter=active&timestamp=123'
-            };
-
-            const result = await catalog.findMock(criteria);
-            expect(result).toEqual(mockResponse);
-        });
-
-        it("should match by operation ID", async () => {
-            const mockEntry = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users',
-                query: '',
-                file: 'response_789.json',
-                operationId: 'listUsers',
-                timestamp: new Date().toISOString()
-            };
-
-            const mockResponse: MockResponseData = {
-                status: 200,
-                headers: {},
-                data: { users: [] }
-            };
-
-            vi.mocked(fs.readdir).mockResolvedValue(['mock_789.json']);
-            vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockEntry));
-            mockFileDb.read.mockResolvedValue(mockResponse);
-
-            const criteria: RequestMatchCriteria = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users',
-                query: '',
-                operationId: 'listUsers'
-            };
-
-            const result = await catalog.findMock(criteria);
-            expect(result).toEqual(mockResponse);
-        });
-    });
-
-    describe("listEntries", () => {
-        it("should list all catalog entries", async () => {
-            const mockEntry1 = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/users',
-                query: '',
-                file: 'response_1.json',
-                timestamp: new Date().toISOString()
-            };
-
-            const mockEntry2 = {
-                method: 'POST',
-                host: 'api.example.com',
-                pathname: '/users',
-                query: '',
-                file: 'response_2.json',
-                timestamp: new Date().toISOString()
-            };
-
-            vi.mocked(fs.readdir).mockResolvedValue(['mock_1.json', 'mock_2.json', 'response_1.json']);
-            vi.mocked(fs.readFile)
-                .mockResolvedValueOnce(JSON.stringify(mockEntry1))
-                .mockResolvedValueOnce(JSON.stringify(mockEntry2));
-
-            const entries = await catalog.listEntries();
-            expect(entries).toHaveLength(2);
-            expect(entries[0].pathname).toBe('/users');
-            expect(entries[1].method).toBe('POST');
-        });
-
-        it("should handle empty directory", async () => {
-            vi.mocked(fs.readdir).mockResolvedValue([]);
-
-            const entries = await catalog.listEntries();
-            expect(entries).toHaveLength(0);
-        });
-
-        it("should handle read errors gracefully", async () => {
-            const mockEntry = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/test',
-                query: '',
-                file: 'response.json',
-                timestamp: new Date().toISOString()
-            };
-
-            vi.mocked(fs.readdir).mockResolvedValue(['entry1.json', 'invalid.json']);
-            vi.mocked(fs.readFile)
-                .mockResolvedValueOnce(JSON.stringify(mockEntry))
-                .mockRejectedValueOnce(new Error('Read error'));
-
-            const entries = await catalog.listEntries();
-            expect(entries.length).toBe(1); // Should skip the invalid entry
-        });
-    });
-
-    describe("removeEntry", () => {
-        it("should remove catalog entry and response file", async () => {
-            vi.mocked(fs.unlink).mockResolvedValue(undefined);
-
-            const result = await catalog.removeEntry('test_entry');
-            expect(result).toBe(true);
-            expect(vi.mocked(fs.unlink)).toHaveBeenCalledTimes(2);
-            expect(vi.mocked(fs.unlink)).toHaveBeenCalledWith('/test-path/test_entry.json');
-            expect(vi.mocked(fs.unlink)).toHaveBeenCalledWith('/test-path/response_test_entry.json');
-        });
-
-        it("should handle missing files gracefully", async () => {
-            vi.mocked(fs.unlink).mockRejectedValue(new Error('File not found'));
-
-            const result = await catalog.removeEntry('missing_entry');
-            expect(result).toBe(true); // Still returns true, just logs warnings
-        });
-
-        it("should handle unlink errors gracefully", async () => {
-            vi.mocked(fs.unlink).mockRejectedValue(new Error('Permission denied'));
-
-            const result = await catalog.removeEntry('protected_entry');
-            expect(result).toBe(true); // Still returns true, just logs warnings
-        });
-    });
-
-    describe("maintenance", () => {
-        it("should clean up orphaned catalog entries", async () => {
-            const mockEntry = {
-                method: 'GET',
-                host: 'api.example.com',
-                pathname: '/test',
-                query: '',
-                file: 'response_missing.json',
-                timestamp: new Date().toISOString()
-            };
-
-            vi.mocked(fs.readdir).mockResolvedValue(['entry1.json', 'response_existing.json']);
-            vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockEntry));
-            vi.mocked(fs.access).mockRejectedValue(new Error('File not found')); // Missing response file
-            vi.mocked(fs.unlink).mockResolvedValue(undefined);
-
-            const result = await catalog.maintenance();
-            expect(result.cleaned).toBe(2); // One orphaned catalog entry + one orphaned response file
-        });
-
-        it("should clean up orphaned response files", async () => {
-            vi.mocked(fs.readdir).mockResolvedValue(['entry1.json', 'response_orphan.json']);
-            vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({
-                file: 'response_entry1.json'
-            }));
-            vi.mocked(fs.access).mockResolvedValue(undefined); // Response file exists
-            vi.mocked(fs.unlink).mockResolvedValue(undefined);
-
-            const result = await catalog.maintenance();
-            expect(result.cleaned).toBe(1);
-            expect(vi.mocked(fs.unlink)).toHaveBeenCalledWith('/test-path/response_orphan.json');
-        });
-
-        it("should handle maintenance errors", async () => {
-            vi.mocked(fs.readdir).mockRejectedValue(new Error('Directory read error'));
-
-            const result = await catalog.maintenance();
-            expect(result.cleaned).toBe(0);
-        });
     });
 });
 

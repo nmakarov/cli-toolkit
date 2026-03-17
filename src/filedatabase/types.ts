@@ -106,6 +106,8 @@ export interface ReadOptions {
     nextPage?: boolean;
     /** Number of records per page */
     pageSize?: number;
+    /** Read specific file by name (catalog mode - file in destination path) */
+    filename?: string;
 }
 
 /**
@@ -118,6 +120,8 @@ export interface WriteOptions {
     forceNewVersion?: boolean;
     /** Custom metadata fields to add to the file entry (e.g., { ListingKey: "123", id: "456" }) */
     customMetadata?: Record<string, any>;
+    /** Write to specific filename (catalog mode - file in destination path) */
+    filename?: string;
 }
 
 /**

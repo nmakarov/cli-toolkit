@@ -43,30 +43,17 @@ import http from 'http';
 
 describe("MockServer Integration", () => {
     let server: MockServer;
-    let mockFileDb: any;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // Create a mock FileDatabase instance
-        mockFileDb = {
-            write: vi.fn(),
-            read: vi.fn(),
-            hasData: vi.fn(),
-            getLatestVersion: vi.fn(),
-            getVersions: vi.fn()
-        };
-
-        // Create server after mock is set up
+        // Create server (uses MockStorage with real FileDatabase under basePath)
         server = new MockServer({
             basePath: '/tmp/test-integration',
             port: 5040,
-            namespace: 'integration',
-            tableName: 'mocks',
             sensitiveKeys: ['authorization', 'api_key', 'password'],
             debug: false,
-            logger: console,
-            fileDb: mockFileDb
+            logger: console
         });
     });
 
@@ -81,28 +68,19 @@ describe("MockServer Integration", () => {
 
     describe("End-to-End Mock Workflow", () => {
         it("should capture and serve mock responses", async () => {
-            // Setup mock FileDatabase responses
             const mockResponse: MockResponseData = {
                 status: 200,
                 headers: { 'content-type': 'application/json' },
                 data: { id: 123, name: 'John Doe', email: 'john@example.com' }
             };
 
-            mockFileDb.write.mockResolvedValue(undefined);
-            mockFileDb.read.mockResolvedValue(mockResponse);
-
             // Step 1: Store a mock response
-            const filename = await server.storeMock(
+            await server.storeMock(
                 'https://api.example.com/users/123',
                 null,
                 mockResponse,
-                'getUserById',
-                'Get User Profile'
+                'GET'
             );
-
-            expect(filename).toBeDefined();
-            expect(typeof filename).toBe('string');
-            expect(mockFileDb.write).toHaveBeenCalledTimes(1); // Response data (catalog uses direct fs)
 
             // Step 2: List stored mocks
             const mocks = await server.listMocks();
@@ -117,9 +95,6 @@ describe("MockServer Integration", () => {
         });
 
         it("should handle multiple mock responses", async () => {
-            mockFileDb.write.mockResolvedValue(undefined);
-
-            // Store multiple mocks
             const mock1: MockResponseData = {
                 status: 200,
                 headers: { 'content-type': 'application/json' },
@@ -132,23 +107,19 @@ describe("MockServer Integration", () => {
                 data: { id: 2, name: 'User 2', created: true }
             };
 
-            const filename1 = await server.storeMock(
+            await server.storeMock(
                 'https://api.example.com/users',
                 null,
                 mock1,
-                'listUsers',
-                'List All Users'
+                'GET'
             );
 
-            const filename2 = await server.storeMock(
+            await server.storeMock(
                 'https://api.example.com/users',
                 { name: 'User 2', email: 'user2@example.com' },
                 mock2,
-                'createUser',
-                'Create New User'
+                'POST'
             );
-
-            expect(filename1).not.toBe(filename2);
 
             // Verify both are stored
             const mocks = await server.listMocks();
@@ -156,30 +127,31 @@ describe("MockServer Integration", () => {
         });
 
         it("should handle mock removal", async () => {
-            mockFileDb.write.mockResolvedValue(undefined);
-
-            // Store a mock
             const mockResponse: MockResponseData = {
                 status: 200,
                 headers: {},
                 data: { deleted: true }
             };
 
-            const filename = await server.storeMock(
+            await server.storeMock(
                 'https://api.example.com/users/999',
                 null,
                 mockResponse,
-                'deleteUser',
-                'Delete User'
+                'GET'
             );
 
-            // Verify it exists
             const mocksBefore = await server.listMocks();
             expect(mocksBefore.length).toBeGreaterThan(0);
 
-            // Remove the mock (this would need FileDatabase support for actual removal)
-            // Note: MockServer doesn't expose removeEntry directly, so we skip this test for now
-            expect(filename).toBeDefined();
+            const removed = await server.removeMockByCriteria(
+                'https://api.example.com/users/999',
+                null,
+                'GET'
+            );
+            expect(removed).toBe(true);
+
+            const mocksAfter = await server.listMocks();
+            expect(mocksAfter.length).toBe(mocksBefore.length - 1);
         });
 
         it("should perform maintenance operations", async () => {
@@ -212,9 +184,7 @@ describe("MockServer Integration", () => {
 
         it("should use default configuration values", () => {
             const config = server.getConfig();
-            expect(config.port).toBe(5040); // Set in test
-            expect(config.namespace).toBe('integration');
-            expect(config.tableName).toBe('mocks');
+            expect(config.port).toBe(5040);
             expect(config.debug).toBe(false);
             expect(Array.isArray(config.sensitiveKeys)).toBe(true);
         });
@@ -247,32 +217,26 @@ describe("MockServer Integration", () => {
             };
 
             // This should work as URL parsing is handled internally
-            const filename = await server.storeMock(
+            await server.storeMock(
                 'https://api.example.com/test',
                 null,
                 mockResponse
             );
-
-            expect(filename).toBeDefined();
         });
 
         it("should handle malformed request data", async () => {
-            mockFileDb.write.mockResolvedValue(undefined);
-
             const mockResponse: MockResponseData = {
                 status: 200,
                 headers: {},
                 data: { success: true }
             };
 
-            // Should handle various data types
-            const filename = await server.storeMock(
+            await server.storeMock(
                 'https://api.example.com/test',
                 { complex: { nested: { data: true } } },
-                mockResponse
+                mockResponse,
+                'POST'
             );
-
-            expect(filename).toBeDefined();
         });
     });
 

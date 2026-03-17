@@ -44,6 +44,28 @@ export interface HttpClientConfig {
     maxRedirects?: number;
     baseURL?: string;
     logger?: any;
+    /** Save responses to mock storage (requires mocksPath) */
+    saveMock?: boolean;
+    /** Use stored mocks instead of real requests (requires mocksPath) */
+    useMock?: boolean;
+    /** Folder for mock storage (required when saveMock or useMock) */
+    mocksPath?: string;
+    /** Test server URL - requests go here with original URL in XAXIOSOrigin header */
+    useTestServer?: string;
+    /** Print request details when making requests */
+    showRequest?: boolean;
+    /** Print response details */
+    showResponse?: boolean;
+    /** Include request headers in showRequest output */
+    showRequestHeaders?: boolean;
+    /** Include response headers in showResponse output */
+    showResponseHeaders?: boolean;
+    /** Max object keys to show for JSON (default 20) */
+    showMaxKeys?: number;
+    /** Max array elements to show per array (default 5) */
+    showMaxArrayItems?: number;
+    /** Max characters for non-JSON response (default 300) */
+    showMaxChars?: number;
 }
 
 export interface RequestOptions {

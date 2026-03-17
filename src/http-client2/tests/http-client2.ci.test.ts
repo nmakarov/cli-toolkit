@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { HttpClient, HttpClientError } from "../index.js";
+import { ParamError } from "../../errors.js";
 import { classifyError, getErrorDescription } from "../errors.js";
 import { calculateRetryDelay, shouldRetryError, createRetryContext, updateRetryContext } from "../retry.js";
 import type { HttpClientResponse } from "../types.js";
@@ -79,6 +80,41 @@ describe("HttpClient2 CI", () => {
         const cfg = c.getConfig();
         expect(cfg.timeout).toBe(6000);
         expect(cfg.retryCount).toBe(1);
+    });
+
+    it("HttpClient.init throws ParamError when saveMock/useMock without mocksPath", () => {
+        const ctx = { logger: mockContext.logger, params: { getAllForModule: () => ({ saveMock: true }) } };
+        expect(() => HttpClient.init(ctx)).toThrow(ParamError);
+        expect(() => HttpClient.init(ctx)).toThrow(/mocksPath is required/);
+        const ctx2 = { logger: mockContext.logger, params: { getAllForModule: () => ({ useMock: true }) } };
+        expect(() => HttpClient.init(ctx2)).toThrow(ParamError);
+    });
+
+    it("HttpClient.init throws ParamError when saveMock/useMock with useTestServer", () => {
+        const ctx = {
+            logger: mockContext.logger,
+            params: { getAllForModule: () => ({ saveMock: true, mocksPath: './mocks', useTestServer: 'http://localhost:3000' }) },
+        };
+        expect(() => HttpClient.init(ctx)).toThrow(ParamError);
+        expect(() => HttpClient.init(ctx)).toThrow(/cannot be used with useTestServer/);
+    });
+
+    it("useTestServer redirects fetch URL and adds XAXIOSOrigin header", async () => {
+        mockFetch.mockResolvedValue(mockResponse({ status: 200, data: { ok: true } }));
+        const client = new HttpClient(mockContext, {
+            ...FULL_CONFIG,
+            useTestServer: 'http://localhost:5029',
+        });
+        await client.get('https://api.example.com/v1/users?limit=10');
+        expect(mockFetch).toHaveBeenCalledWith(
+            'http://localhost:5029/v1/users?limit=10',
+            expect.objectContaining({
+                method: 'GET',
+                headers: expect.objectContaining({
+                    XAXIOSOrigin: 'https://api.example.com/v1/users?limit=10',
+                }),
+            })
+        );
     });
 
     it("handles successful GET request", async () => {

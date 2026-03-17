@@ -9,18 +9,13 @@
 import express from 'express';
 import http from 'http';
 import morgan from 'morgan';
-import { FileDatabase } from '../filedatabase/index.js';
-import { MockCatalog } from './catalog.js';
+import { MockStorage } from './mock-storage.js';
 import type {
     MockServerConfig,
     MockServerInstance,
-    MockResponseEntry,
     MockResponseData,
-    RequestMatchCriteria,
-    ServerStats,
-    MaintenanceResult
+    ServerStats
 } from './types.js';
-import { sanitizeRequest } from './sanitization.js';
 
 /**
  * Default sensitive keys to mask in requests/responses
@@ -44,8 +39,7 @@ export class MockServer {
     private config: Required<MockServerConfig>;
     private app: express.Application;
     private server: http.Server | null = null;
-    private fileDb: FileDatabase;
-    private catalog: MockCatalog;
+    private storage: MockStorage;
     private stats: ServerStats;
     private startTime: number;
 
@@ -75,15 +69,7 @@ export class MockServer {
             uptime: 0
         };
 
-        this.fileDb = this.config.fileDb || new FileDatabase({
-            basePath: this.config.basePath,
-            namespace: this.config.namespace,
-            tableName: this.config.tableName,
-            versioned: false, // Mock responses are typically not versioned
-            logger: this.config.logger
-        });
-
-        this.catalog = new MockCatalog(this.fileDb, this.config.basePath, this.config.logger);
+        this.storage = new MockStorage({ basePath: this.config.basePath, logger: this.config.logger });
 
         this.setupMiddleware();
         this.setupRoutes();
@@ -260,18 +246,10 @@ export class MockServer {
             const url = new URL(headerValue);
             const method = req.method;
             const pathname = url.pathname;
-            const query = url.search.slice(1); // Remove leading ?
+            const query = url.search.slice(1);
             const requestData = this.extractRequestData(req);
 
-            const criteria: RequestMatchCriteria = {
-                method,
-                host: url.host,
-                pathname,
-                query,
-                requestData
-            };
-
-            return await this.catalog.findMock(criteria);
+            return await this.storage.find(method, url.host, pathname, query, requestData);
         } catch (error) {
             this.config.logger.error?.('Error finding mock response:', error);
             return null;
@@ -301,38 +279,44 @@ export class MockServer {
         requestUrl: string,
         requestData: any,
         responseData: MockResponseData,
-        operationId?: string,
-        mockName?: string
-    ): Promise<string> {
-        return await this.catalog.storeMock(
-            requestUrl,
-            requestData,
-            responseData,
-            operationId,
-            mockName,
-            this.config.sensitiveKeys
+        method: string = 'GET'
+    ): Promise<void> {
+        await this.storage.store(method, requestUrl, requestData, responseData);
+    }
+
+    /**
+     * List all stored mock keys
+     */
+    async listMocks(): Promise<string[]> {
+        return await this.storage.listKeys();
+    }
+
+    /**
+     * Remove a mock by key (from listMocks)
+     */
+    async removeMock(key: string): Promise<boolean> {
+        return await this.storage.remove(key);
+    }
+
+    /**
+     * Remove a mock by request criteria (method, requestUrl, requestData)
+     */
+    async removeMockByCriteria(requestUrl: string, requestData: any, method: string = 'GET'): Promise<boolean> {
+        const url = new URL(requestUrl);
+        return await this.storage.removeByCriteria(
+            method,
+            url.host,
+            url.pathname,
+            url.search.slice(1),
+            requestData
         );
     }
 
     /**
-     * List all stored mock responses
-     */
-    async listMocks(): Promise<MockResponseEntry[]> {
-        return await this.catalog.listEntries();
-    }
-
-    /**
-     * Remove a mock response by filename
-     */
-    async removeMock(filename: string): Promise<boolean> {
-        return await this.catalog.removeEntry(filename);
-    }
-
-    /**
-     * Run maintenance to clean up orphaned files
+     * No-op (mocks are self-contained, no orphans)
      */
     async maintenance(): Promise<{ cleaned: number }> {
-        return await this.catalog.maintenance();
+        return { cleaned: 0 };
     }
 
     /**
