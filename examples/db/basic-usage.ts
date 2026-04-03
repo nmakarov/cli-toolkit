@@ -36,7 +36,8 @@ const flow = async (context) => {
     // Option 3: Db.init(context, 'postgresql://...') - direct connection string
     const connectionString = process.env.DB_CONNECTION_STRING || "postgresql://root:root@localhost:6032/mlsfarm";
     
-    const db = await Db.init(context, connectionString);
+    // const db = await Db.init(context, connectionString);
+    const db = await Db.init(context);
 
     try {
         // dbFindAndConnect already connected, so we skip the connect step
@@ -71,6 +72,9 @@ const flow = async (context) => {
         // Example 5: Query profiling
         logger.info(chalk.bold.cyan("✓ Example 5: Query profiling"));
         logger.info(chalk.dim("─".repeat(50)));
+
+        // db.attachProfiler();
+
         if (db.isConnectedToDb()) {
             // Execute a test query
             try {

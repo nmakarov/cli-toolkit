@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Args } from "../../src/args.js";
-import { Params, init, getParamsInstance } from "../../src/params.js";
+import { Params } from "../../src/params.js";
 import { ParamError } from "../../src/errors.js";
 import chalk from "chalk";
 
@@ -164,16 +164,17 @@ try {
     params.set("specialKey", "specialValue", "string");
     console.info(`  ${chalk.green("✓")} specialKey setter called`);
 
-    // Show singleton pattern
-    console.info("\n" + chalk.bold("Singleton Pattern:"));
-    console.info("==================");
+    // Params has no module-level singleton (unlike Args.init / getArgsInstance on ./args).
+    // Framework code uses Params.init(context, options) for staged setup; otherwise use `new Params({ args })`.
+    console.info("\n" + chalk.bold("Params.init + multiple instances:"));
+    console.info("=====================================");
 
-    const singletonParams = init({ args }, { singletonValue: "from-init" });
-    const sameInstance = getParamsInstance();
-    console.info(`  ${chalk.green("✓")} Singleton instances are the same: ${singletonParams === sameInstance}`);
+    const viaInit = Params.init({ args } as any, { singletonValue: "from-init" });
+    const singletonValue = viaInit.get("singletonValue", "string");
+    console.info(`  ${chalk.green("✓")} Params.init options: singletonValue = ${JSON.stringify(singletonValue)}`);
 
-    const singletonValue = singletonParams.get("singletonValue", "string");
-    console.info(`  ${chalk.green("✓")} singletonValue: "${singletonValue}"`);
+    const second = new Params({ args });
+    console.info(`  ${chalk.green("✓")} new Params({ same args }) !== first instance: ${second !== params}`);
 
     // Show real-world config example
     console.info("\n" + chalk.bold("Real-World Config:"));

@@ -26,7 +26,7 @@ async function main() {
     console.info("");
 
     // Create FileDatabase instance
-    const dataPath = path.resolve(__dirname, "data");
+    const dataPath = path.resolve(__dirname, "data2");
     const store = new FileDatabase({
         basePath: dataPath,
         namespace: "demo",

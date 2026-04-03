@@ -1362,7 +1362,7 @@ export { defaultFileSynopsisFunction, defaultVersionSynopsisFunction } from "./s
 
 /**
  * Initialize FileDatabase from context
- * Similar to mlsClientInit pattern
+ * Similar to MlsClient.init pattern
  * 
  * @param context - Context from init()
  * @param options - Optional configuration (takes precedence over context.params)

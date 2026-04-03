@@ -21,7 +21,27 @@ const defs = {
     tasksLogsMaxVersions: "number default 20",
     maxParallel: "number default 8",
     pollMs: "number default 500",
+    /** Service group for `{table}_services_registry` (discovery / max instances). Empty + role=all disables. */
+    runnerServiceGroup: "string",
+    runnerServiceName: "string",
+    runnerIdentityDir: "string default ./data/runner-identities",
+    runnerHeartbeatIntervalMs: "number default 10000",
+    runnerHeartbeatStaleMs: "number default 45000",
+    runnerGroupMaxInstances: "number",
+    runnerEnforceMaxInstances: "boolean default true",
 };
+
+function defaultRunnerGroupFromRole(roleRaw: string): string {
+    const r = (roleRaw || "all").toLowerCase();
+    if (r === "all") return "";
+    const map: Record<string, string> = {
+        harvest: "harvest",
+        load: "loader",
+        photos: "photos",
+        ingest: "ingest",
+    };
+    return map[r] || "";
+}
 
 function resolveAllowedTasks(roleRaw: string, allowedTasksRaw?: string): string | undefined {
     if (allowedTasksRaw && allowedTasksRaw.trim()) return allowedTasksRaw.trim();
@@ -52,10 +72,19 @@ const flow = async (context: any) => {
         tasksLogsMaxVersions,
         maxParallel,
         pollMs,
+        runnerServiceGroup,
+        runnerServiceName,
+        runnerIdentityDir,
+        runnerHeartbeatIntervalMs,
+        runnerHeartbeatStaleMs,
+        runnerGroupMaxInstances,
+        runnerEnforceMaxInstances,
     } = context.params.getAll(defs);
     const db = await dbInit(context, dbName);
     context.db = db;
     const resolvedAllowedTasks = resolveAllowedTasks(role, allowedTasks);
+    const resolvedRunnerGroup =
+        (typeof runnerServiceGroup === "string" && runnerServiceGroup.trim()) || defaultRunnerGroupFromRole(role);
 
     const tasksManager = TasksManager.init(context, {
         queue: table,
@@ -64,9 +93,20 @@ const flow = async (context: any) => {
         maxParallel,
         pollMs,
         registry: createExampleTasksRegistry(),
+        ...(resolvedRunnerGroup
+            ? {
+                  runnerServiceGroup: resolvedRunnerGroup,
+                  runnerServiceName: typeof runnerServiceName === "string" && runnerServiceName.trim() ? runnerServiceName.trim() : undefined,
+                  runnerIdentityDir,
+                  runnerHeartbeatIntervalMs,
+                  runnerHeartbeatStaleMs,
+                  runnerGroupMaxInstances,
+                  runnerEnforceMaxInstances,
+              }
+            : {}),
     });
     context.logger.info?.(
-        `[runner] table=${table} target=${target} role=${role} allowedTasks=${resolvedAllowedTasks || "all"} maxParallel=${maxParallel} pollMs=${pollMs} loadMax=${dummyLoadMaxParallel} photosMax=${dummyPhotosMaxParallel} logs=${tasksLogsEnabled ? "on" : "off"} logsPath=${tasksLogsBasePath}/${tasksLogsNamespace}/${tasksLogsTable} errorLogsTable=${tasksErrorLogsTable} logsMaxVersions=${tasksLogsMaxVersions}`
+        `[runner] table=${table} target=${target} role=${role} allowedTasks=${resolvedAllowedTasks || "all"} maxParallel=${maxParallel} pollMs=${pollMs} loadMax=${dummyLoadMaxParallel} photosMax=${dummyPhotosMaxParallel} logs=${tasksLogsEnabled ? "on" : "off"} logsPath=${tasksLogsBasePath}/${tasksLogsNamespace}/${tasksLogsTable} errorLogsTable=${tasksErrorLogsTable} logsMaxVersions=${tasksLogsMaxVersions} servicesRegistry=${resolvedRunnerGroup ? `group=${resolvedRunnerGroup}` : "off"}`
     );
     await tasksManager.ensureTaskTables();
     await tasksManager.runTasksLoop();

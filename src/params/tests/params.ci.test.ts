@@ -181,6 +181,17 @@ describe("Params CI", () => {
         expect(byModule.script.port).toEqual({ value: 8080, source: expect.any(String) });
     });
 
+    it("runWithModule tracks single get under that module", () => {
+        const params = new Params({ args: argsStub });
+        params.getAllForModule("script", { port: "number" });
+        params.runWithModule("mls-client", () => {
+            params.get("fromArgs", "string");
+        });
+        const byModule = params.getFiguredByModule();
+        expect(byModule["mls-client"]?.fromArgs).toBeDefined();
+        expect(byModule.script?.port).toBeDefined();
+    });
+
     it("getFiguredByModule and getTrackedParams", () => {
         const params = new Params({ args: argsStub });
         params.get("port", "number");

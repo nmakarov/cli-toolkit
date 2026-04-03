@@ -24,7 +24,7 @@ All notable changes to this project will be documented in this file.
   - If exact match found, overwrites existing file; if no match, creates new file
   - Ensures each unique customMetadata combination gets its own file
   - Fixed file numbering initialization from existing metadata
-- **FileDatabase Init Pattern**: Added `fileDatabaseInit()` function following the same pattern as `mlsClientInit`
+- **FileDatabase Init Pattern**: Added `fileDatabaseInit()` function following the same pattern as `MlsClient.init`
   - Accepts `Context` as first parameter for consistent initialization pattern
   - Reads configuration from `context.params` with sensible defaults (basePath: "./data", namespace: "default", pageSize: 5000, maxVersions: 5)
   - Allows options parameter to override params values

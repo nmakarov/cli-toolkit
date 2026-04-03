@@ -5,6 +5,15 @@ import type { EnqueueTaskOptions, EnsureTaskTablesOptions } from "./types.js";
 
 type DbLike = any;
 
+// this is a sample of how to add a column to a table if it does not exist
+// const tasksHasOpid = await db.schema.hasColumn(tasksTable, "opid");
+// if (!tasksHasOpid) {
+//     await db.schema.alterTable(tasksTable, (t: any) => {
+//         t.text("opid");
+//     });
+// }
+
+
 function getDb(context: Context): DbLike {
     const db = (context as any).db;
     if (!db) {
@@ -21,6 +30,14 @@ export function queueToTableNames(queue: string): { tasksTable: string; historyT
         tasksTable: queue,
         historyTable: `${queue}_history`,
     };
+}
+
+/** PostgreSQL table name for the services registry (per-queue). */
+export function servicesRegistryTable(queue: string): string {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(queue)) {
+        throw new Error(`Invalid queue name "${queue}". Use letters, numbers, underscore only.`);
+    }
+    return `${queue}_services_registry`;
 }
 
 export async function ensureTaskTables(context: Context, options: EnsureTaskTablesOptions = {}): Promise<void> {
@@ -63,18 +80,6 @@ export async function ensureTaskTables(context: Context, options: EnsureTaskTabl
             t.index(["target", "task"], `${tasksTable}_target_task_idx`);
         });
     }
-    const tasksHasOpid = await db.schema.hasColumn(tasksTable, "opid");
-    if (!tasksHasOpid) {
-        await db.schema.alterTable(tasksTable, (t: any) => {
-            t.text("opid");
-        });
-    }
-    const tasksHasPausedAt = await db.schema.hasColumn(tasksTable, "paused_at");
-    if (!tasksHasPausedAt) {
-        await db.schema.alterTable(tasksTable, (t: any) => {
-            t.timestamp("paused_at").defaultTo(null);
-        });
-    }
 
     if (needsHistory) {
         await db.schema.createTable(historyTable, (t: any) => {
@@ -99,10 +104,25 @@ export async function ensureTaskTables(context: Context, options: EnsureTaskTabl
             t.index(["task", "created_at"], `${historyTable}_task_created_idx`);
         });
     }
-    const historyHasOpid = await db.schema.hasColumn(historyTable, "opid");
-    if (!historyHasOpid) {
-        await db.schema.alterTable(historyTable, (t: any) => {
-            t.text("opid");
+
+    const registryTable = servicesRegistryTable(queue);
+    const needsRegistry = !(await db.tableExists(registryTable));
+    if (needsRegistry) {
+        await db.schema.createTable(registryTable, (t: any) => {
+            t.uuid("id").primary().defaultTo(db.raw("uuid_generate_v4()"));
+            t.uuid("instance_id").notNullable().unique();
+            t.text("queue").notNullable();
+            t.text("service_group").notNullable();
+            t.text("service_name").notNullable();
+            t.text("target").notNullable();
+            t.text("hostname");
+            t.integer("pid");
+            t.json("metadata");
+            t.timestamp("created_at").notNullable().defaultTo(db.fn.now());
+            t.timestamp("last_seen_at").notNullable().defaultTo(db.fn.now());
+            t.unique(["queue", "service_name"], `${registryTable}_queue_service_name_uniq`);
+            t.index(["queue", "service_group", "last_seen_at"], `${registryTable}_queue_group_seen_idx`);
+            t.index(["queue", "last_seen_at"], `${registryTable}_queue_seen_idx`);
         });
     }
 }

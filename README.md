@@ -42,6 +42,15 @@ npm install ink react
 
 **Note**: The Screen module has special requirements for CommonJS usage. See [CommonJS Support](#screen-module---esm-only-dependencies) for details.
 
+## AWS SSM Parameter Store (optional scripts)
+
+Shipped as TypeScript sources under `scripts/ssm/` (included in the npm package). Requires dev/runtime `tsx` to execute, or run with `npx tsx node_modules/@nmakarov/cli-toolkit/scripts/ssm/ssm-admin.ts …`.
+
+- **`ssm-admin.ts`** — `list`, `get`, `put`, `delete` (workstation credentials).
+- **`ssm-pull.ts`** — recursive pull by `--path`; `--output print|dotenv|shell`.
+
+From a clone of this repo: `npm run ssm:list -- --prefix /your/prefix/`, `npm run ssm:pull -- --path /your/prefix/`.
+
 ## Quick Start
 
 ### Args - Parse Command Line Arguments

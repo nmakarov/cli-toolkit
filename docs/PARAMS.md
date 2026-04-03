@@ -288,17 +288,11 @@ Register a custom getter function.
 
 Register a custom setter function.
 
-### Singleton Helpers
+### Lifecycle note (Params vs Args)
 
-```typescript
-import { init, getParamsInstance } from '@nmakarov/cli-toolkit/params';
+`Params` does **not** expose `init` / `getParamsInstance` module singletons. Use `new Params({ args })` or `Params.init(partialContext, options)` when wiring the framework (`init()` flow in `src/init/`).
 
-// Initialize singleton
-const params = init({ args });
-
-// Access singleton anywhere
-const same = getParamsInstance();  // Returns same instance
-```
+For a global **Args** singleton pattern, see `@nmakarov/cli-toolkit/args`: `init()` and `getArgsInstance()`.
 
 ## Error Handling
 

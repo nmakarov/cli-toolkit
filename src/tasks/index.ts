@@ -1,5 +1,11 @@
 import type { Context } from "../init/types.js";
 import { sleepMs, toJsonColumn } from "../utils/index.js";
+import {
+    registerInServicesRegistry,
+    touchServicesRegistry,
+    unregisterServicesRegistry,
+    type ServicesRegistryRegistration,
+} from "./servicesRegistry.js";
 import { enqueueTask, ensureTaskTables, queueToTableNames, updateTaskProgress } from "./taskUtils.js";
 import { appendTaskIpcLog } from "./taskLogs.js";
 import { timeMatcher } from "./time-matcher.js";
@@ -17,7 +23,34 @@ import type {
 type DbLike = any;
 const LOCKED_BY_ERROR_MESSAGE = "locked by error";
 
-export { enqueueTask, ensureTaskTables, queueToTableNames, updateTaskProgress } from "./taskUtils.js";
+export {
+    enqueueTask,
+    ensureTaskTables,
+    queueToTableNames,
+    servicesRegistryTable,
+    updateTaskProgress,
+} from "./taskUtils.js";
+/** @deprecated Use servicesRegistryTable */
+export { servicesRegistryTable as runnerHeartbeatsTable } from "./taskUtils.js";
+export {
+    listServicesRegistry,
+    registerInServicesRegistry,
+    touchServicesRegistry,
+    unregisterServicesRegistry,
+    updateServicesRegistryMetadata,
+} from "./servicesRegistry.js";
+export type { ServicesRegistryRegistration, ServicesRegistryRow, ServicesRegistryStartOptions } from "./servicesRegistry.js";
+/** @deprecated Use registerInServicesRegistry */
+export { registerInServicesRegistry as registerRunnerHeartbeat } from "./servicesRegistry.js";
+/** @deprecated Use touchServicesRegistry */
+export { touchServicesRegistry as touchRunnerHeartbeat } from "./servicesRegistry.js";
+/** @deprecated Use unregisterServicesRegistry */
+export { unregisterServicesRegistry as unregisterRunnerHeartbeat } from "./servicesRegistry.js";
+/** @deprecated Use listServicesRegistry */
+export { listServicesRegistry as listAliveRunnerHeartbeats } from "./servicesRegistry.js";
+export type { ServicesRegistryRegistration as RunnerHeartbeatRegistration } from "./servicesRegistry.js";
+export type { ServicesRegistryRow as RunnerHeartbeatRow } from "./servicesRegistry.js";
+export type { ServicesRegistryStartOptions as RunnerHeartbeatStartOptions } from "./servicesRegistry.js";
 export { appendTaskIpcLog } from "./taskLogs.js";
 export { runNodeTaskScript } from "./taskScriptRunner.js";
 export { TaskMaster } from "./TaskMaster.js";
@@ -283,6 +316,36 @@ export async function runTasksLoop(context: Context, options: RunTasksLoopOption
     let stopAllowanceMs = 5000;
     (context as any).__tasksRunnerStop = false;
 
+    let registryReg: ServicesRegistryRegistration | null = null;
+    let registryInterval: ReturnType<typeof setInterval> | null = null;
+    const hbGroup = options.runnerServiceGroup?.trim();
+    if (hbGroup) {
+        const identityDir = options.runnerIdentityDir ?? "./data/runner-identities";
+        const hbIntervalMs = options.runnerHeartbeatIntervalMs ?? 10_000;
+        const staleMs = options.runnerHeartbeatStaleMs ?? 45_000;
+        const defaultMeta: Record<string, unknown> = {
+            component: "tasks-runner",
+            allowedTasks: allowedTasks?.length ? allowedTasks.join(",") : "all",
+        };
+        registryReg = await registerInServicesRegistry(context, {
+            queue,
+            target,
+            serviceGroup: hbGroup,
+            serviceName: options.runnerServiceName,
+            identityDir,
+            staleMs,
+            groupMaxInstances: options.runnerGroupMaxInstances,
+            enforceMaxInstances: options.runnerEnforceMaxInstances ?? true,
+            metadata: options.runnerMetadata ?? defaultMeta,
+        });
+        registryInterval = setInterval(() => {
+            void touchServicesRegistry(context, registryReg!).catch((err: any) => {
+                context.logger.warn?.(`[services-registry] touch failed: ${err?.message ?? String(err)}`);
+            });
+        }, hbIntervalMs);
+    }
+
+    try {
     while (!context.isStop() && !stopRequested && !(context as any).__tasksRunnerStop) {
         // Control lane: always allow stop task to be picked even when workers are busy.
         if (!runningStopControlPromise) {
@@ -364,6 +427,20 @@ export async function runTasksLoop(context: Context, options: RunTasksLoopOption
             await Promise.allSettled(Array.from(runningPromises));
         }
     }
+    } finally {
+        if (registryInterval) {
+            clearInterval(registryInterval);
+            registryInterval = null;
+        }
+        if (registryReg) {
+            await unregisterServicesRegistry(context, registryReg).catch((err: any) => {
+                context.logger.warn?.(`[services-registry] unregister failed: ${err?.message ?? String(err)}`);
+            });
+            registryReg = null;
+            delete (context as any).servicesRegistry;
+            delete (context as any).runnerHeartbeat;
+        }
+    }
 }
 
 export async function waitForTaskResult(
@@ -402,6 +479,14 @@ export class TasksManager {
     private scanLimit: number;
     private allowedTasks: string[] | undefined;
     private registry: TasksRegistry;
+    private runnerServiceGroup?: string;
+    private runnerServiceName?: string;
+    private runnerIdentityDir?: string;
+    private runnerHeartbeatIntervalMs?: number;
+    private runnerHeartbeatStaleMs?: number;
+    private runnerGroupMaxInstances?: number;
+    private runnerEnforceMaxInstances?: boolean;
+    private runnerMetadata?: Record<string, unknown> | null;
 
     constructor(context: Context, options: TasksManagerInitOptions = {}) {
         this.context = context;
@@ -413,6 +498,14 @@ export class TasksManager {
         this.scanLimit = options.scanLimit ?? 100;
         this.allowedTasks = normalizeAllowedTasks(options.allowedTasks);
         this.registry = normalizeRegistry(options.registry as TasksRegistry | TasksRegistryMap | undefined);
+        this.runnerServiceGroup = options.runnerServiceGroup;
+        this.runnerServiceName = options.runnerServiceName;
+        this.runnerIdentityDir = options.runnerIdentityDir;
+        this.runnerHeartbeatIntervalMs = options.runnerHeartbeatIntervalMs;
+        this.runnerHeartbeatStaleMs = options.runnerHeartbeatStaleMs;
+        this.runnerGroupMaxInstances = options.runnerGroupMaxInstances;
+        this.runnerEnforceMaxInstances = options.runnerEnforceMaxInstances;
+        this.runnerMetadata = options.runnerMetadata;
     }
 
     static init(context: Context, options: TasksManagerInitOptions = {}): TasksManager {
@@ -424,6 +517,13 @@ export class TasksManager {
             maxParallel: "number default 1",
             scanLimit: "number default 100",
             allowedTasks: "string",
+            runnerServiceGroup: "string",
+            runnerServiceName: "string",
+            runnerIdentityDir: "string default ./data/runner-identities",
+            runnerHeartbeatIntervalMs: "number default 10000",
+            runnerHeartbeatStaleMs: "number default 45000",
+            runnerGroupMaxInstances: "number",
+            runnerEnforceMaxInstances: "boolean default true",
         };
 
         const discovered = (context as any).params.getAllForModule(defs);
@@ -435,6 +535,13 @@ export class TasksManager {
             maxParallel: discovered.maxParallel,
             scanLimit: discovered.scanLimit,
             allowedTasks: discovered.allowedTasks,
+            runnerServiceGroup: discovered.runnerServiceGroup,
+            runnerServiceName: discovered.runnerServiceName,
+            runnerIdentityDir: discovered.runnerIdentityDir,
+            runnerHeartbeatIntervalMs: discovered.runnerHeartbeatIntervalMs,
+            runnerHeartbeatStaleMs: discovered.runnerHeartbeatStaleMs,
+            runnerGroupMaxInstances: discovered.runnerGroupMaxInstances,
+            runnerEnforceMaxInstances: discovered.runnerEnforceMaxInstances,
             ...options,
         };
         return new TasksManager(context, resolved);
@@ -456,6 +563,14 @@ export class TasksManager {
             scanLimit: options.scanLimit ?? this.scanLimit,
             allowedTasks: options.allowedTasks ?? this.allowedTasks,
             registry: options.registry ?? this.registry,
+            runnerServiceGroup: options.runnerServiceGroup ?? this.runnerServiceGroup,
+            runnerServiceName: options.runnerServiceName ?? this.runnerServiceName,
+            runnerIdentityDir: options.runnerIdentityDir ?? this.runnerIdentityDir,
+            runnerHeartbeatIntervalMs: options.runnerHeartbeatIntervalMs ?? this.runnerHeartbeatIntervalMs,
+            runnerHeartbeatStaleMs: options.runnerHeartbeatStaleMs ?? this.runnerHeartbeatStaleMs,
+            runnerGroupMaxInstances: options.runnerGroupMaxInstances ?? this.runnerGroupMaxInstances,
+            runnerEnforceMaxInstances: options.runnerEnforceMaxInstances ?? this.runnerEnforceMaxInstances,
+            runnerMetadata: options.runnerMetadata ?? this.runnerMetadata,
         });
     }
 }

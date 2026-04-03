@@ -163,7 +163,7 @@ export class HttpClient {
             showMaxArrayItems: 'number default 5',
             showMaxChars: 'number default 300',
         };
-        const discovered = context?.params?.getAllForModule?.(defs) ?? {};
+        const discovered = context?.params?.getAll?.(defs) ?? {};
         const merged: HttpClientConfig = { ...discovered, ...options };
 
         if ((merged.saveMock || merged.useMock) && !merged.mocksPath) {
@@ -182,6 +182,9 @@ export class HttpClient {
         const retryCount = options.retryCount ?? this.config.retryCount ?? 3;
         const retryDelay = options.retryDelay ?? this.config.retryDelay ?? 1000;
         let fullUrl = buildUrl(this.config.baseURL, url, options.params);
+
+        console.info("!!!!!!!!!!!!!!!!!!!!!!");
+
 
         // useMock: try to find stored mock; if not found, do not make real request
         if (this.config.useMock && this.mockStorage) {
@@ -267,6 +270,10 @@ export class HttpClient {
                 const duration = Date.now() - startTime;
                 const resHeaders = headersToRecord(response.headers);
 
+                console.info(">> fullUrl:", fullUrl);
+                console.info(">> response:", response);
+
+
                 if (response.ok) {
                     const data = await parseBody(response);
                     if (options.debug) {
@@ -304,7 +311,11 @@ export class HttpClient {
                     return result;
                 }
 
+
                 const data = await parseBody(response);
+
+                console.info(">> something is wrong with the request/response:", data);
+
                 const classification = classifyError({ response: { status: response.status, headers: resHeaders, data } });
 
                 if (this.config.showResponse) {

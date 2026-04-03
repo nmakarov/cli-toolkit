@@ -3,6 +3,7 @@
 import { init } from "../../src/init/index.js";
 import { FileDatabase } from "../../src/filedatabase/index.js";
 import { FileDatabaseError } from "../../src/filedatabase/index.js";
+import { Logger } from "../../src/logger/index.js";
 import { showScreen, ListComponent, h } from "../../src/screen/index.js";
 
 // npx tsx examples/tasks/task-logs.ts --mode=latestHarvest --source=armls --resource=properties
@@ -32,6 +33,18 @@ type LogEntry = {
     payload?: any;
 };
 
+type LoggerLikePayload = {
+    level: string;
+    message?: any;
+    prefix?: string;
+    count?: number | string;
+    total?: number;
+    elapsed?: number;
+    remaining?: number;
+    chunks?: any[];
+    results?: any;
+};
+
 function asArray(value: any): any[] {
     if (Array.isArray(value)) return value;
     if (!value) return [];
@@ -46,7 +59,43 @@ function messageOf(entry: LogEntry): string {
     return "";
 }
 
-function printEntries(entries: LogEntry[], title: string): void {
+function toLoggerPayload(payload: any): LoggerLikePayload {
+    if (typeof payload === "string") {
+        return { level: "info", message: payload };
+    }
+    if (!payload || typeof payload !== "object") {
+        return { level: "info", message: String(payload ?? "") };
+    }
+
+    const levelRaw = typeof payload.level === "string" ? payload.level.toLowerCase() : "info";
+    const level = levelRaw || "info";
+    const out: LoggerLikePayload = {
+        level,
+        message: payload.message,
+    };
+
+    if (typeof payload.prefix === "string") out.prefix = payload.prefix;
+    if (payload.count !== undefined) out.count = payload.count;
+    if (payload.total !== undefined) out.total = Number(payload.total);
+    if (payload.elapsed !== undefined) out.elapsed = Number(payload.elapsed);
+    if (payload.remaining !== undefined) out.remaining = Number(payload.remaining);
+    if (Array.isArray(payload.chunks)) out.chunks = payload.chunks;
+    if (payload.results !== undefined) out.results = payload.results;
+
+    // If message is missing, keep it readable instead of showing blank line.
+    if (!out.message) {
+        out.message = JSON.stringify(payload);
+    }
+    return out;
+}
+
+function formatEntryWithLogger(formatter: Logger, entry: LogEntry): string {
+    const payload = toLoggerPayload(entry.payload);
+    const formatted = String((formatter as any).formatLog(payload));
+    return `${entry.ts || "-"} ${formatted}`;
+}
+
+function printEntries(entries: LogEntry[], title: string, formatter: Logger): void {
     console.log(`\n=== ${title} (${entries.length}) ===`);
     const byTask = new Map<string, number>();
     for (const e of entries) {
@@ -58,11 +107,8 @@ function printEntries(entries: LogEntry[], title: string): void {
         console.log(`tasks: ${summary}`);
     }
     for (const e of entries) {
-        const level = e?.payload?.level ? ` level=${e.payload.level}` : "";
-        const message = messageOf(e);
-        console.log(
-            `${e.ts || "-"} opid=${e.opid || "none"} task=${e.taskName || "unknown"}${level}${message ? ` message=${message}` : ""}`
-        );
+        const header = `opid=${e.opid || "none"} task=${e.taskName || "unknown"}`;
+        console.log(`${formatEntryWithLogger(formatter, e)} ${header}`);
     }
 }
 
@@ -124,6 +170,14 @@ const flow = async (context: any) => {
         tasksErrorLogsTable,
         tasksLogsMaxVersions,
     } = context.params.getAll(defs);
+
+    const formatter = new Logger(context, {
+        mode: "text",
+        route: "console",
+        showLevel: true,
+        timestamp: false,
+        levels: ["silly", "debug", "logic", "info", "notice", "warn", "error", "results", "request", "response", "progress"],
+    });
 
     const fileDb = new FileDatabase({
         basePath: tasksLogsBasePath,
@@ -187,7 +241,7 @@ const flow = async (context: any) => {
             context.logger.warn?.(`[task-logs] no workflow entries found for selected opid=${opidToTrace}`);
             return;
         }
-        printEntries(workflow, `workflow from selected error opid=${opidToTrace}`);
+        printEntries(workflow, `workflow from selected error opid=${opidToTrace}`, formatter);
         return;
     }
 
@@ -199,7 +253,7 @@ const flow = async (context: any) => {
         const filtered = filteredBase
             .filter((e) => e.opid === opid)
             .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
-        printEntries(filtered, `workflow opid=${opid}`);
+        printEntries(filtered, `workflow opid=${opid}`, formatter);
         return;
     }
 
@@ -219,7 +273,7 @@ const flow = async (context: any) => {
         const workflow = workflowBase
             .filter((e) => e.opid === latestOpid)
             .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
-        printEntries(workflow, `latestHarvest ${source}/${resource} opid=${latestOpid}`);
+        printEntries(workflow, `latestHarvest ${source}/${resource} opid=${latestOpid}`, formatter);
         return;
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "@nmakarov/cli-toolkit",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "A comprehensive toolkit for building CLI applications",
   "type": "module",
   "main": "./dist/index.js",
@@ -82,6 +82,10 @@
     "cli-runner": "./dist/cli-runner.js"
   },
   "scripts": {
+    "ssm:list": "tsx scripts/ssm/ssm-admin.ts list",
+    "ssm:get": "tsx scripts/ssm/ssm-admin.ts get",
+    "ssm:put": "tsx scripts/ssm/ssm-admin.ts put",
+    "ssm:pull": "tsx scripts/ssm/ssm-pull.ts",
     "build": "tsup && node scripts/fix-cjs-esm-deps.js",
     "dev": "tsup --watch",
     "test": "vitest",
@@ -151,6 +155,7 @@
   },
   "files": [
     "dist/",
+    "scripts/ssm/",
     "README.md",
     "LICENSE"
   ],
@@ -163,11 +168,13 @@
     "eslint": "^9.38.0",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
     "typedoc": "^0.28.14",
     "typescript": "^5.9.3",
     "vitest": "^4.0.3"
   },
   "dependencies": {
+    "@aws-sdk/client-ssm": "^3.750.0",
     "@types/joi": "^17.2.3",
     "axios": "^1.6.0",
     "chalk": "^4.1.2",
@@ -176,7 +183,8 @@
     "joi": "^18.0.1",
     "knex": "^3.1.0",
     "morgan": "^1.10.0",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "pg": "^8.20.0"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -184,7 +192,6 @@
   "peerDependencies": {
     "ink": "^4.0.0",
     "mysql2": "^3.0.0",
-    "pg": "^8.16.3",
     "react": "^18.0.0"
   },
   "peerDependenciesMeta": {

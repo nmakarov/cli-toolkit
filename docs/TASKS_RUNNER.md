@@ -6,8 +6,54 @@ Core model:
 
 - Queue table: `<queue>` (default `tasks`)
 - History table: `<queue>_history` (default `tasks_history`)
+- Services registry table: `<queue>_services_registry` (optional; created by `ensureTaskTables`)
 - Producer scripts enqueue tasks
 - Runner polls queue, evaluates schedule + conditions, executes handlers, writes history
+
+## Runners, servers, and tasks (conceptual)
+
+This section describes the **intended** operational model. The current CLI and DB fields map loosely as follows: queue row **`task`** = task name; **`params`** / **`results`** = JSON payloads; **`target`** = which runner may claim the row (see below).
+
+### Servers
+
+- A **server** is a machine (VM or bare metal) that may host **one or many** runner processes.
+- A server is identifiable by machine identity — e.g. hostname / parsed **`uname -a`** output — or by an **explicit CLI identifier** when you want a stable label independent of the OS name.
+
+### Runners
+
+- A **runner** is a long-lived process that polls the task queue and executes handlers.
+- Runners may run **on the same server** (several processes) and/or **across multiple servers**.
+- **Runner name**: often derived from the server plus a suffix (e.g. `v2intake_runner1`), or set explicitly via **CLI** (e.g. `runner1`). This name is part of how the runner presents itself to the system (and relates to queue **`target`** / service registry naming).
+- **Task allowlist**: each runner is configured with the set of task **names** it is allowed to process (e.g. CLI **`allowedTasks`** / role presets). Only tasks in that list are considered for execution (plus any always-allowed **service** tasks as documented below).
+
+### Tasks
+
+- A task is identified by **name** (string). Input is carried in the **`params`** object (JSON). Outcomes are written to **`results`** (JSON) when the handler finishes.
+- **Useful / domain tasks** — business work such as harvest, load, photos, etc.
+- **Service / control tasks** — operational hooks such as **`stop`**, **`restart`**, **`info`**, **`ping`**, etc. These exist to supervise and introspect runners rather than perform domain work.
+
+### Task wrapper vs core function
+
+Each queued task behaves as a unit of async work (“a promise”), but conceptually it is a **wrapper** around a **core function** that could run in **any** context — not only inside the runner loop. For example the same core logic can be invoked from a **standalone script**, tests, or a one-off CLI, without going through the DB queue.
+
+**Wrapper responsibilities** (when running as part of the task system):
+
+1. **In** — Read the task row, validate or derive inputs, and **prepare arguments** for the core function from **`params`** (and related row fields as needed).
+2. **Run** — Call the task’s **main function** (the real implementation).
+3. **Out** — Take return values or thrown errors from that function and **materialize** them on the row: **`results`**, **`success`**, **`progress`**, error messages, etc.
+
+The **main function** itself should stay **free of queue/loop concerns**: it performs the domain operation given plain inputs and returns a result (or fails). That keeps the same code path usable **inside** the runner and **outside** it when you only want to execute the logic directly.
+
+### Dispatch: who picks up a task?
+
+- **By task name only** — enqueue a row so that **any** runner that (a) polls with a matching claim rule and (b) includes that task name in its allowlist can execute it. Good when you do not care which replica runs the job.
+- **By task name + runner** — enqueue so only a **specific** runner (or **target**) is eligible — e.g. restrict via **`target`** so a named runner instance is the only one that will claim the row.
+
+### Fairness when several runners share the same task names
+
+When **multiple** runners can process the **same** useful task, we want **load balancing**: work should be spread so one runner does not starve the others (e.g. draining all pending rows while peers stay idle). Tasks behave as independent units of work (async “promises”); **how** the queue is ordered and claimed may need refinement so assignment stays **fair** in practice. This is an active design area before/while we refactor the workflow.
+
+---
 
 ## Why this model
 
@@ -84,6 +130,32 @@ Task scheduling filters:
 - `paused_at` (queue table only): paused rows are ignored by the runner
 - `--allowedTasks="taskA,taskB"`: runner processes only listed tasks (plus stop tasks)
 
+## Services registry (`services_registry`)
+
+Table: **`<queue>_services_registry`** (e.g. `tasks_services_registry`), created by `ensureTaskTables`.
+
+If you previously used `<queue>_runner_heartbeats`, drop or rename that table and let `ensureTaskTables` create the new one (or migrate rows manually).
+
+Purpose:
+
+- **Catalog of running services**: one row per logical service instance (task-runner process), with identity and optional metadata.
+- **Liveness**: `last_seen_at` updated on an interval while `runTasksLoop` runs (maintenance/monitoring can treat stale rows as dead and restart or alert).
+- **Stable identity**: `instance_id` (UUID) stored under `--runnerIdentityDir` per `queue` + **service group** so restarts reclaim the same DB row and **service name** when possible.
+- **Service name**: unique per `(queue, service_name)`; allocation prefers `--runnerServiceName`, then saved name, then `{group}-{hostname}`, then numbered suffixes on conflict.
+- **Group caps**: optional max **alive** peers per `service_group` (peers stale after `--runnerHeartbeatStaleMs`). Built-in defaults include `intake: 1`, `harvest: 1`, unlimited `loader` / `photos` / `ingest`. Override with `--runnerGroupMaxInstances` (0 = unlimited). Use `--runnerEnforceMaxInstances=false` to warn instead of exiting when over limit.
+- **Role / task filters**: store in `metadata` JSON (e.g. `allowedTasks`). When a service changes what it handles without restarting, call `updateServicesRegistryMetadata` to merge into `metadata` and bump `last_seen_at`.
+
+`runTasksLoop` / `TasksManager` options (also available as CLI params on `examples/tasks/runner.ts`):
+
+- `runnerServiceGroup` — set to register in `services_registry` (example: `intake`, `loader`, `harvest`).
+- `runnerServiceName`, `runnerIdentityDir`, `runnerHeartbeatIntervalMs`, `runnerHeartbeatStaleMs`, `runnerGroupMaxInstances`, `runnerEnforceMaxInstances`, `runnerMetadata`.
+
+While registered, `context.servicesRegistry` holds `{ instanceId, serviceName, serviceGroup, queue, target, rowId }`. The same object is also exposed as **`context.runnerHeartbeat`** (deprecated alias).
+
+List registered services that look alive (for tooling / monitoring):
+
+- `listServicesRegistry(context, { queue, serviceGroup?, staleMs? })`
+
 ## API
 
 From `@nmakarov/cli-toolkit/tasks`:
@@ -91,7 +163,10 @@ From `@nmakarov/cli-toolkit/tasks`:
 - `ensureTaskTables(context, { queue, recreate })`
 - `enqueueTask(context, { queue, target, task, params, opid, priority, schedule })`
 - `enqueueStopTask(context, target, queue?)`
-- `runTasksLoop(context, { queue, target, pollMs, maxParallel, scanLimit, registry })`
+- `runTasksLoop(context, { queue, target, pollMs, maxParallel, scanLimit, registry, runnerServiceGroup?, ... })`
+- `servicesRegistryTable(queue)` → table name (`<queue>_services_registry`)
+- `registerInServicesRegistry`, `touchServicesRegistry`, `unregisterServicesRegistry`, `listServicesRegistry`, `updateServicesRegistryMetadata`
+- Deprecated aliases: `runnerHeartbeatsTable`, `registerRunnerHeartbeat`, `touchRunnerHeartbeat`, `unregisterRunnerHeartbeat`, `listAliveRunnerHeartbeats`
 - `waitForTaskResult(context, taskId, { queue, timeoutMs, pollMs })`
 - `TasksManager.init(context, options?)`
 - `defaultTasksRegistry` (includes built-in `ping`)

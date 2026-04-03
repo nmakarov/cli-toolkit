@@ -265,7 +265,7 @@ export class Params {
             }
             // Joi's default() automatically allows undefined and applies the default
             type = type.default(defValObj.value);
-        } else if (str.match(/required/)) {
+        } else if (str.match(/\s*required\s*/)) {
             type = type.required();
         } else {
             // If not required and no default, make it optional
@@ -362,6 +362,8 @@ export class Params {
     /**
      * Get all parameters from definitions (main script).
      * Same as getAllForModule("script", defs). Processes left-to-right for cross-parameter references.
+     * Libraries should use {@link getAllForModule} with an explicit module name (or {@link runWithModule}
+     * around {@link get}) so --showUsedParams groups usage correctly.
      */
     getAll(defs: Record<string, ParamDefinition>): Record<string, any> {
         return this.getAllForModule("script", defs);
@@ -395,6 +397,20 @@ export class Params {
                 }
             }
             return res;
+        } finally {
+            this._currentModule = prev;
+        }
+    }
+
+    /**
+     * Run a callback with {@link _currentModule} set so single {@link get} calls are tracked
+     * under the same module (for --showUsedParams / getFiguredByModule).
+     */
+    runWithModule<T>(moduleName: string, fn: () => T): T {
+        const prev = this._currentModule;
+        this._currentModule = moduleName;
+        try {
+            return fn();
         } finally {
             this._currentModule = prev;
         }

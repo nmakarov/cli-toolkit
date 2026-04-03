@@ -334,7 +334,7 @@ export class Db {
     /**
      * Attach query profiler to log all queries
      */
-    private attachProfiler(): void {
+    attachProfiler(): void {
         if (!this.knexInstance) {
             return;
         }
@@ -526,7 +526,7 @@ export async function dbFindAndConnect(
             dbProfile: 'boolean default false',
         };
         
-        const paramsConfig = context.params.getAllForModule(defs);
+        const paramsConfig = context.params.getAll(defs);
         dbName = paramsConfig.dbName;
         dbConnectionString = paramsConfig.dbConnectionString;
         dbProfile = paramsConfig.dbProfile;
@@ -549,6 +549,8 @@ export async function dbFindAndConnect(
     }
     
     // Connect using dedicated connect function
+    // context.logger.notice(`[Db] connecting to database "${dbConnectionString}"`);
+    // TODO: figure out the output of "--showUsedParams" in the case of the DB - stuff gets to "script" section that doesn't belong there.
     const db = await dbConnect(context, dbConnectionString!, dbName, dbProfile);
     
     // Test connection (connect() already tests if testConnection is true, but we can test explicitly here too)

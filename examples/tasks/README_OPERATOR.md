@@ -2,6 +2,8 @@
 
 This runbook is for operating the workflow prototype in `examples/tasks`.
 
+For terminology (servers vs runners, task names, `params` / `results`, useful vs service tasks, targeting, and load-balancing goals), see **`docs/TASKS_RUNNER.md`** → *Runners, servers, and tasks (conceptual)*.
+
 ## Goal
 
 Emulate ingest workflow stages:
