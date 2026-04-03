@@ -140,7 +140,7 @@ export class HttpClient {
     }
 
     /**
-     * Static init - discovers params via context.params.getAllForModule("http-client2", defs). Whatever is in options goes.
+     * Static init - discovers params via context.params.getAll(defs). Whatever is in options wins.
      */
     static init(context: any, options: HttpClientConfig = {}): HttpClient {
         const defs: Record<string, string> = {

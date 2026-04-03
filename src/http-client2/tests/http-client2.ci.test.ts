@@ -59,10 +59,10 @@ describe("HttpClient2 CI", () => {
         expect(c).toBeDefined();
     });
 
-    it("HttpClient.init discovers params from context.params.getAllForModule", () => {
+    it("HttpClient.init discovers params from context.params.getAll", () => {
         const ctx = {
             logger: mockContext.logger,
-            params: { getAllForModule: (_mod: string, _defs: Record<string, string>) => ({ timeout: 8000, retryCount: 1 }) },
+            params: { getAll: () => ({ timeout: 8000, retryCount: 1 }) },
         };
         const c = HttpClient.init(ctx);
         expect(c).toBeDefined();
@@ -74,7 +74,7 @@ describe("HttpClient2 CI", () => {
     it("HttpClient.init merges discovered params with provided options (options take precedence)", () => {
         const ctx = {
             logger: mockContext.logger,
-            params: { getAllForModule: () => ({ timeout: 8000, retryCount: 1 }) },
+            params: { getAll: () => ({ timeout: 8000, retryCount: 1 }) },
         };
         const c = HttpClient.init(ctx, { timeout: 6000 });
         const cfg = c.getConfig();
@@ -83,17 +83,17 @@ describe("HttpClient2 CI", () => {
     });
 
     it("HttpClient.init throws ParamError when saveMock/useMock without mocksPath", () => {
-        const ctx = { logger: mockContext.logger, params: { getAllForModule: () => ({ saveMock: true }) } };
+        const ctx = { logger: mockContext.logger, params: { getAll: () => ({ saveMock: true }) } };
         expect(() => HttpClient.init(ctx)).toThrow(ParamError);
         expect(() => HttpClient.init(ctx)).toThrow(/mocksPath is required/);
-        const ctx2 = { logger: mockContext.logger, params: { getAllForModule: () => ({ useMock: true }) } };
+        const ctx2 = { logger: mockContext.logger, params: { getAll: () => ({ useMock: true }) } };
         expect(() => HttpClient.init(ctx2)).toThrow(ParamError);
     });
 
     it("HttpClient.init throws ParamError when saveMock/useMock with useTestServer", () => {
         const ctx = {
             logger: mockContext.logger,
-            params: { getAllForModule: () => ({ saveMock: true, mocksPath: './mocks', useTestServer: 'http://localhost:3000' }) },
+            params: { getAll: () => ({ saveMock: true, mocksPath: './mocks', useTestServer: 'http://localhost:3000' }) },
         };
         expect(() => HttpClient.init(ctx)).toThrow(ParamError);
         expect(() => HttpClient.init(ctx)).toThrow(/cannot be used with useTestServer/);

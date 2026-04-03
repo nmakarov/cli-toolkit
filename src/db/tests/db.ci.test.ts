@@ -880,9 +880,12 @@ describe("Db CI", () => {
             const registerCleanup = vi.fn();
             const context = {
                 params: {
-                    getAllForModule: vi.fn()
-                        .mockReturnValueOnce({ dbName: undefined, dbConnectionString: "postgresql://user:pass@localhost:5432/fromparams", dbProfile: false })
-                        .mockReturnValue(defaultParams),
+                    getAll: vi.fn().mockReturnValueOnce({
+                        dbName: undefined,
+                        dbConnectionString: "postgresql://user:pass@localhost:5432/fromparams",
+                        dbProfile: false,
+                    }),
+                    getAllForModule: vi.fn().mockReturnValue(defaultParams),
                 },
                 logger: mockLogger,
                 registerCleanup,
@@ -894,7 +897,13 @@ describe("Db CI", () => {
 
         it("dbFindAndConnect throws when neither dbName nor connection string", async () => {
             const context = {
-                params: { getAllForModule: vi.fn().mockReturnValue({ dbName: undefined, dbConnectionString: undefined, dbProfile: false }) },
+                params: {
+                    getAll: vi.fn().mockReturnValue({
+                        dbName: undefined,
+                        dbConnectionString: undefined,
+                        dbProfile: false,
+                    }),
+                },
                 logger: mockLogger,
                 registerCleanup: vi.fn(),
             } as any;
