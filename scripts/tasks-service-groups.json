@@ -1,0 +1,18 @@
+{
+  "harvest": {
+    "tasks": ["dummyHarvest"],
+    "maxInstances": 8
+  },
+  "loader": {
+    "tasks": ["dummyLoad"],
+    "maxInstances": 0
+  },
+  "photos": {
+    "tasks": ["dummyPhotos"],
+    "maxInstances": 0
+  },
+  "ingest": {
+    "tasks": ["dummyHarvest", "dummyLoad"],
+    "maxInstances": 0
+  }
+}

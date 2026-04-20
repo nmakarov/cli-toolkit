@@ -794,15 +794,28 @@ export class FileDatabase {
      * Prepare the instance for read or write operations
      * This discovers state and sets up internal members based on mode and current data
      */
-    private async prepare({ write, read, version }: { write?: boolean; read?: boolean; version?: string }): Promise<void> {
+    private async prepare(options: {
+        write?: boolean;
+        read?: boolean;
+        version?: string;
+        /**
+         * When true and `currentVersion` is null, skip creating a version here — the caller's
+         * `write(..., { forceNewVersion: true })` will call `makeNewVersion()` once. Without this,
+         * prepare would create an empty version and forceNewVersion would create a second (orphan) folder.
+         */
+        deferInitialVersion?: boolean;
+    }): Promise<void> {
+        const { write, read, version, deferInitialVersion } = options;
         if (write) {
             if (this.versioned) {
                 // Versioned mode
                 if (this.currentVersion === null) {
-                    await this.makeNewVersion();
-                    this.metadata = this.getDefaultMetadata();
-                    this.metadata.version = this.currentVersion;
-                    this.makeNewFile();
+                    if (!deferInitialVersion) {
+                        await this.makeNewVersion();
+                        this.metadata = this.getDefaultMetadata();
+                        this.metadata.version = this.currentVersion;
+                        this.makeNewFile();
+                    }
                 } else {
                     // For existing versions, load the metadata if not already loaded
                 if (!this.metadata.files.length) {
@@ -940,8 +953,10 @@ export class FileDatabase {
             throw new FileDatabaseError("Cannot use forceNewVersion in non-versioned mode");
         }
 
-        // Prepare for writing (this may load existing metadata)
-        await this.prepare({ write: true });
+        // Prepare for writing (this may load existing metadata).
+        // If this write will force a new version on an empty store, defer the initial version in
+        // prepare so we only call makeNewVersion() once (in the forceNewVersion block below).
+        await this.prepare({ write: true, deferInitialVersion: !!(options.forceNewVersion && this.versioned) });
 
         // Always detect data type from incoming data AFTER prepare()
         // This ensures we use the correct type even if existing metadata has a different type

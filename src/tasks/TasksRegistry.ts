@@ -5,6 +5,7 @@ import { TaskShellCommand } from "./coreTasks/TaskShellCommand.js";
 import { TaskSystemInfo } from "./coreTasks/TaskSystemInfo.js";
 import { TaskSumAB } from "./coreTasks/TaskSumAB.js";
 import { TaskStopRunner } from "./coreTasks/TaskStopRunner.js";
+import { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
 
 export class TasksRegistry {
     private readonly map: TasksRegistryMap = {};
@@ -21,10 +22,12 @@ export class TasksRegistry {
             .add("sampleProcess", TaskSampleProcess)
             .add("shellCommand", TaskShellCommand)
             .add("systemInfo", TaskSystemInfo)
+            .add("info", TaskSystemInfo)
             .add("taskSumAB", TaskSumAB)
             .add("stopRunner", TaskStopRunner)
             // Backward-compat alias
-            .add("stop", TaskStopRunner);
+            .add("stop", TaskStopRunner)
+            .add("getLogs", TaskGetLogs);
     }
 
     add(taskName: string, taskClass: TaskClass): TasksRegistry {

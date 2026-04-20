@@ -1,0 +1,352 @@
+[
+    {
+        "id": 101,
+        "name": "Updated Product 101",
+        "price": 63.13,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 102,
+        "name": "Updated Product 102",
+        "price": 21.98,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 103,
+        "name": "Updated Product 103",
+        "price": 71.43,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 104,
+        "name": "Updated Product 104",
+        "price": 97.28,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 105,
+        "name": "Updated Product 105",
+        "price": 54,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 106,
+        "name": "Updated Product 106",
+        "price": 126.01,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 107,
+        "name": "Updated Product 107",
+        "price": 98.02,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 108,
+        "name": "Updated Product 108",
+        "price": 113.19,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 109,
+        "name": "Updated Product 109",
+        "price": 149.24,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 110,
+        "name": "Updated Product 110",
+        "price": 87.08,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 111,
+        "name": "Updated Product 111",
+        "price": 79.48,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 112,
+        "name": "Updated Product 112",
+        "price": 96.21,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 113,
+        "name": "Updated Product 113",
+        "price": 148.46,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 114,
+        "name": "Updated Product 114",
+        "price": 53.02,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 115,
+        "name": "Updated Product 115",
+        "price": 84.33,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 116,
+        "name": "Updated Product 116",
+        "price": 109.07,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 117,
+        "name": "Updated Product 117",
+        "price": 54.54,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 118,
+        "name": "Updated Product 118",
+        "price": 159.93,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 119,
+        "name": "Updated Product 119",
+        "price": 57.58,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 120,
+        "name": "Updated Product 120",
+        "price": 66.45,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 121,
+        "name": "Updated Product 121",
+        "price": 110.29,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 122,
+        "name": "Updated Product 122",
+        "price": 135.44,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 123,
+        "name": "Updated Product 123",
+        "price": 27.82,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 124,
+        "name": "Updated Product 124",
+        "price": 118.21,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 125,
+        "name": "Updated Product 125",
+        "price": 102.4,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 126,
+        "name": "Updated Product 126",
+        "price": 54.79,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 127,
+        "name": "Updated Product 127",
+        "price": 158.51,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 128,
+        "name": "Updated Product 128",
+        "price": 143.71,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 129,
+        "name": "Updated Product 129",
+        "price": 125.83,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 130,
+        "name": "Updated Product 130",
+        "price": 44.29,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 131,
+        "name": "Updated Product 131",
+        "price": 131.59,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 132,
+        "name": "Updated Product 132",
+        "price": 101.58,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 133,
+        "name": "Updated Product 133",
+        "price": 160.49,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 134,
+        "name": "Updated Product 134",
+        "price": 139.74,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 135,
+        "name": "Updated Product 135",
+        "price": 70.22,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 136,
+        "name": "Updated Product 136",
+        "price": 21.03,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 137,
+        "name": "Updated Product 137",
+        "price": 75.18,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 138,
+        "name": "Updated Product 138",
+        "price": 121.24,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 139,
+        "name": "Updated Product 139",
+        "price": 62.46,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 140,
+        "name": "Updated Product 140",
+        "price": 71.15,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 141,
+        "name": "Updated Product 141",
+        "price": 40.51,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 142,
+        "name": "Updated Product 142",
+        "price": 32.16,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 143,
+        "name": "Updated Product 143",
+        "price": 63.23,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 144,
+        "name": "Updated Product 144",
+        "price": 41.18,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 145,
+        "name": "Updated Product 145",
+        "price": 132.84,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 146,
+        "name": "Updated Product 146",
+        "price": 98.15,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 147,
+        "name": "Updated Product 147",
+        "price": 63.22,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 148,
+        "name": "Updated Product 148",
+        "price": 71,
+        "category": "Books",
+        "inStock": true
+    },
+    {
+        "id": 149,
+        "name": "Updated Product 149",
+        "price": 34.15,
+        "category": "Toys",
+        "inStock": true
+    },
+    {
+        "id": 150,
+        "name": "Updated Product 150",
+        "price": 113.68,
+        "category": "Books",
+        "inStock": true
+    }
+]

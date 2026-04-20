@@ -1,0 +1,25 @@
+{
+    "version": "2026-04-02T20:16:24Z",
+    "files": [
+        {
+            "number": 1,
+            "recordsCount": 100,
+            "fileName": "000001.json"
+        },
+        {
+            "number": 2,
+            "recordsCount": 100,
+            "fileName": "000002.json"
+        },
+        {
+            "number": 3,
+            "recordsCount": 50,
+            "fileName": "000003.json"
+        }
+    ],
+    "createdAt": "2026-04-02T20:16:24.581Z",
+    "modifiedAt": "2026-04-02T20:16:24.609Z",
+    "totalRecords": 250,
+    "synopsis": null,
+    "dataType": "json-array"
+}

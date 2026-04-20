@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import type { TaskResult } from "../types.js";
-import { TaskMaster } from "../TaskMaster.js";
+import { AbstractTask } from "../AbstractTask.js";
 
 type CommandExecution = {
     exitCode: number | null;
@@ -42,7 +42,7 @@ function runShellCommand(command: string, cwd?: string): Promise<CommandExecutio
     });
 }
 
-export class TaskShellCommand extends TaskMaster {
+export class TaskShellCommand extends AbstractTask {
     async run(): Promise<TaskResult> {
         const params = this.task?.params as any;
         const commandRaw = typeof params === "string" ? params : params?.command;

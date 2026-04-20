@@ -106,6 +106,7 @@ export class Logger implements LoggerInterface {
 
     /**
      * Initialize logger from context and CLI parameters. Whatever is in options goes (after discovered params).
+     * Params are tracked under the `logger` module for --showUsedParams.
      */
     static init(context: any, options?: LoggerOptions): Logger {
         const paramDefs = {
@@ -119,7 +120,7 @@ export class Logger implements LoggerInterface {
             progressWithTimes: "boolean default false",
             progressThrottleMs: "number",
         };
-        const discovered = context.params.getAllForModule(paramDefs);
+        const discovered = context.params.getAllForModule("logger", paramDefs);
         const config = { ...discovered, ...options } as LoggerOptions & { progressWithTimes?: boolean; progressThrottleMs?: number };
         const logger = new Logger(context, config);
         context.logger = logger;

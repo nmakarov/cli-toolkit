@@ -1,7 +1,12 @@
 import { spawn } from "node:child_process";
 import type { Context } from "../init/types.js";
 import type { TaskRow } from "./types.js";
-import { appendTaskIpcLog } from "./taskLogs.js";
+import {
+    appendTaskIpcLog,
+    flushTaskIpcLogs,
+    resolveIpcFileLogsDir,
+    type IpcFileLogTarget,
+} from "./taskLogs.js";
 
 export type TaskScriptRunResult = {
     exitCode: number | null;
@@ -12,12 +17,19 @@ export type TaskScriptRunResult = {
     hadErrorMessage: boolean;
 };
 
-type TaskScriptRunOptions = {
+export type TaskScriptRunOptions = {
     scriptPath: string;
     args?: string[];
     cwd?: string;
     task: TaskRow;
     onProgress?: (progress: any) => Promise<void>;
+    /**
+     * When set, child IPC log payloads are persisted under this FileDatabase table only
+     * (not the default `runner` table). See `tasksLogsBasePath` / `tasksLogsNamespace` params for defaults.
+     */
+    ipcFileLogs?: IpcFileLogTarget;
+    /** Called for each child IPC message except `__taskWorkerResult` (after optional file persist). */
+    onChildIpcMessage?: (message: unknown) => void;
 };
 
 function toCliArgs(args: string[] = []): string[] {
@@ -25,7 +37,7 @@ function toCliArgs(args: string[] = []): string[] {
 }
 
 function formatChildLogPrefix(task: TaskRow): string {
-    return `${task.task}:${task.id.slice(0, 8)}${task.opid ? `:${task.opid}` : ""}`;
+    return `${task.name}:${task.id.slice(0, 8)}${task.opid ? `:${task.opid}` : ""}`;
 }
 
 export async function runNodeTaskScript(context: Context, options: TaskScriptRunOptions): Promise<TaskScriptRunResult> {
@@ -45,11 +57,21 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
             env: {
                 ...process.env,
                 TASK_ID: options.task.id,
-                TASK_NAME: options.task.task,
+                TASK_NAME: options.task.name,
                 TASK_OPID: options.task.opid || "",
             },
         }
     );
+
+    if (options.ipcFileLogs) {
+        const logsDir = resolveIpcFileLogsDir(context, options.ipcFileLogs);
+        const enabledRaw = (context as any).params?.get?.("tasksLogsEnabled");
+        const logsEnabled = enabledRaw === undefined ? true : !!enabledRaw;
+        context.logger.info?.(
+            `[tasks] IPC file logs: ${logsDir}` +
+                (logsEnabled ? "" : " (tasksLogsEnabled=false; not persisted)")
+        );
+    }
 
     let stdout = "";
     let stderr = "";
@@ -57,7 +79,10 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
     let hadErrorMessage = false;
     const prefix = formatChildLogPrefix(options.task);
     const db = (context as any).db;
-    const tasksTable = (context as any).params?.get?.("table") || "tasks";
+    const tasksTable =
+        (context as { tasksQueueName?: string }).tasksQueueName ||
+        (context as any).params?.get?.("table") ||
+        "tasks";
     let progressWriteChain: Promise<void> = Promise.resolve();
     let progressCallbackChain: Promise<void> = Promise.resolve();
 
@@ -100,7 +125,7 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
         return "";
     };
 
-    child.stdout.on("data", (chunk) => {
+    child.stdout?.on("data", (chunk) => {
         const text = String(chunk);
         stdout += text;
         if (text.trim()) {
@@ -108,7 +133,7 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
             updateProgress(text.trim().replace(/\s+/g, " ").slice(0, 400));
         }
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr?.on("data", (chunk) => {
         const text = String(chunk);
         stderr += text;
         if (text.trim()) {
@@ -127,7 +152,12 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
                 hadErrorMessage = true;
             }
         }
-        appendTaskIpcLog(context, options.task, message);
+        appendTaskIpcLog(context, options.task, message, options.ipcFileLogs);
+        try {
+            options.onChildIpcMessage?.(message);
+        } catch (e: any) {
+            context.logger.warn?.(`[tasks] onChildIpcMessage failed: ${e?.message ?? String(e)}`);
+        }
         const progressText = payloadToProgressText(message);
         if (progressText) {
             updateProgress(progressText);
@@ -152,7 +182,9 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
     return await new Promise<TaskScriptRunResult>((resolve, reject) => {
         child.on("error", (error) => reject(error));
         child.on("close", (exitCode, signal) => {
-            Promise.allSettled([progressWriteChain, progressCallbackChain]).finally(() => {
+            void (async () => {
+                await flushTaskIpcLogs(context);
+                await Promise.allSettled([progressWriteChain, progressCallbackChain]);
                 resolve({
                     exitCode,
                     signal,
@@ -161,7 +193,7 @@ export async function runNodeTaskScript(context: Context, options: TaskScriptRun
                     workerResult,
                     hadErrorMessage,
                 });
-            });
+            })();
         });
     });
 }

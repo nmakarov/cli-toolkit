@@ -57,6 +57,8 @@ interface ListComponentProps {
         bold?: boolean;
     };
     selectionMarker?: string; // Customizable selection marker, default: " "
+    /** Called after ↑/↓ changes the selection (not when props change). */
+    onSelectionChange?: (index: number, item: ListItem | undefined) => void;
 }
 
 /**
@@ -251,13 +253,15 @@ export function MultiColumnListWithPreviewComponent({
  * Single-column list component
  * Simple vertical menu with optional sorting
  */
-export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTitle, sortable = false, maxHeight, sortHighlightStyle, selectionMarker = " " }: ListComponentProps): JSX.Element {
+export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTitle, sortable = false, maxHeight, sortHighlightStyle, selectionMarker = " ", onSelectionChange }: ListComponentProps): JSX.Element {
     const [, forceUpdate] = useState({});
     const [sortOrder, setSortOrder] = useState<"none" | "asc" | "desc">("none");
     const [scrollOffset, setScrollOffset] = useState(0);
     
     // Use refs to store current scroll values to avoid stale closures
     const scrollStateRef = useRef({ scrollOffset: 0, maxHeight: 0, totalItems: 0 });
+    const itemsRef = useRef(items);
+    itemsRef.current = items;
 
     // Default getTitle - returns item if string, otherwise item.title
     const defaultGetTitle = (item: ListItem): string => {
@@ -278,6 +282,9 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
         }
     }) : items;
 
+    const displayItemsRef = useRef(displayItems);
+    displayItemsRef.current = displayItems;
+
     // Calculate scrolling
     const effectiveMaxHeight = maxHeight || displayItems.length;
     const canScroll = displayItems.length > effectiveMaxHeight;
@@ -297,50 +304,45 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
     scrollStateRef.current = { scrollOffset, maxHeight: effectiveMaxHeight, totalItems: displayItems.length };
     
 
+    const onSelectionChangeRef = useRef(onSelectionChange);
+    onSelectionChangeRef.current = onSelectionChange;
+
     // Set up actions in useEffect (runs once)
     useEffect(() => {
         ctx.setAction("moveUp", () => {
             const newIndex = Math.max(0, selectedIndexRef.current - 1);
             selectedIndexRef.current = newIndex;
-            
+            const list = displayItemsRef.current;
+            onSelectionChangeRef.current?.(newIndex, list[newIndex]);
+
             // Auto-scroll to keep selected item visible
             const { scrollOffset: currentScrollOffset, maxHeight: currentMaxHeight, totalItems } = scrollStateRef.current;
             const currentMaxScrollOffset = Math.max(0, totalItems - currentMaxHeight);
             const currentClampedScrollOffset = Math.min(Math.max(0, currentScrollOffset), currentMaxScrollOffset);
-            
+
             if (newIndex < currentClampedScrollOffset) {
                 setScrollOffset(newIndex);
             }
-            
-            // Force update to trigger re-render with new selected index
+
             forceUpdate({});
         });
 
         ctx.setAction("moveDown", () => {
-            const currentItems = sortable && sortOrder !== "none" ? [...items].sort((a, b) => {
-                const titleA = titleGetter(a).toLowerCase();
-                const titleB = titleGetter(b).toLowerCase();
-                if (sortOrder === "asc") {
-                    return titleA < titleB ? -1 : titleA > titleB ? 1 : 0;
-                } else {
-                    return titleA > titleB ? -1 : titleA < titleB ? 1 : 0;
-                }
-            }) : items;
-            
-            const maxIndex = currentItems.length - 1;
+            const currentItems = displayItemsRef.current;
+            const maxIndex = Math.max(0, currentItems.length - 1);
             const newIndex = Math.min(maxIndex, selectedIndexRef.current + 1);
             selectedIndexRef.current = newIndex;
-            
+            onSelectionChangeRef.current?.(newIndex, currentItems[newIndex]);
+
             // Auto-scroll to keep selected item visible
             const { scrollOffset: currentScrollOffset, maxHeight: currentMaxHeight, totalItems } = scrollStateRef.current;
             const currentMaxScrollOffset = Math.max(0, totalItems - currentMaxHeight);
             const currentClampedScrollOffset = Math.min(Math.max(0, currentScrollOffset), currentMaxScrollOffset);
-            
+
             if (newIndex >= currentClampedScrollOffset + currentMaxHeight) {
                 setScrollOffset(newIndex - currentMaxHeight + 1);
             }
-            
-            // Force update to trigger re-render with new selected index
+
             forceUpdate({});
         });
 
@@ -369,12 +371,12 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
                     sortOrder === "asc" ? "desc" : "none";
                 
                 // Store the currently selected item from the current display items
-                const currentSelectedItem = displayItems[selectedIndexRef.current];
+                const currentSelectedItem = displayItemsRef.current[selectedIndexRef.current];
                 
                 setSortOrder(nextSort);
                 
                 // Calculate the new sorted items
-                const newSortedItems = nextSort !== "none" ? [...items].sort((a, b) => {
+                const newSortedItems = nextSort !== "none" ? [...itemsRef.current].sort((a, b) => {
                     const titleA = titleGetter(a).toLowerCase();
                     const titleB = titleGetter(b).toLowerCase();
                     if (nextSort === "asc") {
@@ -382,7 +384,7 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
                     } else {
                         return titleA > titleB ? -1 : titleA < titleB ? 1 : 0;
                     }
-                }) : items;
+                }) : itemsRef.current;
                 
                 // Find the new index of the selected item in the new sorted list
                 const newIndex = newSortedItems.findIndex(item => item === currentSelectedItem);

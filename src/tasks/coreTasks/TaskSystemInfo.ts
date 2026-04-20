@@ -1,7 +1,7 @@
 import os from "node:os";
 import fs from "node:fs/promises";
 import type { TaskResult } from "../types.js";
-import { TaskMaster } from "../TaskMaster.js";
+import { AbstractTask } from "../AbstractTask.js";
 
 function toGb(valueBytes: number): string {
     return `${(valueBytes / (1024 ** 3)).toFixed(2)} GB`;
@@ -24,7 +24,7 @@ async function getDiskStats(): Promise<{ total: string; used: string; free: stri
     };
 }
 
-export class TaskSystemInfo extends TaskMaster {
+export class TaskSystemInfo extends AbstractTask {
     async run(): Promise<TaskResult> {
         try {
             const totalMemory = os.totalmem();

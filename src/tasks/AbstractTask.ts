@@ -1,7 +1,7 @@
 import type { Context } from "../init/types.js";
 import type { TaskResult, TaskRow } from "./types.js";
 
-export abstract class TaskMaster {
+export abstract class AbstractTask {
     protected context: Context;
     protected task: TaskRow;
 

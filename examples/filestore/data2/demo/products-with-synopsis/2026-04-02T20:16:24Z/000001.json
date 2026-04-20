@@ -1,0 +1,702 @@
+[
+    {
+        "id": 1,
+        "name": "Product 1",
+        "price": 64.93,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 2,
+        "name": "Product 2",
+        "price": 77.58,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 3,
+        "name": "Product 3",
+        "price": 15.43,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 4,
+        "name": "Product 4",
+        "price": 70.78,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 5,
+        "name": "Product 5",
+        "price": 16.86,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 6,
+        "name": "Product 6",
+        "price": 10.22,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 7,
+        "name": "Product 7",
+        "price": 106,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 8,
+        "name": "Product 8",
+        "price": 88.64,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 9,
+        "name": "Product 9",
+        "price": 83.09,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 10,
+        "name": "Product 10",
+        "price": 82.91,
+        "category": "Home",
+        "inStock": false
+    },
+    {
+        "id": 11,
+        "name": "Product 11",
+        "price": 54.73,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 12,
+        "name": "Product 12",
+        "price": 20.17,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 13,
+        "name": "Product 13",
+        "price": 70.86,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 14,
+        "name": "Product 14",
+        "price": 23.83,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 15,
+        "name": "Product 15",
+        "price": 22.67,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 16,
+        "name": "Product 16",
+        "price": 109.88,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 17,
+        "name": "Product 17",
+        "price": 18.54,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 18,
+        "name": "Product 18",
+        "price": 35.02,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 19,
+        "name": "Product 19",
+        "price": 19.98,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 20,
+        "name": "Product 20",
+        "price": 89.58,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 21,
+        "name": "Product 21",
+        "price": 74.07,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 22,
+        "name": "Product 22",
+        "price": 56.11,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 23,
+        "name": "Product 23",
+        "price": 50.38,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 24,
+        "name": "Product 24",
+        "price": 77.66,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 25,
+        "name": "Product 25",
+        "price": 76.97,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 26,
+        "name": "Product 26",
+        "price": 98.3,
+        "category": "Home",
+        "inStock": false
+    },
+    {
+        "id": 27,
+        "name": "Product 27",
+        "price": 49.91,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 28,
+        "name": "Product 28",
+        "price": 55.38,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 29,
+        "name": "Product 29",
+        "price": 76.43,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 30,
+        "name": "Product 30",
+        "price": 50.53,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 31,
+        "name": "Product 31",
+        "price": 82.76,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 32,
+        "name": "Product 32",
+        "price": 97.3,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 33,
+        "name": "Product 33",
+        "price": 19.31,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 34,
+        "name": "Product 34",
+        "price": 56.34,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 35,
+        "name": "Product 35",
+        "price": 43.76,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 36,
+        "name": "Product 36",
+        "price": 91.94,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 37,
+        "name": "Product 37",
+        "price": 50.3,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 38,
+        "name": "Product 38",
+        "price": 31.78,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 39,
+        "name": "Product 39",
+        "price": 89.42,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 40,
+        "name": "Product 40",
+        "price": 92.68,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 41,
+        "name": "Product 41",
+        "price": 85.69,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 42,
+        "name": "Product 42",
+        "price": 61.31,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 43,
+        "name": "Product 43",
+        "price": 105.79,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 44,
+        "name": "Product 44",
+        "price": 104.93,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 45,
+        "name": "Product 45",
+        "price": 19.43,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 46,
+        "name": "Product 46",
+        "price": 74.53,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 47,
+        "name": "Product 47",
+        "price": 99.13,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 48,
+        "name": "Product 48",
+        "price": 67.7,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 49,
+        "name": "Product 49",
+        "price": 33.64,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 50,
+        "name": "Product 50",
+        "price": 43.84,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 51,
+        "name": "Product 51",
+        "price": 20.33,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 52,
+        "name": "Product 52",
+        "price": 40.11,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 53,
+        "name": "Product 53",
+        "price": 66.36,
+        "category": "Home",
+        "inStock": false
+    },
+    {
+        "id": 54,
+        "name": "Product 54",
+        "price": 100.69,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 55,
+        "name": "Product 55",
+        "price": 46.37,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 56,
+        "name": "Product 56",
+        "price": 11.84,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 57,
+        "name": "Product 57",
+        "price": 11.82,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 58,
+        "name": "Product 58",
+        "price": 83.55,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 59,
+        "name": "Product 59",
+        "price": 92.42,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 60,
+        "name": "Product 60",
+        "price": 92.85,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 61,
+        "name": "Product 61",
+        "price": 102.24,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 62,
+        "name": "Product 62",
+        "price": 63.68,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 63,
+        "name": "Product 63",
+        "price": 105.47,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 64,
+        "name": "Product 64",
+        "price": 58.38,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 65,
+        "name": "Product 65",
+        "price": 100.67,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 66,
+        "name": "Product 66",
+        "price": 108.01,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 67,
+        "name": "Product 67",
+        "price": 68.01,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 68,
+        "name": "Product 68",
+        "price": 18.6,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 69,
+        "name": "Product 69",
+        "price": 46.33,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 70,
+        "name": "Product 70",
+        "price": 21.35,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 71,
+        "name": "Product 71",
+        "price": 78.11,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 72,
+        "name": "Product 72",
+        "price": 38.37,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 73,
+        "name": "Product 73",
+        "price": 102.26,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 74,
+        "name": "Product 74",
+        "price": 62.8,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 75,
+        "name": "Product 75",
+        "price": 18.76,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 76,
+        "name": "Product 76",
+        "price": 10.51,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 77,
+        "name": "Product 77",
+        "price": 28.91,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 78,
+        "name": "Product 78",
+        "price": 85.68,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 79,
+        "name": "Product 79",
+        "price": 16.75,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 80,
+        "name": "Product 80",
+        "price": 49.97,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 81,
+        "name": "Product 81",
+        "price": 28.32,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 82,
+        "name": "Product 82",
+        "price": 61.55,
+        "category": "Home",
+        "inStock": false
+    },
+    {
+        "id": 83,
+        "name": "Product 83",
+        "price": 66.85,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 84,
+        "name": "Product 84",
+        "price": 38.87,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 85,
+        "name": "Product 85",
+        "price": 58.22,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 86,
+        "name": "Product 86",
+        "price": 40.36,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 87,
+        "name": "Product 87",
+        "price": 20.71,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 88,
+        "name": "Product 88",
+        "price": 47.03,
+        "category": "Sports",
+        "inStock": false
+    },
+    {
+        "id": 89,
+        "name": "Product 89",
+        "price": 77.98,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 90,
+        "name": "Product 90",
+        "price": 101.78,
+        "category": "Home",
+        "inStock": true
+    },
+    {
+        "id": 91,
+        "name": "Product 91",
+        "price": 15.09,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 92,
+        "name": "Product 92",
+        "price": 57.72,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 93,
+        "name": "Product 93",
+        "price": 77.35,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 94,
+        "name": "Product 94",
+        "price": 101.86,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 95,
+        "name": "Product 95",
+        "price": 21.37,
+        "category": "Electronics",
+        "inStock": true
+    },
+    {
+        "id": 96,
+        "name": "Product 96",
+        "price": 66.61,
+        "category": "Clothing",
+        "inStock": true
+    },
+    {
+        "id": 97,
+        "name": "Product 97",
+        "price": 54.08,
+        "category": "Sports",
+        "inStock": true
+    },
+    {
+        "id": 98,
+        "name": "Product 98",
+        "price": 65.76,
+        "category": "Clothing",
+        "inStock": false
+    },
+    {
+        "id": 99,
+        "name": "Product 99",
+        "price": 96.55,
+        "category": "Electronics",
+        "inStock": false
+    },
+    {
+        "id": 100,
+        "name": "Product 100",
+        "price": 83.47,
+        "category": "Home",
+        "inStock": true
+    }
+]

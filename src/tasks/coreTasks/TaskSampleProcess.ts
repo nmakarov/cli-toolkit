@@ -1,8 +1,8 @@
 import { sleepMs } from "../../utils/index.js";
 import type { TaskResult } from "../types.js";
-import { TaskMaster } from "../TaskMaster.js";
+import { AbstractTask } from "../AbstractTask.js";
 
-export class TaskSampleProcess extends TaskMaster {
+export class TaskSampleProcess extends AbstractTask {
     private stopRequested = false;
     private stopAllowanceMs = 0;
     private stopDecisionLogged = false;

@@ -1,7 +1,7 @@
 import type { TaskResult } from "../types.js";
-import { TaskMaster } from "../TaskMaster.js";
+import { AbstractTask } from "../AbstractTask.js";
 
-export class TaskSumAB extends TaskMaster {
+export class TaskSumAB extends AbstractTask {
     async run(): Promise<TaskResult> {
         const a = this.task?.params?.a;
         const b = this.task?.params?.b;

@@ -24,7 +24,6 @@ const defs = {
     /** Service group for `{table}_services_registry` (discovery / max instances). Empty + role=all disables. */
     runnerServiceGroup: "string",
     runnerServiceName: "string",
-    runnerIdentityDir: "string default ./data/runner-identities",
     runnerHeartbeatIntervalMs: "number default 10000",
     runnerHeartbeatStaleMs: "number default 45000",
     runnerGroupMaxInstances: "number",
@@ -74,7 +73,6 @@ const flow = async (context: any) => {
         pollMs,
         runnerServiceGroup,
         runnerServiceName,
-        runnerIdentityDir,
         runnerHeartbeatIntervalMs,
         runnerHeartbeatStaleMs,
         runnerGroupMaxInstances,
@@ -87,7 +85,7 @@ const flow = async (context: any) => {
         (typeof runnerServiceGroup === "string" && runnerServiceGroup.trim()) || defaultRunnerGroupFromRole(role);
 
     const tasksManager = TasksManager.init(context, {
-        queue: table,
+        queueName: table,
         target,
         allowedTasks: resolvedAllowedTasks,
         maxParallel,
@@ -97,7 +95,6 @@ const flow = async (context: any) => {
             ? {
                   runnerServiceGroup: resolvedRunnerGroup,
                   runnerServiceName: typeof runnerServiceName === "string" && runnerServiceName.trim() ? runnerServiceName.trim() : undefined,
-                  runnerIdentityDir,
                   runnerHeartbeatIntervalMs,
                   runnerHeartbeatStaleMs,
                   runnerGroupMaxInstances,

@@ -1,11 +1,4 @@
-import { TasksRegistry } from "../../src/tasks/index.js";
-import { TaskDummyHarvest } from "./TaskDummyHarvest.js";
-import { TaskDummyLoad } from "./TaskDummyLoad.js";
-import { TaskDummyPhotos } from "./TaskDummyPhotos.js";
-
-export function createExampleTasksRegistry(): TasksRegistry {
-    return TasksRegistry.withCoreTasks()
-        .add("dummyHarvest", TaskDummyHarvest)
-        .add("dummyLoad", TaskDummyLoad)
-        .add("dummyPhotos", TaskDummyPhotos);
-}
+/**
+ * Re-exports the dummy pipeline registry from `scripts/customTasks/` (not shipped in `src/`).
+ */
+export { createExampleTasksRegistry } from "../../scripts/customTasks/registry.js";

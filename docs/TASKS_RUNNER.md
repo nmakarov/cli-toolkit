@@ -140,17 +140,17 @@ Purpose:
 
 - **Catalog of running services**: one row per logical service instance (task-runner process), with identity and optional metadata.
 - **Liveness**: `last_seen_at` updated on an interval while `runTasksLoop` runs (maintenance/monitoring can treat stale rows as dead and restart or alert).
-- **Stable identity**: `instance_id` (UUID) stored under `--runnerIdentityDir` per `queue` + **service group** so restarts reclaim the same DB row and **service name** when possible.
-- **Service name**: unique per `(queue, service_name)`; allocation prefers `--runnerServiceName`, then saved name, then `{group}-{hostname}`, then numbered suffixes on conflict.
+- **Registry-only identity**: no local identity files. On startup the runner scans **alive** rows (`last_seen` within `--runnerHeartbeatStaleMs`), picks the **first free `instance_number`**, and uses **`service_name`** = `--runnerServiceName` if set, else `{group}-{hostname}-{instance}`. A **stale** row with the same `service_name` is **updated** (takeover) so restarts on the same host can reclaim that row; tasks/services are expected to persist their own state if needed.
+- **Service name**: unique per `(queue, service_name)`; on conflict (e.g. racing peers), allocation retries with the next free instance slot.
 - **Group caps**: optional max **alive** peers per `service_group` (peers stale after `--runnerHeartbeatStaleMs`). Built-in defaults include `intake: 1`, `harvest: 1`, unlimited `loader` / `photos` / `ingest`. Override with `--runnerGroupMaxInstances` (0 = unlimited). Use `--runnerEnforceMaxInstances=false` to warn instead of exiting when over limit.
 - **Role / task filters**: store in `metadata` JSON (e.g. `allowedTasks`). When a service changes what it handles without restarting, call `updateServicesRegistryMetadata` to merge into `metadata` and bump `last_seen_at`.
 
 `runTasksLoop` / `TasksManager` options (also available as CLI params on `examples/tasks/runner.ts`):
 
 - `runnerServiceGroup` — set to register in `services_registry` (example: `intake`, `loader`, `harvest`).
-- `runnerServiceName`, `runnerIdentityDir`, `runnerHeartbeatIntervalMs`, `runnerHeartbeatStaleMs`, `runnerGroupMaxInstances`, `runnerEnforceMaxInstances`, `runnerMetadata`.
+- `runnerServiceName`, `runnerInstanceNumber` (optional fixed slot; otherwise first free), `runnerHeartbeatIntervalMs`, `runnerHeartbeatStaleMs`, `runnerGroupMaxInstances`, `runnerEnforceMaxInstances`, `runnerMetadata`.
 
-While registered, `context.servicesRegistry` holds `{ instanceId, serviceName, serviceGroup, queue, target, rowId }`. The same object is also exposed as **`context.runnerHeartbeat`** (deprecated alias).
+While registered, `context.servicesRegistry` holds `{ serviceName, serviceGroup, queueName, target, rowId, registryTable, instanceNumber }`. The same object is also exposed as **`context.runnerHeartbeat`** (deprecated alias).
 
 List registered services that look alive (for tooling / monitoring):
 
@@ -160,16 +160,23 @@ List registered services that look alive (for tooling / monitoring):
 
 From `@nmakarov/cli-toolkit/tasks`:
 
-- `ensureTaskTables(context, { queue, recreate })`
+- `ensureTaskTables(context, { queueName, recreate })` — with `recreate: true`, drops the queue table, `_history`, and `_services_registry`, then recreates any that are missing
 - `enqueueTask(context, { queue, target, task, params, opid, priority, schedule })`
 - `enqueueStopTask(context, target, queue?)`
 - `runTasksLoop(context, { queue, target, pollMs, maxParallel, scanLimit, registry, runnerServiceGroup?, ... })`
-- `servicesRegistryTable(queue)` → table name (`<queue>_services_registry`)
+- `queueToTableNames(queue)` → `{ tasksTable, historyTable, registryTable }` (e.g. `<queue>_services_registry` for `registryTable`)
 - `registerInServicesRegistry`, `touchServicesRegistry`, `unregisterServicesRegistry`, `listServicesRegistry`, `updateServicesRegistryMetadata`
-- Deprecated aliases: `runnerHeartbeatsTable`, `registerRunnerHeartbeat`, `touchRunnerHeartbeat`, `unregisterRunnerHeartbeat`, `listAliveRunnerHeartbeats`
+- Deprecated aliases: `registerRunnerHeartbeat`, `touchRunnerHeartbeat`, `unregisterRunnerHeartbeat`, `listAliveRunnerHeartbeats`
 - `waitForTaskResult(context, taskId, { queue, timeoutMs, pollMs })`
 - `TasksManager.init(context, options?)`
 - `defaultTasksRegistry` (includes built-in `ping`)
+
+**Task targeting** (columns on the queued row): `service_group`, `service_name`, `instance_number`, `server_name`. **NULL** on a column means “any” for that dimension. Registered runners match each non-null column to their registry identity. Rows with no per-instance fields (`service_name`, `instance_number`, `server_name` all null) can be claimed without registry identity; instance-specific rows require a registered worker.
+
+- **`ping`** — enqueue with no targeting for broadcast, or set `service_group` only, or set all four fields to hit one instance (same values as the registry row).
+- **`stop` / `stopRunner`** — must set all four targeting fields so exactly one instance receives it; `params.allowanceMs` controls graceful stop (default 5000).
+
+CLI: `npm run tasks:send` → `scripts/send-task.ts` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
 
 ## TasksManager
 

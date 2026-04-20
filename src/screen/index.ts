@@ -4,8 +4,8 @@
  */
 
 // Re-export React and React hooks (encapsulated)
-import React, { useState, useEffect, useRef, useMemo, useCallback, createElement } from "react";
-export { React, useState, useEffect, useRef, useMemo, useCallback };
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, memo, createElement } from "react";
+export { React, useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, memo };
 export { createElement as h };
 
 // Re-export Ink components (encapsulated)

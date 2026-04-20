@@ -138,6 +138,20 @@ function printAllParameters(context: Context): void {
 export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<void> {
     let stop = false;
     let context: Context | null = null;
+    let cleanupRan = false;
+
+    const runRegisteredCleanups = async (ctx: Context): Promise<void> => {
+        if (cleanupRan) return;
+        cleanupRan = true;
+        const fns = [...ctx.cleanupFunctions].reverse();
+        for (const fn of fns) {
+            try {
+                await fn(ctx);
+            } catch (error) {
+                ctx.logger.warn("[cleanup] error in cleanup function:", error);
+            }
+        }
+    };
 
     try {
         // Pre-load ESM dependencies (ink, react) for CommonJS compatibility
@@ -181,15 +195,28 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
             process.exit(0);
         }
 
-        // Setup SIGINT handler for graceful shutdown
+        // Graceful shutdown: first Ctrl+C sets stop + emits; second runs registered cleanups then exits.
+        // (Previously, process.exit(2) on second SIGINT skipped try/finally, so registerCleanup never ran.)
+        let sigintCount = 0;
         process.on("SIGINT", async () => {
-            if (stop) {
-                context!.logger.warn("[process] killed");
-                process.exit(2);
+            if (!context) return;
+            sigintCount += 1;
+            if (sigintCount === 1) {
+                stop = true;
+                context.logger.info(`>> emitting stop with allowance ${stopAllowance}`);
+                context.emitter.emit("stop", stopAllowance);
+                return;
             }
+            context.logger.warn("[process] second SIGINT: running cleanup then exit");
+            await runRegisteredCleanups(context);
+            process.exit(2);
+        });
+
+        process.on("SIGTERM", () => {
+            if (!context || stop) return;
             stop = true;
-            context!.logger.info(`>> emitting stop with allowance ${stopAllowance}`);
-            context!.emitter.emit("stop", stopAllowance);
+            context.logger.info(`>> SIGTERM: emitting stop with allowance ${stopAllowance}`);
+            context.emitter.emit("stop", stopAllowance);
         });
 
         // Execute the flow function
@@ -221,15 +248,8 @@ export async function init(flow: FlowFunction, opts: InitOptions = {}): Promise<
             process.exitCode = 5;
         }
     } finally {
-        // Run cleanup functions in reverse order
         if (context) {
-            for (const fn of context.cleanupFunctions.reverse()) {
-                try {
-                    await fn(context);
-                } catch (error) {
-                    context.logger.warn("[cleanup] error in cleanup function:", error);
-                }
-            }
+            await runRegisteredCleanups(context);
         }
     }
 }

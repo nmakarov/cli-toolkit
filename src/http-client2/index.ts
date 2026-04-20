@@ -140,7 +140,8 @@ export class HttpClient {
     }
 
     /**
-     * Static init - discovers params via context.params.getAll(defs). Whatever is in options wins.
+     * Static init - discovers params via context.params.getAllForModule("http-client2", defs).
+     * Whatever is in options wins. Params are grouped under `http-client2` for --showUsedParams.
      */
     static init(context: any, options: HttpClientConfig = {}): HttpClient {
         const defs: Record<string, string> = {
@@ -163,7 +164,7 @@ export class HttpClient {
             showMaxArrayItems: 'number default 5',
             showMaxChars: 'number default 300',
         };
-        const discovered = context?.params?.getAll?.(defs) ?? {};
+        const discovered = context?.params?.getAllForModule?.("http-client2", defs) ?? {};
         const merged: HttpClientConfig = { ...discovered, ...options };
 
         if ((merged.saveMock || merged.useMock) && !merged.mocksPath) {
@@ -182,9 +183,6 @@ export class HttpClient {
         const retryCount = options.retryCount ?? this.config.retryCount ?? 3;
         const retryDelay = options.retryDelay ?? this.config.retryDelay ?? 1000;
         let fullUrl = buildUrl(this.config.baseURL, url, options.params);
-
-        console.info("!!!!!!!!!!!!!!!!!!!!!!");
-
 
         // useMock: try to find stored mock; if not found, do not make real request
         if (this.config.useMock && this.mockStorage) {
@@ -270,10 +268,6 @@ export class HttpClient {
                 const duration = Date.now() - startTime;
                 const resHeaders = headersToRecord(response.headers);
 
-                console.info(">> fullUrl:", fullUrl);
-                console.info(">> response:", response);
-
-
                 if (response.ok) {
                     const data = await parseBody(response);
                     if (options.debug) {
@@ -313,8 +307,6 @@ export class HttpClient {
 
 
                 const data = await parseBody(response);
-
-                console.info(">> something is wrong with the request/response:", data);
 
                 const classification = classifyError({ response: { status: response.status, headers: resHeaders, data } });
 
@@ -404,22 +396,21 @@ export class HttpClient {
         const maxKeys = this.config.showMaxKeys ?? 20;
         const maxArray = this.config.showMaxArrayItems ?? 5;
         const maxChars = this.config.showMaxChars ?? 300;
-        const log = this.logger.info ?? this.logger.log ?? console.log;
 
-        log(`[HttpClient] ${method} ${url}`);
+        this.logger.info(`[HttpClient] ${method} ${url}`);
         if (this.config.showRequestHeaders && reqHeaders && Object.keys(reqHeaders).length > 0) {
-            log(`  Request headers: ${formatForDisplay(reqHeaders, maxKeys, maxArray, maxChars)}`);
+            this.logger.info(`  Request headers: ${formatForDisplay(reqHeaders, maxKeys, maxArray, maxChars)}`);
         }
         if (options.data != null) {
-            log(`  Request body: ${formatForDisplay(options.data, maxKeys, maxArray, maxChars)}`);
+            this.logger.info(`  Request body: ${formatForDisplay(options.data, maxKeys, maxArray, maxChars)}`);
         }
         if (res) {
-            log(`  → ${res.status}${fromMock ? ' (from mock)' : ''} ${durationMs}ms`);
+            this.logger.info(`  → ${res.status}${fromMock ? ' (from mock)' : ''} ${durationMs}ms`);
             if (this.config.showResponseHeaders && res.headers && Object.keys(res.headers).length > 0) {
-                log(`  Response headers: ${formatForDisplay(res.headers, maxKeys, maxArray, maxChars)}`);
+                this.logger.info(`  Response headers: ${formatForDisplay(res.headers, maxKeys, maxArray, maxChars)}`);
             }
             if (res.data != null) {
-                log(`  Response body: ${formatForDisplay(res.data, maxKeys, maxArray, maxChars)}`);
+                this.logger.info(`  Response body: ${formatForDisplay(res.data, maxKeys, maxArray, maxChars)}`);
             }
         }
     }
