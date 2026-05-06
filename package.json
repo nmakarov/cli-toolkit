@@ -5,75 +5,60 @@
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./args": {
-      "types": "./dist/args.d.ts",
       "import": "./dist/args.js",
       "require": "./dist/args.cjs"
     },
     "./params": {
-      "types": "./dist/params.d.ts",
       "import": "./dist/params.js",
       "require": "./dist/params.cjs"
     },
     "./init": {
-      "types": "./dist/init.d.ts",
       "import": "./dist/init.js",
       "require": "./dist/init.cjs"
     },
     "./http-client": {
-      "types": "./dist/http-client.d.ts",
       "import": "./dist/http-client.js",
       "require": "./dist/http-client.cjs"
     },
     "./http-client2": {
-      "types": "./dist/http-client2.d.ts",
       "import": "./dist/http-client2.js",
       "require": "./dist/http-client2.cjs"
     },
     "./mock-server": {
-      "types": "./dist/mock-server.d.ts",
       "import": "./dist/mock-server.js",
       "require": "./dist/mock-server.cjs"
     },
     "./screen": {
-      "types": "./dist/screen.d.ts",
       "import": "./dist/screen.js",
       "require": "./dist/screen.cjs"
     },
     "./errors": {
-      "types": "./dist/errors.d.ts",
       "import": "./dist/errors.js",
       "require": "./dist/errors.cjs"
     },
     "./logger": {
-      "types": "./dist/logger.d.ts",
       "import": "./dist/logger.js",
       "require": "./dist/logger.cjs"
     },
     "./filedatabase": {
-      "types": "./dist/filedatabase.d.ts",
       "import": "./dist/filedatabase.js",
       "require": "./dist/filedatabase.cjs"
     },
     "./db": {
-      "types": "./dist/db.d.ts",
       "import": "./dist/db.js",
       "require": "./dist/db.cjs"
     },
     "./tasks": {
-      "types": "./dist/tasks.d.ts",
       "import": "./dist/tasks.js",
       "require": "./dist/tasks.cjs"
     },
     "./utils": {
-      "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js",
       "require": "./dist/utils.cjs"
     }
@@ -82,51 +67,49 @@
     "cli-runner": "./dist/cli-runner.js"
   },
   "scripts": {
-    "ssm:list": "tsx scripts/ssm/ssm-admin.ts list",
-    "ssm:get": "tsx scripts/ssm/ssm-admin.ts get",
-    "ssm:put": "tsx scripts/ssm/ssm-admin.ts put",
-    "ssm:pull": "tsx scripts/ssm/ssm-pull.ts",
-    "tasks:monitor": "tsx scripts/tasks-monitor.ts",
-    "tasks:send": "tsx scripts/send-task.ts",
-    "tasks:ensure-dummy-harvest": "tsx scripts/ensure-dummy-harvest.ts",
+    "ssm:list": "node scripts/ssm/ssm-admin.js list",
+    "ssm:get": "node scripts/ssm/ssm-admin.js get",
+    "ssm:put": "node scripts/ssm/ssm-admin.js put",
+    "ssm:pull": "node scripts/ssm/ssm-pull.js",
+    "tasks:monitor": "node scripts/tasks-monitor.js",
+    "tasks:send": "node scripts/send-task.js",
+    "tasks:ensure-dummy-harvest": "node scripts/ensure-dummy-harvest.js",
     "build": "tsup && node scripts/fix-cjs-esm-deps.js",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:coverage:open": "vitest --coverage && open coverage/index.html",
-    "test:ci": "vitest run src/args/tests/args.ci.test.ts src/params/tests/params.ci.test.ts src/errors/tests/errors.ci.test.ts src/screen/tests/screen.ci.test.ts src/logger/tests/logger.ci.test.ts src/filedatabase/tests/filestore.ci.test.ts src/filedatabase/tests/synopsis-functions.ci.test.ts src/http-client/tests/http-client.ci.test.ts src/http-client2/tests/http-client2.ci.test.ts src/mock-server/tests/mock-server.ci.test.ts src/mock-server/tests/mock-storage.ci.test.ts src/db/tests/db.ci.test.ts src/utils/tests/format-utils.ci.test.ts src/utils/tests/date-utils.ci.test.ts src/utils/tests/crypto-utils.ci.test.ts src/utils/tests/fs-utils.ci.test.ts src/utils/tests/os-utils.ci.test.ts src/init/tests/init.ci.test.ts --coverage",
+    "test:ci": "vitest run src/args/tests/args.ci.test.js src/params/tests/params.ci.test.js src/errors/tests/errors.ci.test.js src/screen/tests/screen.ci.test.js src/logger/tests/logger.ci.test.js src/filedatabase/tests/filestore.ci.test.js src/filedatabase/tests/synopsis-functions.ci.test.js src/http-client/tests/http-client.ci.test.js src/http-client2/tests/http-client2.ci.test.js src/mock-server/tests/mock-server.ci.test.js src/mock-server/tests/mock-storage.ci.test.js src/db/tests/db.ci.test.js src/utils/tests/format-utils.ci.test.js src/utils/tests/date-utils.ci.test.js src/utils/tests/crypto-utils.ci.test.js src/utils/tests/fs-utils.ci.test.js src/utils/tests/os-utils.ci.test.js src/init/tests/init.ci.test.js --coverage",
     "test:args": "vitest run src/args/tests",
-    "test:args:ci": "vitest run src/args/tests/args.ci.test.ts --coverage",
+    "test:args:ci": "vitest run src/args/tests/args.ci.test.js --coverage",
     "test:params": "vitest run src/params/tests",
-    "test:params:ci": "vitest run src/params/tests/params.ci.test.ts --coverage",
+    "test:params:ci": "vitest run src/params/tests/params.ci.test.js --coverage",
     "test:errors": "vitest run src/errors/tests",
-    "test:errors:ci": "vitest run src/errors/tests/errors.ci.test.ts --coverage",
+    "test:errors:ci": "vitest run src/errors/tests/errors.ci.test.js --coverage",
     "test:screen": "vitest run src/screen/tests",
-    "test:screen:ci": "vitest run src/screen/tests/screen.ci.test.ts --coverage",
-    "test:logger": "vitest run src/logger/tests/logger.cli.test.ts",
-    "test:logger:ci": "vitest run src/logger/tests/logger.ci.test.ts --coverage",
+    "test:screen:ci": "vitest run src/screen/tests/screen.ci.test.js --coverage",
+    "test:logger": "vitest run src/logger/tests/logger.cli.test.js",
+    "test:logger:ci": "vitest run src/logger/tests/logger.ci.test.js --coverage",
     "test:filedatabase": "vitest run src/filedatabase/tests",
-    "test:filedatabase:ci": "vitest run src/filedatabase/tests/filestore.ci.test.ts --coverage",
-    "test:synopsis": "vitest run src/filedatabase/tests/synopsis-functions.ci.test.ts",
-    "test:synopsis:ci": "vitest run src/filedatabase/tests/synopsis-functions.ci.test.ts --coverage",
+    "test:filedatabase:ci": "vitest run src/filedatabase/tests/filestore.ci.test.js --coverage",
+    "test:synopsis": "vitest run src/filedatabase/tests/synopsis-functions.ci.test.js",
+    "test:synopsis:ci": "vitest run src/filedatabase/tests/synopsis-functions.ci.test.js --coverage",
     "test:http-client": "vitest run src/http-client/tests",
-    "test:http-client:ci": "vitest run src/http-client/tests/http-client.ci.test.ts --coverage",
-    "test:http-client:ci:real-timeouts": "HTTP_CLIENT_REAL_TIMEOUTS=true vitest run src/http-client/tests/http-client.ci.test.ts --coverage",
+    "test:http-client:ci": "vitest run src/http-client/tests/http-client.ci.test.js --coverage",
+    "test:http-client:ci:real-timeouts": "HTTP_CLIENT_REAL_TIMEOUTS=true vitest run src/http-client/tests/http-client.ci.test.js --coverage",
     "test:http-client2": "vitest run src/http-client2/tests",
-    "test:http-client2:ci": "vitest run src/http-client2/tests/http-client2.ci.test.ts --coverage",
+    "test:http-client2:ci": "vitest run src/http-client2/tests/http-client2.ci.test.js --coverage",
     "test:mock-server": "vitest run src/mock-server/tests",
-    "test:mock-server:ci": "vitest run src/mock-server/tests/mock-server.ci.test.ts src/mock-server/tests/mock-storage.ci.test.ts --coverage",
+    "test:mock-server:ci": "vitest run src/mock-server/tests/mock-server.ci.test.js src/mock-server/tests/mock-storage.ci.test.js --coverage",
     "test:mock-server:coverage": "vitest run src/mock-server/tests --coverage",
     "test:db": "vitest run src/db/tests",
-    "test:db:ci": "vitest run src/db/tests/db.ci.test.ts --coverage",
+    "test:db:ci": "vitest run src/db/tests/db.ci.test.js --coverage",
     "test:utils": "vitest run src/utils/tests",
-    "test:utils:ci": "vitest run src/utils/tests/*.ci.test.ts --coverage",
+    "test:utils:ci": "vitest run src/utils/tests/*.ci.test.js --coverage",
     "test:init": "vitest run src/init/tests",
-    "test:init:ci": "vitest run src/init/tests/init.ci.test.ts --coverage",
+    "test:init:ci": "vitest run src/init/tests/init.ci.test.js --coverage",
     "lint": "eslint src/",
-    "type-check": "tsc --noEmit",
-    "docs": "typedoc src/index.ts",
     "prepublishOnly": "npm run test:ci && npm run build",
     "release:patch": "npm version patch && npm publish --access public && git push --follow-tags",
     "release:minor": "npm version minor && npm publish --access public && git push --follow-tags",
@@ -138,7 +121,7 @@
     "params",
     "bootstrap",
     "toolkit",
-    "typescript",
+    "javascript",
     "terminal",
     "ui",
     "ink",
@@ -163,22 +146,16 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "@types/node": "^24.9.1",
-    "@types/react": "^19.2.2",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
+    "@eslint/js": "^9.38.0",
     "@vitest/coverage-v8": "^4.0.3",
     "eslint": "^9.38.0",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
-    "tsx": "^4.20.0",
-    "typedoc": "^0.28.14",
     "typescript": "^5.9.3",
     "vitest": "^4.0.3"
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.750.0",
-    "@types/joi": "^17.2.3",
     "axios": "^1.6.0",
     "chalk": "^4.1.2",
     "dotenv": "^17.2.3",

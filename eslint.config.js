@@ -1,71 +1,85 @@
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
+import js from "@eslint/js";
+
+const nodeGlobals = {
+    process: "readonly",
+    console: "readonly",
+    Buffer: "readonly",
+    __dirname: "readonly",
+    __filename: "readonly",
+    global: "readonly",
+    globalThis: "readonly",
+    module: "readonly",
+    require: "readonly",
+    exports: "readonly",
+    setTimeout: "readonly",
+    clearTimeout: "readonly",
+    setInterval: "readonly",
+    clearInterval: "readonly",
+    setImmediate: "readonly",
+    clearImmediate: "readonly",
+    queueMicrotask: "readonly",
+    URL: "readonly",
+    URLSearchParams: "readonly",
+    fetch: "readonly",
+    Request: "readonly",
+    Response: "readonly",
+    Headers: "readonly",
+    AbortController: "readonly",
+    AbortSignal: "readonly",
+    DOMException: "readonly",
+    TextEncoder: "readonly",
+    TextDecoder: "readonly",
+    performance: "readonly",
+    structuredClone: "readonly"
+};
+
+const vitestGlobals = {
+    describe: "readonly",
+    it: "readonly",
+    test: "readonly",
+    expect: "readonly",
+    beforeAll: "readonly",
+    afterAll: "readonly",
+    beforeEach: "readonly",
+    afterEach: "readonly",
+    vi: "readonly"
+};
 
 export default [
-  js.configs.recommended,
-  {
-    files: ['**/*.ts', '**/*.tsx'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module'
-      },
-      globals: {
-        process: 'readonly',
-        console: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        global: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
-        exports: 'readonly'
-      }
+    js.configs.recommended,
+    {
+        files: ["**/*.js", "**/*.mjs"],
+        languageOptions: {
+            ecmaVersion: "latest",
+            sourceType: "module",
+            globals: nodeGlobals
+        },
+        rules: {
+            "no-unused-vars": ["error", {
+                argsIgnorePattern: "^_",
+                varsIgnorePattern: "^_",
+                caughtErrors: "none"
+            }],
+            "no-console": "off",
+            "prefer-const": "error",
+            "no-var": "error",
+            "quotes": ["error", "double", { avoidEscape: true, allowTemplateLiterals: true }],
+            "indent": ["error", 4, { SwitchCase: 1 }]
+        }
     },
-    plugins: {
-      '@typescript-eslint': typescript
+    {
+        files: ["**/tests/**/*.js", "**/*.test.js", "**/*.spec.js"],
+        languageOptions: {
+            globals: { ...nodeGlobals, ...vitestGlobals }
+        }
     },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_' 
-      }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': 'off', // Allow console.log in CLI tools
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'no-undef': 'off', // TypeScript handles this
-      'quotes': ['error', 'double'],
-      'indent': ['error', 4]
+    {
+        ignores: [
+            "dist/**",
+            "node_modules/**",
+            "coverage/**",
+            "*.config.js",
+            "legacy/**"
+        ]
     }
-  },
-  {
-    files: ['**/*.js', '**/*.mjs'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module'
-    },
-    rules: {
-      'no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_' 
-      }],
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'quotes': ['error', 'double'],
-      'indent': ['error', 4]
-    }
-  },
-  {
-    ignores: [
-      'dist/**',
-      'node_modules/**',
-      '*.config.js',
-      '*.config.ts',
-      'legacy/**'
-    ]
-  }
 ];
