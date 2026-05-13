@@ -14,6 +14,7 @@ export default defineConfig({
         "http-client2": "src/http-client2/index.js",
         "mock-server": "src/mock-server/index.js",
         db: "src/db/index.js",
+        s3: "src/s3/index.js",
         init: "src/init/index.js",
         tasks: "src/tasks/index.js",
         "cli-runner": "src/scripts/cli-runner.js",

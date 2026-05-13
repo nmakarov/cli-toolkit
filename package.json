@@ -54,6 +54,10 @@
       "import": "./dist/db.js",
       "require": "./dist/db.cjs"
     },
+    "./s3": {
+      "import": "./dist/s3.js",
+      "require": "./dist/s3.cjs"
+    },
     "./tasks": {
       "import": "./dist/tasks.js",
       "require": "./dist/tasks.cjs"
@@ -155,6 +159,7 @@
     "vitest": "^4.0.3"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0",
     "@aws-sdk/client-ssm": "^3.750.0",
     "axios": "^1.6.0",
     "chalk": "^4.1.2",
