@@ -418,6 +418,19 @@ export class Params {
     }
 
     /**
+     * Async variant of {@link runWithModule} for modules that await params.get().
+     */
+    async runWithModuleAsync(moduleName, fn) {
+        const prev = this._currentModule;
+        this._currentModule = moduleName;
+        try {
+            return await fn();
+        } finally {
+            this._currentModule = prev;
+        }
+    }
+
+    /**
      * Infer module name from call stack: first caller outside params/index gives path like .../src/<moduleName>/...
      */
     _inferModuleNameFromStack() {

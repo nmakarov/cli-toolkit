@@ -192,6 +192,19 @@ describe("Params CI", () => {
         expect(byModule.script?.port).toBeDefined();
     });
 
+    it("runWithModuleAsync tracks awaited get under that module", async () => {
+        const params = new Params({ args: argsStub });
+        params.getAllForModule("script", { port: "number" });
+        await params.runWithModuleAsync("db", async () => {
+            await Promise.resolve();
+            params.get("fromArgs", "string");
+        });
+        const byModule = params.getFiguredByModule();
+        expect(byModule.db?.fromArgs).toBeDefined();
+        expect(byModule.script?.port).toBeDefined();
+        expect(byModule.script?.fromArgs).toBeUndefined();
+    });
+
     it("getFiguredByModule and getTrackedParams", () => {
         const params = new Params({ args: argsStub });
         params.get("port", "number");

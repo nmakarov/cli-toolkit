@@ -801,11 +801,13 @@ describe("Db CI", () => {
                 params: {
                     getAllForModule: vi.fn().mockReturnValue({
                         dbName: undefined,
-                        dbConnectionString: undefined,
                         dbProfile: false,
                         ...moduleParams,
                     }),
                     get: getMock ?? vi.fn().mockResolvedValue(undefined),
+                },
+                args: {
+                    getSource: vi.fn().mockReturnValue(undefined),
                 },
                 logger: mockLogger,
                 registerCleanup,
@@ -813,19 +815,24 @@ describe("Db CI", () => {
         }
 
         it("connects with dbConnectionString from params and registers cleanup", async () => {
-            const context = makeContext({
-                moduleParams: {
-                    dbConnectionString: "postgresql://user:pass@localhost:5432/fromparams",
-                },
+            const getMock = vi.fn(async (key) => {
+                if (key === "dbConnectionString") {
+                    return "postgresql://user:pass@localhost:5432/fromparams";
+                }
             });
+            const context = makeContext({ getMock });
             const connected = await Db.init(context);
             expect(connected).toBeDefined();
             expect(connected.isConnectedToDb()).toBe(true);
             expect(context.registerCleanup).toHaveBeenCalled();
             expect(context.params.getAllForModule).toHaveBeenCalledWith(
                 "db",
-                expect.any(Object)
+                expect.objectContaining({
+                    dbName: "string",
+                    dbProfile: "boolean default false",
+                })
             );
+            expect(getMock).toHaveBeenCalledWith("dbConnectionString", "string");
         });
 
         it("resolves dbName via dbConnectionString${Capitalized} param", async () => {
@@ -844,10 +851,15 @@ describe("Db CI", () => {
         it("defaults dbName to 'local' when neither dbName nor dbConnectionString given", async () => {
             const getMock = vi
                 .fn()
-                .mockResolvedValue("postgresql://user:pass@localhost:5432/defaultdb");
+                .mockImplementation(async (key) => {
+                    if (key === "dbConnectionStringLocal") {
+                        return "postgresql://user:pass@localhost:5432/defaultdb";
+                    }
+                });
             const context = makeContext({ getMock });
             const connected = await Db.init(context);
             expect(connected).toBeDefined();
+            expect(getMock).toHaveBeenCalledWith("dbConnectionString", "string");
             expect(getMock).toHaveBeenCalledWith("dbConnectionStringLocal", "string");
         });
 
@@ -864,21 +876,65 @@ describe("Db CI", () => {
         });
 
         it("options.dbConnectionString wins over discovered params", async () => {
+            const getMock = vi.fn(async (key) => {
+                if (key === "dbConnectionStringLocal") {
+                    return "postgresql://from-params:5432/x";
+                }
+            });
             const context = makeContext({
-                moduleParams: {
-                    dbName: "local",
-                    dbConnectionString: "postgresql://from-params:5432/x",
-                },
+                moduleParams: { dbName: "local" },
+                getMock,
             });
             const connected = await Db.init(context, {
                 dbConnectionString: "postgresql://from-options:5432/y",
             });
             expect(connected).toBeDefined();
             expect(connected.isConnectedToDb()).toBe(true);
+            expect(getMock).not.toHaveBeenCalledWith("dbConnectionStringLocal", "string");
             expect(mockKnex).toHaveBeenCalledWith(
                 expect.objectContaining({
                     connection: expect.objectContaining({
                         connectionString: "postgresql://from-options:5432/y",
+                    }),
+                })
+            );
+        });
+
+        it("infers display name from args.env when only dbConnectionString is resolved", async () => {
+            const getMock = vi.fn(async (key) => {
+                if (key === "dbConnectionString") {
+                    return "postgresql://user:pass@silo2.everystate.io:5432/mlsfarm2";
+                }
+            });
+            const context = makeContext({ getMock });
+            context.args = { getSource: vi.fn().mockReturnValue(undefined), env: "production" };
+            await Db.init(context);
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                '[Db] Connected to database "production" (silo2.everystate.io:5432)'
+            );
+        });
+
+        it("prefers dbConnectionStringEverystate over generic dbConnectionString when dbName is set", async () => {
+            const getMock = vi.fn(async (key) => {
+                if (key === "dbConnectionStringEverystate") {
+                    return "postgresql://user:pass@silo2.everystate.io:5432/mlsfarm2";
+                }
+                if (key === "dbConnectionString") {
+                    return "postgresql://root:root@localhost:6032/mlsfarm";
+                }
+            });
+            const context = makeContext({
+                moduleParams: { dbName: "everystate" },
+                getMock,
+            });
+            const connected = await Db.init(context);
+            expect(connected).toBeDefined();
+            expect(getMock).toHaveBeenCalledWith("dbConnectionStringEverystate", "string");
+            expect(getMock).not.toHaveBeenCalledWith("dbConnectionString", "string");
+            expect(mockKnex).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    connection: expect.objectContaining({
+                        connectionString: "postgresql://user:pass@silo2.everystate.io:5432/mlsfarm2",
                     }),
                 })
             );
@@ -907,11 +963,12 @@ describe("Db CI", () => {
         });
 
         it("wraps non-ParamError connection failures in ParamError", async () => {
-            const context = makeContext({
-                moduleParams: {
-                    dbConnectionString: "postgresql://u:p@h:5432/d",
-                },
+            const getMock = vi.fn(async (key) => {
+                if (key === "dbConnectionString") {
+                    return "postgresql://u:p@h:5432/d";
+                }
             });
+            const context = makeContext({ getMock });
             mockKnex.mockImplementationOnce(() => {
                 throw new Error("connection refused");
             });
@@ -926,11 +983,12 @@ describe("Db CI", () => {
         });
 
         it("rethrows ParamError unchanged", async () => {
-            const context = makeContext({
-                moduleParams: {
-                    dbConnectionString: "postgresql://u:p@h:5432/d",
-                },
+            const getMock = vi.fn(async (key) => {
+                if (key === "dbConnectionString") {
+                    return "postgresql://u:p@h:5432/d";
+                }
             });
+            const context = makeContext({ getMock });
             mockKnex.mockImplementationOnce(() => {
                 throw new ParamError("bad param");
             });

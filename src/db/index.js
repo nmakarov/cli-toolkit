@@ -10,43 +10,82 @@ const KNEX_DEFAULTS = {
 
 export class Db {
     static async init(context, options = {}) {
-        const defs = {
-            dbName: "string",
-            dbConnectionString: "string",
-            dbProfile: "boolean default false",
-        };
-        const discovered = context?.params?.getAllForModule?.("db", defs) ?? {};
-        const merged = { ...discovered, ...options };
+        const buildConfig = async () => {
+            const defs = {
+                dbName: "string",
+                dbProfile: "boolean default false",
+            };
+            const discovered = context?.params?.getAllForModule?.("db", defs) ?? {};
+            const merged = { ...discovered, ...options };
 
-        let { dbName, dbConnectionString } = merged;
-        const { dbProfile } = merged;
+            let { dbName, dbProfile } = merged;
+            let dbConnectionString = options.dbConnectionString ?? options.connectionString;
+            let connectionParam = dbConnectionString ? "options" : null;
 
-        if (!dbName && !dbConnectionString) {
-            dbName = "local";
-        }
-
-        if (dbName && /^(postgresql|mysql):\/\//.test(dbName)) {
-            dbConnectionString = dbName;
-            dbName = undefined;
-        }
-
-        if (dbName && !dbConnectionString) {
-            const paramName = `dbConnectionString${capitalizeFirstLetter(dbName)}`;
-            dbConnectionString = await context.params.get(paramName, "string");
             if (!dbConnectionString) {
-                throw new ParamError(
-                    `Db: cannot find dbConnectionString for dbName="${dbName}" (looked for param "${paramName}")`
-                );
+                const src = context?.args?.getSource?.("dbConnectionString");
+                if (src === "cli" || src === "overrides" || src === "config") {
+                    dbConnectionString = await context.params.get("dbConnectionString", "string");
+                    connectionParam = "dbConnectionString";
+                }
             }
-        }
 
-        const config = {
-            ...KNEX_DEFAULTS,
-            connectionString: dbConnectionString,
-            name: dbName || merged.name || "default",
-            profile: !!dbProfile,
-            logger: context.logger,
+            if (!dbConnectionString && dbName && /^(postgresql|mysql):\/\//.test(dbName)) {
+                dbConnectionString = dbName;
+                dbName = undefined;
+            }
+
+            if (!dbConnectionString && dbName) {
+                const paramName = `dbConnectionString${capitalizeFirstLetter(dbName)}`;
+                dbConnectionString = await context.params.get(paramName, "string");
+                connectionParam = paramName;
+                if (!dbConnectionString) {
+                    throw new ParamError(
+                        `Db: cannot find dbConnectionString for dbName="${dbName}" (looked for param "${paramName}")`
+                    );
+                }
+            }
+
+            if (!dbConnectionString) {
+                dbConnectionString = await context.params.get("dbConnectionString", "string");
+                if (dbConnectionString) {
+                    connectionParam = "dbConnectionString";
+                }
+            }
+
+            if (!dbConnectionString) {
+                if (!dbName) {
+                    dbName = "local";
+                }
+                const paramName = `dbConnectionString${capitalizeFirstLetter(dbName)}`;
+                dbConnectionString = await context.params.get(paramName, "string");
+                connectionParam = paramName;
+                if (!dbConnectionString) {
+                    throw new ParamError(
+                        `Db: cannot find dbConnectionString for dbName="${dbName}" (looked for param "${paramName}")`
+                    );
+                }
+            }
+
+            const displayName = resolveDbDisplayName(
+                dbName,
+                connectionParam,
+                context?.args?.env,
+                merged.name
+            );
+
+            return {
+                ...KNEX_DEFAULTS,
+                connectionString: dbConnectionString,
+                name: displayName,
+                profile: !!dbProfile,
+                logger: context.logger,
+            };
         };
+
+        const config = context?.params?.runWithModuleAsync
+            ? await context.params.runWithModuleAsync("db", buildConfig)
+            : await buildConfig();
 
         return dbConnect(context, config);
     }
@@ -67,7 +106,6 @@ export class Db {
             acquireConnectionTimeout: 10000,
             ssl: { rejectUnauthorized: false },
             logger: console,
-            name: "default",
             ...config,
         };
 
@@ -184,9 +222,7 @@ export class Db {
             }
 
             this.isConnected = true;
-            this.logger.debug?.(
-                `[Db] Connected to database "${this.config.name || this.config.connectionString}"`
-            );
+            this.logger.debug?.(formatDbConnectMessage(this.config.name, this.config.connectionString));
         } catch (error) {
             if (error instanceof ParamError) {
                 throw error;
@@ -206,9 +242,7 @@ export class Db {
             this.knexInstance = null;
             this.isConnected = false;
             this.queriesLog = [];
-            this.logger.debug?.(
-                `[Db] Disconnected from database "${this.config.name || this.config.connectionString}"`
-            );
+            this.logger.debug?.(formatDbDisconnectMessage(this.config.name, this.config.connectionString));
         } catch (error) {
             const errorMsg = this.getErrorMessage(error);
             this.logger.error?.(`[Db] Error disconnecting: ${errorMsg}`);
@@ -369,18 +403,88 @@ function capitalizeFirstLetter(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function resolveDbDisplayName(dbName, connectionParam, argsEnv, mergedName) {
+    if (dbName) {
+        return dbName;
+    }
+    if (mergedName) {
+        return mergedName;
+    }
+    if (
+        connectionParam?.startsWith("dbConnectionString") &&
+        connectionParam.length > "dbConnectionString".length
+    ) {
+        return connectionParam.slice("dbConnectionString".length).toLowerCase();
+    }
+    if (connectionParam === "dbConnectionString" && argsEnv) {
+        return argsEnv;
+    }
+    return undefined;
+}
+
+function formatDbConnectMessage(name, connectionString) {
+    const endpointSuffix = formatConnectionEndpointSuffix(connectionString);
+    if (name) {
+        return `[Db] Connected to database "${name}"${endpointSuffix}`;
+    }
+    return `[Db] Connected${endpointSuffix}`;
+}
+
+function formatDbDisconnectMessage(name, connectionString) {
+    const endpointSuffix = formatConnectionEndpointSuffix(connectionString);
+    if (name) {
+        return `[Db] Disconnected from database "${name}"${endpointSuffix}`;
+    }
+    return `[Db] Disconnected${endpointSuffix}`;
+}
+
+function formatDbInstanceMessage(action, name) {
+    if (name) {
+        return `[Db] instance "${name}" ${action}`;
+    }
+    return `[Db] instance ${action}`;
+}
+
+function formatConnectionEndpointSuffix(connectionString) {
+    const endpoint = formatConnectionEndpoint(connectionString);
+    return endpoint ? ` (${endpoint})` : "";
+}
+
+function formatConnectionEndpoint(connectionString) {
+    try {
+        const url = new URL(connectionString);
+        const host = url.hostname;
+        if (!host) {
+            return null;
+        }
+
+        let port = url.port;
+        if (!port) {
+            if (url.protocol === "postgresql:") {
+                port = "5432";
+            } else if (url.protocol === "mysql:") {
+                port = "3306";
+            }
+        }
+
+        return port ? `${host}:${port}` : host;
+    } catch {
+        return null;
+    }
+}
+
 async function dbConnect(context, config) {
     try {
         const db = new Db(config);
 
         context.registerCleanup(async () => {
             await db.disconnect();
-            context.logger.debug?.(`[Db] instance "${config.name}" disconnected`);
+            context.logger.debug?.(formatDbInstanceMessage("disconnected", config.name));
         });
 
         await db.connect();
 
-        context.logger.debug?.(`[Db] instance "${config.name}" initialized`);
+        context.logger.debug?.(formatDbInstanceMessage("initialized", config.name));
 
         return db;
     } catch (error) {
