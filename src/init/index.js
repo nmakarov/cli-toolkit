@@ -84,6 +84,15 @@ function setup(opts = {}) {
         isStop: partialContext.isStop,
         cleanupFunctions: partialContext.cleanupFunctions,
         registerCleanup: partialContext.registerCleanup,
+        // For long-running scripts (servers): with --showUsedParams=top, print
+        // the used-params list now (after the script has initialized all its
+        // own components), instead of at exit. No-op for the default mode,
+        // which prints at exit via the cleanup registered by Params.
+        showUsedParamsIfNeeded: () => {
+            if (params.getShowUsedParamsMode?.() === "top") {
+                params.printUsedParams(logger);
+            }
+        },
     };
 
     logger.debug("[setup] completed successfully");
@@ -198,15 +207,25 @@ export async function init(flow, opts = {}) {
         // Graceful shutdown: first Ctrl+C sets stop + emits; second runs registered cleanups then exits.
         // (Previously, process.exit(2) on second SIGINT skipped try/finally, so registerCleanup never ran.)
         let sigintCount = 0;
+        let firstSigintAt = 0;
         process.on("SIGINT", async () => {
             if (!context) return;
-            sigintCount += 1;
-            if (sigintCount === 1) {
+            const now = Date.now();
+            if (sigintCount === 0) {
+                sigintCount = 1;
+                firstSigintAt = now;
                 stop = true;
                 context.logger.info(`>> emitting stop with allowance ${stopAllowance}`);
                 context.emitter.emit("stop", stopAllowance);
                 return;
             }
+            // A single Ctrl+C can reach Node as TWO SIGINTs (e.g. under
+            // `npm run`: the terminal signals the whole process group AND npm
+            // forwards the signal). Those duplicates land within a few ms, so
+            // ignore a second SIGINT that arrives shortly after the first —
+            // otherwise we'd force-exit (below) before the graceful cleanup
+            // chain finishes, skipping late cleanups like --showUsedParams.
+            if (now - firstSigintAt < 250) return;
             context.logger.warn("[process] second SIGINT: running cleanup then exit");
             await runRegisteredCleanups(context);
             process.exit(2);

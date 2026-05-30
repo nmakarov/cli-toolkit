@@ -59,8 +59,14 @@ export class Params {
     paramGetters = [];
     trackedParams = [];
     _currentModule = "script";
-    /** Resolved early in constructor so cleanup does not read params lazily */
-    _showUsedParams = false;
+    /**
+     * Resolved early in constructor so cleanup does not read params lazily.
+     * One of: false (off) | "end" (print at exit) | "top" (print after init,
+     * via context.showUsedParamsIfNeeded()).
+     */
+    _showUsedParamsMode = false;
+    /** Guard so the dump prints at most once (top OR end, never both). */
+    _usedParamsPrinted = false;
 
     constructor(context, options = {}) {
         // Context might be partial during initialization
@@ -73,41 +79,84 @@ export class Params {
         }
 
         // Resolve showUsedParams early (fail fast, consistent with "params figured in init")
-        this._showUsedParams = this.get("showUsedParams", "boolean default false");
+        this._resolveShowUsedParams();
 
         if (context && typeof context.registerCleanup === "function") {
             context.registerCleanup((ctx) => {
-                if (!ctx.params.getShowUsedParams()) return;
-                const byModule = ctx.params.getFiguredByModule();
-                const modules = Object.keys(byModule).sort();
-                if (modules.length === 0) return;
-                const logger = ctx.logger;
-                logger.debug("[Params]: list of used params:");
-                
-                if (typeof logger.highlight !== "function") {
-                    for (const mod of modules) {
-                        logger.debug(`  [${mod}]`);
-                        for (const [key, entry] of Object.entries(byModule[mod]) ) {
-                            logger.debug(`    ${key}: ${JSON.stringify(entry.value)} (${entry.source})`);
-                        }
-                    }
-                    return;
-                }
-                for (const mod of modules) {
-                    logger.debug(`  [${mod}]`);
-                    for (const [key, entry] of Object.entries(byModule[mod]) ) {
-                        const valueStr = JSON.stringify(entry.value);
-                        const display = entry.source === "default" ? valueStr : logger.highlight(valueStr);
-                        logger.debug(`    ${key}: ${display} (${entry.source})`);
-                    }
-                }
+                // Print at exit unless it was already printed at the top
+                // (--showUsedParams=top via context.showUsedParamsIfNeeded()).
+                // printUsedParams is idempotent, so "top" runs here are no-ops;
+                // it also acts as a fallback if a "top" script never called
+                // showUsedParamsIfNeeded().
+                if (!ctx.params.getShowUsedParamsMode()) return;
+                ctx.params.printUsedParams(ctx.logger);
             });
         }
     }
 
-    /** Whether --showUsedParams was requested (resolved in constructor). */
+    /**
+     * Resolve the --showUsedParams mode. The flag is intentionally dual-typed:
+     *   (absent) / --no-showUsedParams / =false   -> false  (off)
+     *   --showUsedParams / =true                   -> "end"  (print at exit)
+     *   --showUsedParams=top                       -> "top"  (print after init)
+     * Read raw (uncoerced) from args so the string "top" isn't forced to a
+     * boolean, then track it under the "script" module for the dump itself.
+     */
+    _resolveShowUsedParams() {
+        const raw = this.args.get("showUsedParams"); // also marks the key as used
+        const source = this.args.getSource?.("showUsedParams") ?? "default";
+
+        let mode = false;
+        if (raw === undefined || raw === null) {
+            mode = false;
+        } else if (typeof raw === "string" && raw.trim().toLowerCase() === "top") {
+            mode = "top";
+        } else {
+            const s = typeof raw === "string" ? raw.trim().toLowerCase() : raw;
+            const falsey = s === false || s === "false" || s === "0" || s === "no" || s === "off";
+            mode = falsey ? false : "end";
+        }
+
+        this._showUsedParamsMode = mode;
+        this.trackParam("showUsedParams", "string", mode, raw === undefined ? "default" : source, "script");
+        return mode;
+    }
+
+    /** Whether --showUsedParams was requested in any mode (truthy = on). */
     getShowUsedParams() {
-        return this._showUsedParams;
+        return this._showUsedParamsMode !== false;
+    }
+
+    /** Resolved mode: false | "end" | "top". */
+    getShowUsedParamsMode() {
+        return this._showUsedParamsMode;
+    }
+
+    /**
+     * Print the module-grouped list of figured params (the --showUsedParams
+     * dump). Idempotent: only the first call prints, so callers can invoke it
+     * at the top (long-running services) without double-printing at exit.
+     */
+    printUsedParams(logger) {
+        if (this._usedParamsPrinted) return;
+        const byModule = this.getFiguredByModule();
+        const modules = Object.keys(byModule).sort();
+        if (modules.length === 0) return;
+        this._usedParamsPrinted = true;
+
+        logger = logger ?? this.context?.logger ?? console;
+        const hasHighlight = typeof logger.highlight === "function";
+        logger.debug("[Params]: list of used params:");
+        for (const mod of modules) {
+            logger.debug(`  [${mod}]`);
+            for (const [key, entry] of Object.entries(byModule[mod])) {
+                const valueStr = JSON.stringify(entry.value);
+                const display = (hasHighlight && entry.source !== "default")
+                    ? logger.highlight(valueStr)
+                    : valueStr;
+                logger.debug(`    ${key}: ${display} (${entry.source})`);
+            }
+        }
     }
 
     /**
