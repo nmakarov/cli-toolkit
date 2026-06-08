@@ -129,6 +129,10 @@ export class S3 {
             };
         }
 
+        // Silence the AWS SDK v3 "node >=22 required after Jan 2027" notice on
+        // older Node. Honors an explicit env value if the user already set one.
+        process.env.AWS_SDK_JS_NODE_VERSION_SUPPORT_WARNING_DISABLED ??= "true";
+
         this.client = new S3Client(clientConfig);
     }
 

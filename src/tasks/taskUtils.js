@@ -72,7 +72,7 @@ function defineTasksTable(t, db, tableNameForIndex) {
 
     t.text("name").notNullable();
     t.text("opid");
-    t.json("params");
+    t.jsonb("params");
 
     // those are tagret identifiers, kind of who is going to run a task.
     t.text("service_group"); // harvester, loader, photos, ...
@@ -85,7 +85,7 @@ function defineTasksTable(t, db, tableNameForIndex) {
 
     t.text("progress");
     t.boolean("success");
-    t.json("results");
+    t.jsonb("results");
 
     t.index(["service_group", "status", "priority", "created_at"], `${tableNameForIndex}_claim_idx`);
     t.index(["service_group", "name"], `${tableNameForIndex}_group_name_idx`);
@@ -112,21 +112,43 @@ export function taskHistoryInsertFromQueueRow(row, overrides) {
  * Idempotently create the three tables backing a queue (tasks / history / registry).
  * Pass `recreate: true` to drop-and-recreate, useful in dev/test.
  *
+ * Pass `dryRun: true` to only report the DDL it *would* run (drops/creates) and
+ * make no changes — so a `--dryRun` script never mutates the schema.
+ *
  * Requires the `uuid-ossp` extension; creates it on first run if missing.
  *
  * @param {object} context
- * @param {{ queueName?: string, recreate?: boolean }} [options]
+ * @param {{ queueName?: string, recreate?: boolean, dryRun?: boolean }} [options]
  * @returns {Promise<void>}
  */
 export async function ensureTaskTables(context, options = {}) {
     const queueName = options.queueName ?? "tasks";
     const recreate = options.recreate ?? false;
+    const dryRun = options.dryRun ?? false;
     const db = getDb(context);
+    const log = context.logger ?? console;
     const { tasksTable, historyTable, registryTable } = queueToTableNames(queueName);
 
     const needsTasks = recreate ? true : !(await db.tableExists(tasksTable));
     const needsHistory = recreate ? true : !(await db.tableExists(historyTable));
     const needsRegistry = recreate ? true : !(await db.tableExists(registryTable));
+
+    if (dryRun) {
+        const plan = [];
+        if (recreate) {
+            plan.push(`DROP TABLE IF EXISTS ${historyTable}, ${tasksTable}, ${registryTable}`);
+        }
+        if (needsTasks) plan.push(`CREATE TABLE ${tasksTable} (tasks queue)`);
+        if (needsHistory) plan.push(`CREATE TABLE ${historyTable} (history mirror)`);
+        if (needsRegistry) plan.push(`CREATE TABLE ${registryTable} (services registry)`);
+        if (plan.length === 0) {
+            log.info?.(`[tasks-schema] dryRun — queue "${queueName}" already up to date; no DDL`);
+        } else {
+            log.info?.(`[tasks-schema] dryRun — would run ${plan.length} statement(s) for queue "${queueName}":`);
+            for (const s of plan) log.info?.(`  - ${s}`);
+        }
+        return;
+    }
 
     if (recreate) {
         await db.schema.dropTableIfExists(historyTable);

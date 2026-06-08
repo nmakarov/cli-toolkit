@@ -92,12 +92,9 @@ function forwardChildLogToParent(context, prefix, message) {
 }
 
 /**
- * Build the `node` argv for `spawn`:
- *
- *   - If the parent was started with `tsx`/`ts-node` (visible in `process.execArgv`),
- *     inherit those flags so the child can load `.ts` files.
- *   - Otherwise fall back to `--import tsx` so plain `node` can still run TypeScript
- *     workers without each caller wiring it up.
+ * Build the `node` argv for `spawn`. Workers are plain `.js` (ESM), so we just
+ * run them with `node`. Any exec flags the parent was started with (e.g.
+ * `--inspect`) are inherited so child workers behave consistently.
  *
  * @param {string} scriptPath
  * @param {string[]} cliArgs
@@ -105,10 +102,7 @@ function forwardChildLogToParent(context, prefix, message) {
  */
 function buildNodeArgs(scriptPath, cliArgs) {
     const inheritedExecArgs = Array.isArray(process.execArgv) ? [...process.execArgv] : [];
-    const hasTsRuntimeInParent = inheritedExecArgs.some((arg) => /tsx|ts-node/i.test(arg));
-    return hasTsRuntimeInParent
-        ? [...inheritedExecArgs, scriptPath, ...cliArgs]
-        : ["--import", "tsx", scriptPath, ...cliArgs];
+    return [...inheritedExecArgs, scriptPath, ...cliArgs];
 }
 
 /**

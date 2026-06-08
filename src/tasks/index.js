@@ -236,9 +236,8 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
         const dbName = String(context?.params?.get?.("dbName") || "local");
         const tableName = String(context?.params?.get?.("table") || "tasks");
         const fallbackRecoverCommand = [
-            "npx",
-            "tsx",
-            "examples/tasks/recover-task.ts",
+            "node",
+            "examples/tasks/recover-task.js",
             `--dbName='${dbName.replace(/'/g, `'\\''`)}'`,
             `--table='${tableName.replace(/'/g, `'\\''`)}'`,
             `--id='${String(row.id).replace(/'/g, `'\\''`)}'`,
@@ -343,6 +342,13 @@ async function claimNextRunnableTask(
         .where({ status: "idle" })
         .where(function () {
             this.whereNull("service_group").orWhere({ service_group: serviceGroup });
+        })
+        // Honor next_run_at as a "not before" gate. NULL = no delay (claim now).
+        // This makes delayed one-off retries (next_run_at set, no schedule) wait
+        // their turn; scheduled rows already set next_run_at to their next fire
+        // time on enqueue/completion, so this stays consistent with timeMatcher.
+        .where(function () {
+            this.whereNull("next_run_at").orWhere("next_run_at", "<=", db.fn.now());
         })
         .orderByRaw("CASE WHEN past_due IS NULL THEN 1 ELSE 0 END ASC")
         .orderBy([{ column: "priority", order: "asc" }])

@@ -62,7 +62,8 @@ export class Params {
     /**
      * Resolved early in constructor so cleanup does not read params lazily.
      * One of: false (off) | "end" (print at exit) | "top" (print after init,
-     * via context.showUsedParamsIfNeeded()).
+     * via context.showUsedParamsIfNeeded()) | "stop" (print after init, then
+     * exit the process — also via context.showUsedParamsIfNeeded()).
      */
     _showUsedParamsMode = false;
     /** Guard so the dump prints at most once (top OR end, never both). */
@@ -99,8 +100,9 @@ export class Params {
      *   (absent) / --no-showUsedParams / =false   -> false  (off)
      *   --showUsedParams / =true                   -> "end"  (print at exit)
      *   --showUsedParams=top                       -> "top"  (print after init)
-     * Read raw (uncoerced) from args so the string "top" isn't forced to a
-     * boolean, then track it under the "script" module for the dump itself.
+     *   --showUsedParams=stop                      -> "stop" (print after init, then exit)
+     * Read raw (uncoerced) from args so the string "top"/"stop" isn't forced to
+     * a boolean, then track it under the "script" module for the dump itself.
      */
     _resolveShowUsedParams() {
         const raw = this.args.get("showUsedParams"); // also marks the key as used
@@ -111,6 +113,8 @@ export class Params {
             mode = false;
         } else if (typeof raw === "string" && raw.trim().toLowerCase() === "top") {
             mode = "top";
+        } else if (typeof raw === "string" && raw.trim().toLowerCase() === "stop") {
+            mode = "stop";
         } else {
             const s = typeof raw === "string" ? raw.trim().toLowerCase() : raw;
             const falsey = s === false || s === "false" || s === "0" || s === "no" || s === "off";
@@ -127,7 +131,7 @@ export class Params {
         return this._showUsedParamsMode !== false;
     }
 
-    /** Resolved mode: false | "end" | "top". */
+    /** Resolved mode: false | "end" | "top" | "stop". */
     getShowUsedParamsMode() {
         return this._showUsedParamsMode;
     }

@@ -88,9 +88,18 @@ function setup(opts = {}) {
         // the used-params list now (after the script has initialized all its
         // own components), instead of at exit. No-op for the default mode,
         // which prints at exit via the cleanup registered by Params.
+        //
+        // --showUsedParams=stop behaves like "top" but then exits immediately —
+        // a quick "show me the figured params and quit" that skips the flow's
+        // actual work. Like --stopAfter=init, this is a hard exit(0) (registered
+        // cleanups are skipped); call it once components/params are resolved.
         showUsedParamsIfNeeded: () => {
-            if (params.getShowUsedParamsMode?.() === "top") {
-                params.printUsedParams(logger);
+            const mode = params.getShowUsedParamsMode?.();
+            if (mode !== "top" && mode !== "stop") return;
+            params.printUsedParams(logger);
+            if (mode === "stop") {
+                logger.debug?.("[showUsedParams=stop] params printed — exiting");
+                process.exit(0);
             }
         },
     };

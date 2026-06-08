@@ -6,8 +6,8 @@ import { init } from "../init/index.js";
 import { Db } from "../db/index.js";
 import { defaultTasksRegistry, TasksManager, TasksRegistry } from "../tasks/index.js";
 
-// npx tsx subprojects/cli-toolkit/src/scripts/cli-runner.ts --dbName=local --table=tasks --target=localRunner --recreateTaskTables=true
-// npx tsx subprojects/cli-toolkit/src/scripts/cli-runner.ts --dbName=local --table=tasks --target=localRunner --recreateTaskTables=true --pollMs=1000 --maxParallel=1 --scanLimit=100 --tasksModule=./tasks/index.js
+// node subprojects/cli-toolkit/src/scripts/cli-runner.js --dbName=local --table=tasks --target=localRunner --recreateTaskTables=true
+// node subprojects/cli-toolkit/src/scripts/cli-runner.js --dbName=local --table=tasks --target=localRunner --recreateTaskTables=true --pollMs=1000 --maxParallel=1 --scanLimit=100 --tasksModule=./tasks/index.js
 
 const defs = {
     tasksModule: "string",
