@@ -102,6 +102,9 @@ export class Aws {
             }
             : undefined;
 
+        /** True when explicit access key + secret were supplied (env/.env/CLI). */
+        this.hasExplicitCredentials = !!this._credentials;
+
         // Quiet the AWS SDK v3 "node >=22 required after Jan 2027" notice.
         process.env.AWS_SDK_JS_NODE_VERSION_SUPPORT_WARNING_DISABLED ??= "true";
 
@@ -130,6 +133,70 @@ export class Aws {
     }
 
     getRegion() { return this.region; }
+
+    // ── credentials ─────────────────────────────────────────────────────────────
+    /**
+     * Are any credentials available *before* hitting AWS? Returns
+     * { ok, source } — explicit keys, or a resolvable default chain (profile/SSO/
+     * instance role). { ok:false } means there's nothing to even try with.
+     * Note: "ok" only means creds were *found*, not that AWS will accept them.
+     */
+    async checkCredentials() {
+        if (this.hasExplicitCredentials) {
+            return { ok: true, source: "explicit keys (env/.env/CLI)" };
+        }
+        try {
+            const provider = this._sts().config.credentials;
+            const resolved = typeof provider === "function" ? await provider() : provider;
+            if (resolved?.accessKeyId) {
+                return { ok: true, source: "default credential chain (profile/SSO/role)" };
+            }
+        } catch {
+            // nothing resolvable
+        }
+        return { ok: false };
+    }
+
+    /** True for "bad/missing credentials" style errors (vs. real failures). */
+    static isAuthError(err) {
+        const name = err?.name || err?.Code || err?.__type || "";
+        return [
+            "CredentialsProviderError",
+            "InvalidClientTokenId",
+            "UnrecognizedClientException",
+            "AuthFailure",
+            "AccessDenied",
+            "AccessDeniedException",
+            "ExpiredToken",
+            "ExpiredTokenException",
+            "SignatureDoesNotMatch",
+            "MissingAuthenticationToken",
+        ].includes(name);
+    }
+
+    /** Short, precise instructions for getting AWS credentials into .env. */
+    static credentialsHelp(region = DEFAULT_REGION) {
+        return [
+            "No usable AWS credentials were found (or AWS rejected them).",
+            "",
+            "Put a read-only access key in the project's .env:",
+            "",
+            "  AWS_ACCESS_KEY_ID=AKIA...",
+            "  AWS_SECRET_ACCESS_KEY=...",
+            `  AWS_REGION=${region}        # optional (default ${DEFAULT_REGION})`,
+            "",
+            "Get a key from the AWS console (~2 min):",
+            "  1. IAM → Users → create or pick a user (console sign-in not needed).",
+            '  2. Attach a policy — "ReadOnlyAccess" (AWS managed) is enough for discovery.',
+            '  3. The user → "Security credentials" → "Create access key" → "CLI".',
+            "  4. Copy the Access key ID + Secret access key (the secret shows only once).",
+            "  5. Paste both into .env, then re-run.",
+            "     Direct link: https://console.aws.amazon.com/iam/home#/users",
+            "",
+            "Prefer a named profile or an EC2 instance role? Re-run with AWS_PROFILE=<name>",
+            "set (or on the instance) and credentials resolve automatically.",
+        ].join("\n");
+    }
 
     // ── identity ──────────────────────────────────────────────────────────────
     /** { account, arn, userId } — confirm which account/identity the keys belong to. */

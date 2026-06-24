@@ -51,6 +51,23 @@ Shipped as TypeScript sources under `scripts/ssm/` (included in the npm package)
 
 From a clone of this repo: `npm run ssm:list -- --prefix /your/prefix/`, `npm run ssm:pull -- --path /your/prefix/`.
 
+## AWS discovery (`cli-aws-discover`)
+
+Read-only peek at the account behind your credentials (caller identity, Route53
+hosted zones, VPCs, latest Ubuntu AMI) — handy for filling a `terraform.tfvars`:
+
+```bash
+npx cli-aws-discover
+npx cli-aws-discover --awsRegion=ca-central-1
+```
+
+Credentials resolve from `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` /
+`AWS_REGION` (env or `.env`), an `AWS_PROFILE`, or an instance role. If none are
+found — or AWS rejects them — it prints exactly how to mint a read-only key,
+**no stack trace**. The same checks are available programmatically:
+`aws.checkCredentials()`, `Aws.isAuthError(err)`, `Aws.credentialsHelp(region)`
+(see `@nmakarov/cli-toolkit/aws`).
+
 ## Deploy ecosystem (`cli-deploy`)
 
 Manifest-driven release deploys to EC2: clone on the host, serve versioned

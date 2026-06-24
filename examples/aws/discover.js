@@ -28,6 +28,13 @@ const flow = async (context) => {
     logger.info(chalk.yellow(`AWS discovery — region ${aws.getRegion()}`));
     logger.info(chalk.dim("─".repeat(60)));
 
+    const cred = await aws.checkCredentials();
+    if (!cred.ok) {
+        logger.error(Aws.credentialsHelp(aws.getRegion()));
+        process.exitCode = 1;
+        return;
+    }
+
     const me = await aws.whoAmI();
     logger.info(`${chalk.bold("account")}  ${chalk.cyan(me.account)}`);
     logger.info(`${chalk.bold("arn")}      ${chalk.dim(me.arn)}`);
