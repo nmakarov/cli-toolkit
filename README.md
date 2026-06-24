@@ -51,6 +51,42 @@ Shipped as TypeScript sources under `scripts/ssm/` (included in the npm package)
 
 From a clone of this repo: `npm run ssm:list -- --prefix /your/prefix/`, `npm run ssm:pull -- --path /your/prefix/`.
 
+## Deploy ecosystem (`cli-deploy`)
+
+Manifest-driven release deploys to EC2: clone on the host, serve versioned
+releases out of `/apps/<service>/`, atomic `current` symlink switch, pm2 + nginx,
+and rollback. The engine is project-agnostic — projects only write a manifests
+module describing each app.
+
+```js
+// deploy/services.js
+export const services = {
+  web: {
+    name: "web",
+    appsRoot: "/apps/web",
+    repoUrl: "git@github.com:acme/web.git",
+    pm2: { script: "./src/index.js", port: 3000 },
+    nginx: { fqdn: "web.example.com" },
+    testCommand: "npm run test:ci", // optional
+  },
+};
+```
+
+```bash
+# from your laptop (SSH Host alias); add --host to run remotely
+cli-deploy setup    --service=web --host=web-prod   # bootstrap+init+provision+deploy
+cli-deploy deploy   --service=web --host=web-prod
+cli-deploy rollback --service=web --host=web-prod
+cli-deploy status   --service=web --host=web-prod
+
+# on the host (or a /tmp dry run): omit --host
+cli-deploy deploy --service=web --appsRoot=/tmp/web --dryRun
+```
+
+Programmatic API and a full field reference: `@nmakarov/cli-toolkit/deploy`
+(`deployService`, `provisionService`, `rollbackService`, `defineService`, …).
+Example manifest: `examples/deploy/services.js`.
+
 ## Quick Start
 
 ### Args - Parse Command Line Arguments
@@ -276,6 +312,8 @@ throw new CriticalRequestError('API endpoint unreachable');
 | **Screen** | Interactive terminal UIs with React/Ink | `@nmakarov/cli-toolkit/screen` |
 | **Logger** | Structured logging with progress tracking | `@nmakarov/cli-toolkit/logger` |
 | **Errors** | Custom error classes | `@nmakarov/cli-toolkit/errors` |
+| **AWS** | Discover AWS resources (VPC/subnets/Route53/…) | `@nmakarov/cli-toolkit/aws` |
+| **Deploy** | Manifest-driven EC2 release deploys (+ `cli-deploy`) | `@nmakarov/cli-toolkit/deploy` |
 
 ## Examples
 

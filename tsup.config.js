@@ -15,7 +15,9 @@ export default defineConfig({
         "mock-server": "src/mock-server/index.js",
         db: "src/db/index.js",
         s3: "src/s3/index.js",
+        aws: "src/aws/index.js",
         init: "src/init/index.js",
+        deploy: "src/deploy/index.js",
         tasks: "src/tasks/index.js",
         "cli-runner": "src/scripts/cli-runner.js",
         utils: "src/utils/index.js"
