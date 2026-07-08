@@ -9,9 +9,14 @@ All notable changes to this project will be documented in this file.
   resolve values on their own (e.g. by merging their config files, the way
   blueprints do) can report what they actually discovered, so the
   `--showUsedParams` dump shows real values instead of `undefined (default)`.
-  Entries figured from explicit inputs (cli/env/options) are never overridden —
-  only "default" (Params had nothing) entries get upgraded; unseen keys are
-  appended under the given module. First report wins.
+  Entries figured from explicit inputs (cli/env/options) are never overridden;
+  unseen keys are appended under the given module. The LATEST report wins, and
+  a later params.get() probe that finds nothing ("default") never shadows a
+  reported value in the dump — components typically re-probe for overrides on
+  every resolution cycle, and those misses say nothing about the value in use.
+  (Fixes the 0.36.0 behavior, where "first report wins" let a later
+  resolution cycle's empty probes shadow reported values, showing
+  `undefined (default)` again.)
 - **Declarative DDL ensure (db/ensure.js)**: `ensureSchema(db, spec)` /
   `ensureSchemaEverywhere(dbs, spec)` (plus `ensureTable`, `ensureIndex`,
   `ensureExtension`) — components describe tables/columns/indexes/extensions

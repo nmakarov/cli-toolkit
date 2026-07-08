@@ -206,11 +206,14 @@ export class Params {
      * Attribution rules:
      *   - entries figured from an explicit input (cli/env/options/…) are left
      *     untouched — the component merely confirmed them, the origin stands;
-     *   - entries whose source is "default" (Params had nothing) are upgraded
-     *     in place to the reported value and source;
+     *   - "default" entries (Params had nothing) and earlier reports are
+     *     replaced by the report;
      *   - keys never seen by Params are appended as new entries.
-     * First report wins: once upgraded, later reports for the same key/module
-     * are ignored (the source is no longer "default").
+     * The LATEST report wins — a component may resolve the same key several
+     * times with increasing specificity (e.g. a blueprint re-merged for a
+     * concrete resource) and the dump should show what it settled on.
+     * Later params.get() probes that find nothing ("default") never shadow a
+     * reported value — see {@link getFiguredByModule}.
      *
      * @param {string} key
      * @param {*} value - the value the component actually uses
@@ -220,17 +223,21 @@ export class Params {
     reportResolved(key, value, source = "discovered", moduleName) {
         const mod = moduleName ?? this._currentModule;
         const mine = this.trackedParams.filter((e) => e.key === key && e.module === mod);
-        if (mine.some((e) => e.source !== "default")) {
-            return; // explicit input (or an earlier report) wins
+        if (mine.some((e) => e.source !== "default" && !e.reported)) {
+            return; // explicitly figured (cli/env/options/…) — that origin stands
         }
-        if (mine.length === 0) {
-            this.trackParam(key, "reported", value, source, mod);
-            return;
-        }
-        for (const entry of mine) {
-            entry.value = value;
-            entry.source = source;
-        }
+        // Replace default probes and earlier reports with this report.
+        this.trackedParams = this.trackedParams.filter(
+            (e) => !(e.key === key && e.module === mod)
+        );
+        this.trackedParams.push({
+            key,
+            definition: "reported",
+            value,
+            source,
+            module: mod,
+            reported: true,
+        });
     }
 
     /**
@@ -259,12 +266,28 @@ export class Params {
     /**
      * Get figured parameters grouped by module name.
      * Same param can appear in multiple modules (e.g. source, resource).
+     * Last occurrence per key wins, EXCEPT that an empty probe — a
+     * params.get() that found nothing ("default", undefined) — never shadows
+     * a value reported via {@link reportResolved}: components probe for
+     * overrides on every resolution cycle, and those misses say nothing about
+     * the value the component actually uses.
      */
     getFiguredByModule() {
+        const reported = new Set();
+        for (const param of this.trackedParams) {
+            if (param.reported) reported.add(`${param.module}\u0000${param.key}`);
+        }
         const byModule = {};
         for (const param of this.trackedParams) {
             const mod = param.module;
             if (!byModule[mod]) byModule[mod] = {};
+            if (
+                !param.reported &&
+                param.source === "default" &&
+                reported.has(`${mod}\u0000${param.key}`)
+            ) {
+                continue;
+            }
             byModule[mod][param.key] = { value: param.value, source: param.source };
         }
         return byModule;

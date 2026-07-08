@@ -152,14 +152,27 @@ describe("Params CI", () => {
             });
         });
 
-        it("first report wins; defaults module to the current one", () => {
+        it("latest report wins; defaults module to the current one", () => {
             const params = new Params({ args: argsStub });
             params.runWithModule("blueprints", () => {
                 params.reportResolved("feedType", "reso", "blueprint");
-                params.reportResolved("feedType", "rets", "blueprint");
+                params.reportResolved("feedType", "reso-updated", "blueprint");
             });
             expect(params.getFiguredByModule().blueprints.feedType).toEqual({
-                value: "reso",
+                value: "reso-updated",
+                source: "blueprint",
+            });
+        });
+
+        it("later empty probes never shadow a reported value", () => {
+            const params = new Params({ args: argsStub });
+            // Cycle 1: probe (nothing) → report the discovered value.
+            params.runWithModule("blueprints", () => params.get("baseUrl", "string"));
+            params.reportResolved("baseUrl", "https://api.example.com", "blueprint", "blueprints");
+            // Cycle 2: the component re-resolves and probes again — still nothing.
+            params.runWithModule("blueprints", () => params.get("baseUrl", "string"));
+            expect(params.getFiguredByModule().blueprints.baseUrl).toEqual({
+                value: "https://api.example.com",
                 source: "blueprint",
             });
         });
