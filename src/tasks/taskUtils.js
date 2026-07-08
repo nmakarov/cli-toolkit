@@ -1,16 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { toJsonColumn } from "../utils/index.js";
+import { ensureSchema } from "../db/ensure.js";
 import { nextTimeMatch } from "./time-matcher.js";
-
-//KEEP THIS FOR REFERENCE !!!
-// this is a sample of how to add a column to a table if it does not exist
-// const tasksHasOpid = await db.schema.hasColumn(tasksTable, "opid");
-// if (!tasksHasOpid) {
-//     await db.schema.alterTable(tasksTable, (t) => {
-//         t.text("opid");
-//     });
-// }
-
 
 /**
  * Fail-fast accessor for the knex instance on `context.db`. The tasks component
@@ -47,48 +38,115 @@ export function queueToTableNames(queueName) {
 }
 
 /**
- * Column definition shared by the active queue and its history mirror. Kept in
- * one place so the two tables stay structurally compatible (history receives a
- * full row snapshot).
+ * Column set shared by the active queue and its history mirror, expressed as a
+ * declarative spec (see db/ensure.js): each entry is one column, so
+ * `ensureSchema` can create the whole table OR add just the columns an older
+ * installation is missing — adding a field here is all a migration takes.
  *
- * @param {import("knex").Knex.CreateTableBuilder} t
- * @param {import("knex").Knex} db
  * @param {string} tableNameForIndex Used to name indexes uniquely per table.
+ * @returns {import("../db/ensure.js").TableSpec}
  */
-function defineTasksTable(t, db, tableNameForIndex) {
-    t.uuid("id").primary().defaultTo(db.raw("uuid_generate_v4()"));
-    t.timestamp("created_at").notNullable().defaultTo(db.fn.now());
-    t.timestamp("started_at");
-    t.timestamp("completed_at");
-    /*
-     * Priority: lower number = claimed first (see claimNextRunnableTask: ORDER BY priority ASC).
-     * Suggested range 0–100: 0 = most urgent, 100 = least; default 50 for normal work.
-     */
-    t.integer("priority").notNullable().defaultTo(50);
+function tasksTableSpec(tableNameForIndex) {
+    return {
+        columns: {
+            id: (t, db) => t.uuid("id").primary().defaultTo(db.raw("uuid_generate_v4()")),
+            created_at: (t, db) => t.timestamp("created_at").notNullable().defaultTo(db.fn.now()),
+            started_at: (t) => t.timestamp("started_at"),
+            completed_at: (t) => t.timestamp("completed_at"),
+            /*
+             * Priority: lower number = claimed first (see claimNextRunnableTask: ORDER BY priority ASC).
+             * Suggested range 0–100: 0 = most urgent, 100 = least; default 50 for normal work.
+             */
+            priority: (t) => t.integer("priority").notNullable().defaultTo(50),
 
-    t.text("schedule");
-    t.timestamp("next_run_at").defaultTo(null);
-    t.timestamp("past_due").defaultTo(null);
+            schedule: (t) => t.text("schedule"),
+            next_run_at: (t) => t.timestamp("next_run_at").defaultTo(null),
+            past_due: (t) => t.timestamp("past_due").defaultTo(null),
 
-    t.text("name").notNullable();
-    t.text("opid");
-    t.jsonb("params");
+            name: (t) => t.text("name").notNullable(),
+            opid: (t) => t.text("opid"),
+            params: (t) => t.jsonb("params"),
 
-    // those are tagret identifiers, kind of who is going to run a task.
-    t.text("service_group"); // harvester, loader, photos, ...
-    t.integer("instance_number");
-    t.text("service_name"); // that's a "<server_name>_<service_group>_<instance_number>"
-    t.text("server_name"); // filled by runner when registering, auto.
+            // those are target identifiers, kind of who is going to run a task.
+            service_group: (t) => t.text("service_group"), // harvester, loader, photos, ...
+            instance_number: (t) => t.integer("instance_number"),
+            service_name: (t) => t.text("service_name"), // that's a "<server_name>_<service_group>_<instance_number>"
+            server_name: (t) => t.text("server_name"), // filled by runner when registering, auto.
 
-    t.text("status").notNullable().defaultTo("idle"); // idle, running, completed, failed, paused
-    t.timestamp("status_changed_at").defaultTo(null);
+            status: (t) => t.text("status").notNullable().defaultTo("idle"), // idle, running, completed, failed, paused
+            status_changed_at: (t) => t.timestamp("status_changed_at").defaultTo(null),
 
-    t.text("progress");
-    t.boolean("success");
-    t.jsonb("results");
+            progress: (t) => t.text("progress"),
+            success: (t) => t.boolean("success"),
+            results: (t) => t.jsonb("results"),
+        },
+        indexes: [
+            {
+                columns: ["service_group", "status", "priority", "created_at"],
+                name: `${tableNameForIndex}_claim_idx`,
+            },
+            { columns: ["service_group", "name"], name: `${tableNameForIndex}_group_name_idx` },
+        ],
+    };
+}
 
-    t.index(["service_group", "status", "priority", "created_at"], `${tableNameForIndex}_claim_idx`);
-    t.index(["service_group", "name"], `${tableNameForIndex}_group_name_idx`);
+/**
+ * Spec for the services registry table of a queue.
+ *
+ * @param {string} registryTable
+ * @returns {import("../db/ensure.js").TableSpec}
+ */
+function registryTableSpec(registryTable) {
+    return {
+        columns: {
+            id: (t, db) => t.uuid("id").primary().defaultTo(db.raw("uuid_generate_v4()")),
+
+            queue_name: (t) => t.text("queue_name").notNullable(),
+            service_group: (t) => t.text("service_group").notNullable(), // harvester, loader, photos, ...
+            instance_number: (t) => t.integer("instance_number").notNullable().defaultTo(1),
+            service_name: (t) => t.text("service_name").notNullable(), // that's a "<server_name>_<service_group>_<instance_number>"
+            server_name: (t) => t.text("server_name").notNullable(), // filled by runner when registering, auto.
+            pid: (t) => t.integer("pid"),
+
+            metadata: (t) => t.json("metadata"),
+
+            created_at: (t, db) => t.timestamp("created_at").notNullable().defaultTo(db.fn.now()),
+            last_seen_at: (t, db) => t.timestamp("last_seen_at").notNullable().defaultTo(db.fn.now()),
+        },
+        indexes: [
+            {
+                columns: ["queue_name", "service_name"],
+                name: `${registryTable}_queue_name_service_name_uniq`,
+                unique: true,
+            },
+            {
+                columns: ["queue_name", "service_group", "last_seen_at"],
+                name: `${registryTable}_queue_group_seen_idx`,
+            },
+            { columns: ["queue_name", "last_seen_at"], name: `${registryTable}_queue_seen_idx` },
+        ],
+        // TODO: a reference is needed - task_history entry should reference the registry entry, so that we can easily find all executed tasks for a given service and calculate the average workload or identify if there's a bottleneck. Also may be used for the load balancing.
+    };
+}
+
+/**
+ * Full schema spec for one queue: active table + history mirror + registry.
+ * Exported so callers (and tests) can feed it to `ensureSchema` /
+ * `ensureSchemaEverywhere` directly.
+ *
+ * @param {string} [queueName]
+ * @returns {import("../db/ensure.js").SchemaSpec}
+ */
+export function tasksSchemaSpec(queueName = "tasks") {
+    const { tasksTable, historyTable, registryTable } = queueToTableNames(queueName);
+    return {
+        extensions: ["uuid-ossp"],
+        tables: {
+            [tasksTable]: tasksTableSpec(tasksTable),
+            [historyTable]: tasksTableSpec(historyTable),
+            [registryTable]: registryTableSpec(registryTable),
+        },
+    };
 }
 
 /**
@@ -109,87 +167,69 @@ export function taskHistoryInsertFromQueueRow(row, overrides) {
 }
 
 /**
- * Idempotently create the three tables backing a queue (tasks / history / registry).
- * Pass `recreate: true` to drop-and-recreate, useful in dev/test.
+ * Idempotently make the three tables backing a queue (tasks / history /
+ * registry) match the current spec — on one database or on many.
  *
- * Pass `dryRun: true` to only report the DDL it *would* run (drops/creates) and
- * make no changes — so a `--dryRun` script never mutates the schema.
+ * Spec-driven (see {@link tasksSchemaSpec} + db/ensure.js), so this covers
+ * BOTH cases: a missing table is created whole, and a table created by an
+ * older version gets its missing columns/indexes added (never dropped or
+ * altered in place).
  *
- * Requires the `uuid-ossp` extension; creates it on first run if missing.
+ * Multi-database: pass `databases: [handle, handle, ...]` (e.g. from
+ * `Db.initAllSiblings(context, { prefix: "src_", includeMain: true })`) to
+ * apply the same ensure to every database currently in use. Default stays
+ * `context.db` only.
+ *
+ * Other options:
+ *   - `recreate: true` — drop-and-recreate (dev/test only).
+ *   - `dryRun: true`   — report the DDL it *would* run, change nothing.
+ *
+ * Requires the `uuid-ossp` extension; created on the fly if missing.
  *
  * @param {object} context
- * @param {{ queueName?: string, recreate?: boolean, dryRun?: boolean }} [options]
+ * @param {{ queueName?: string, recreate?: boolean, dryRun?: boolean, databases?: Function[] }} [options]
  * @returns {Promise<void>}
  */
 export async function ensureTaskTables(context, options = {}) {
     const queueName = options.queueName ?? "tasks";
     const recreate = options.recreate ?? false;
     const dryRun = options.dryRun ?? false;
-    const db = getDb(context);
+    const databases = options.databases ?? [getDb(context)];
     const log = context.logger ?? console;
     const { tasksTable, historyTable, registryTable } = queueToTableNames(queueName);
+    const spec = tasksSchemaSpec(queueName);
 
-    const needsTasks = recreate ? true : !(await db.tableExists(tasksTable));
-    const needsHistory = recreate ? true : !(await db.tableExists(historyTable));
-    const needsRegistry = recreate ? true : !(await db.tableExists(registryTable));
+    for (const db of databases) {
+        const label = db?.config?.name ?? "db";
 
-    if (dryRun) {
-        const plan = [];
         if (recreate) {
-            plan.push(`DROP TABLE IF EXISTS ${historyTable}, ${tasksTable}, ${registryTable}`);
+            if (dryRun) {
+                log.info?.(
+                    `[tasks-schema] dryRun — ${label}: DROP TABLE IF EXISTS ${historyTable}, ${tasksTable}, ${registryTable}`,
+                );
+            } else {
+                await db.schema.dropTableIfExists(historyTable);
+                await db.schema.dropTableIfExists(tasksTable);
+                await db.schema.dropTableIfExists(registryTable);
+            }
         }
-        if (needsTasks) plan.push(`CREATE TABLE ${tasksTable} (tasks queue)`);
-        if (needsHistory) plan.push(`CREATE TABLE ${historyTable} (history mirror)`);
-        if (needsRegistry) plan.push(`CREATE TABLE ${registryTable} (services registry)`);
-        if (plan.length === 0) {
-            log.info?.(`[tasks-schema] dryRun — queue "${queueName}" already up to date; no DDL`);
-        } else {
-            log.info?.(`[tasks-schema] dryRun — would run ${plan.length} statement(s) for queue "${queueName}":`);
-            for (const s of plan) log.info?.(`  - ${s}`);
+
+        const { actions } = await ensureSchema(db, spec, { dryRun, logger: context.logger });
+
+        if (dryRun) {
+            if (actions.length === 0) {
+                log.info?.(`[tasks-schema] dryRun — ${label}: queue "${queueName}" already up to date; no DDL`);
+            } else {
+                log.info?.(
+                    `[tasks-schema] dryRun — ${label}: would run ${actions.length} statement(s) for queue "${queueName}":`,
+                );
+                for (const s of actions) log.info?.(`  - ${s}`);
+            }
+        } else if (actions.length > 0) {
+            log.info?.(
+                `[tasks-schema] ${label}: applied ${actions.length} DDL statement(s) for queue "${queueName}"`,
+            );
         }
-        return;
-    }
-
-    if (recreate) {
-        await db.schema.dropTableIfExists(historyTable);
-        await db.schema.dropTableIfExists(tasksTable);
-        await db.schema.dropTableIfExists(registryTable);
-    }
-
-    if (needsTasks) {
-        await db.raw(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-        await db.schema.createTable(tasksTable, (t) => {
-            defineTasksTable(t, db, tasksTable);
-        });
-    }
-
-    if (needsHistory) {
-        await db.schema.createTable(historyTable, (t) => {
-            defineTasksTable(t, db, historyTable);
-        });
-    }
-
-    if (needsRegistry) {
-        await db.schema.createTable(registryTable, (t) => {
-            t.uuid("id").primary().defaultTo(db.raw("uuid_generate_v4()"));
-
-            t.text("queue_name").notNullable();
-            t.text("service_group").notNullable(); // harvester, loader, photos, ...
-            t.integer("instance_number").notNullable().defaultTo(1);
-            t.text("service_name").notNullable(); // that's a "<server_name>_<service_group>_<instance_number>"
-            t.text("server_name").notNullable(); // filled by runner when registering, auto.
-            t.integer("pid");
-
-            t.json("metadata");
-
-            t.timestamp("created_at").notNullable().defaultTo(db.fn.now());
-            t.timestamp("last_seen_at").notNullable().defaultTo(db.fn.now());
-            t.unique(["queue_name", "service_name"], `${registryTable}_queue_name_service_name_uniq`);
-            t.index(["queue_name", "service_group", "last_seen_at"], `${registryTable}_queue_group_seen_idx`);
-            t.index(["queue_name", "last_seen_at"], `${registryTable}_queue_seen_idx`);
-        });
-
-        // TODO: a reference is needed - task_history entry should reference the registry entry, so that we can easily find all executed tasks for a given service and calculate the average workload or identify if there's a bottleneck. Also may be used for the load balancing.
     }
 }
 

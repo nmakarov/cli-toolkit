@@ -115,6 +115,70 @@ describe("Params CI", () => {
         expect(params.get("fromArgs", "string")).toBe("fromArgsValue");
     });
 
+    describe("reportResolved (components with their own discovery)", () => {
+        it("upgrades 'undefined (default)' entries to the discovered value", () => {
+            const params = new Params({ args: argsStub });
+            // A component probes for an override — nothing there, tracked as default.
+            params.runWithModule("blueprints", () => params.get("baseUrl", "string"));
+            expect(params.getFiguredByModule().blueprints.baseUrl).toEqual({
+                value: undefined,
+                source: "default",
+            });
+
+            // …then reports what it actually discovered in its config files.
+            params.reportResolved("baseUrl", "https://api.example.com", "blueprint", "blueprints");
+            expect(params.getFiguredByModule().blueprints.baseUrl).toEqual({
+                value: "https://api.example.com",
+                source: "blueprint",
+            });
+        });
+
+        it("leaves explicit cli/env/options values untouched", () => {
+            const params = new Params({ args: argsStub });
+            params.runWithModule("blueprints", () => params.get("port", "number")); // from args
+            params.reportResolved("port", 9999, "blueprint", "blueprints");
+            expect(params.getFiguredByModule().blueprints.port).toEqual({
+                value: 8080,
+                source: "cli",
+            });
+        });
+
+        it("appends keys Params never saw, under the given module", () => {
+            const params = new Params({ args: argsStub });
+            params.reportResolved("handler", "ResoBright", "blueprint", "blueprints");
+            expect(params.getFiguredByModule().blueprints.handler).toEqual({
+                value: "ResoBright",
+                source: "blueprint",
+            });
+        });
+
+        it("first report wins; defaults module to the current one", () => {
+            const params = new Params({ args: argsStub });
+            params.runWithModule("blueprints", () => {
+                params.reportResolved("feedType", "reso", "blueprint");
+                params.reportResolved("feedType", "rets", "blueprint");
+            });
+            expect(params.getFiguredByModule().blueprints.feedType).toEqual({
+                value: "reso",
+                source: "blueprint",
+            });
+        });
+
+        it("does not leak across modules", () => {
+            const params = new Params({ args: argsStub });
+            params.runWithModule("other", () => params.get("top", "number"));
+            params.reportResolved("top", 500, "blueprint", "blueprints");
+            expect(params.getFiguredByModule().other.top).toEqual({
+                value: undefined,
+                source: "default",
+            });
+            expect(params.getFiguredByModule().blueprints.top).toEqual({
+                value: 500,
+                source: "blueprint",
+            });
+        });
+    });
+
     it("covers custom Joi helpers", () => {
         // joiEdateType now returns ISO8601 string
         const now = new Date();

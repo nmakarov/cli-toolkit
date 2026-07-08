@@ -196,6 +196,44 @@ export class Params {
     }
 
     /**
+     * Report a param value that a component RESOLVED ON ITS OWN — outside
+     * Params.get() — e.g. discovered by combining its config files (the way
+     * blueprints merge defaults/aggregator/feed data). Without this, every
+     * key such a component probed for an override shows up in the
+     * --showUsedParams dump as "undefined (default)"; reporting upgrades the
+     * entry to the value the component actually works with.
+     *
+     * Attribution rules:
+     *   - entries figured from an explicit input (cli/env/options/…) are left
+     *     untouched — the component merely confirmed them, the origin stands;
+     *   - entries whose source is "default" (Params had nothing) are upgraded
+     *     in place to the reported value and source;
+     *   - keys never seen by Params are appended as new entries.
+     * First report wins: once upgraded, later reports for the same key/module
+     * are ignored (the source is no longer "default").
+     *
+     * @param {string} key
+     * @param {*} value - the value the component actually uses
+     * @param {string} [source="discovered"] - short origin label, e.g. "blueprint"
+     * @param {string} [moduleName] - dump section; defaults to the current module
+     */
+    reportResolved(key, value, source = "discovered", moduleName) {
+        const mod = moduleName ?? this._currentModule;
+        const mine = this.trackedParams.filter((e) => e.key === key && e.module === mod);
+        if (mine.some((e) => e.source !== "default")) {
+            return; // explicit input (or an earlier report) wins
+        }
+        if (mine.length === 0) {
+            this.trackParam(key, "reported", value, source, mod);
+            return;
+        }
+        for (const entry of mine) {
+            entry.value = value;
+            entry.source = source;
+        }
+    }
+
+    /**
      * Get all tracked parameters (for --stopAfter=init)
      */
     getTrackedParams() {

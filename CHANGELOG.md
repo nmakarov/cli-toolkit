@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Params.reportResolved(key, value, source?, module?)**: components that
+  resolve values on their own (e.g. by merging their config files, the way
+  blueprints do) can report what they actually discovered, so the
+  `--showUsedParams` dump shows real values instead of `undefined (default)`.
+  Entries figured from explicit inputs (cli/env/options) are never overridden —
+  only "default" (Params had nothing) entries get upgraded; unseen keys are
+  appended under the given module. First report wins.
+- **Declarative DDL ensure (db/ensure.js)**: `ensureSchema(db, spec)` /
+  `ensureSchemaEverywhere(dbs, spec)` (plus `ensureTable`, `ensureIndex`,
+  `ensureExtension`) — components describe tables/columns/indexes/extensions
+  as a spec; the helpers diff it against a live database and apply only what's
+  missing (create table, ADD COLUMN, CREATE INDEX IF NOT EXISTS; never drops).
+  All support `dryRun`. Being data-driven, the same spec can be applied to any
+  number of databases.
+- **Db.discoverSiblings(context, { prefix | match })**: enumerate the sibling
+  databases currently in use — same-server scan of `pg_database` merged with
+  env-declared ones (`DB_CONNECTION_STRING_SIB_<NAME>` vars, a dedicated
+  namespace which also covers siblings that moved to their own server).
+  **Db.initAllSiblings** discovers and connects them all
+  (`includeMain: true` prepends `context.db`).
+- **ensureTaskTables rewritten (spec-driven, multi-database)**: the three queue
+  tables are now declared via `tasksSchemaSpec(queueName)` and applied through
+  `ensureSchema`, so an older installation gets missing COLUMNS added, not
+  just missing tables. New `databases: [handles]` option applies the ensure to
+  every given database (e.g. from `Db.initAllSiblings`). `recreate` / `dryRun`
+  behave as before.
+- **Db.initSibling(context, name, options?)**: sibling-database handlers — same
+  server/credentials as a base database, different database name. Resolution:
+  explicit `dbConnectionStringSib<SiblingName>` param (env
+  `DB_CONNECTION_STRING_SIB_<SIBLING_NAME>`) wins and also declares the
+  sibling; otherwise derived from `options.baseDb` /
+  `options.baseConnectionString` / `context.db` by swapping the database name.
+  Location-agnostic fallbacks: an empty name, or a sibling database that does
+  not exist on the base server (not migrated yet), return the MAIN handler —
+  call sites never need to know what has been split where. Handlers are cached
+  per name on `context.siblingDbs` (one pool per sibling, fallback answers
+  included) and disconnect via `registerCleanup`. Also exports
+  `replaceDatabaseName(connectionString, dbName)`.
 - **DB Module Refactoring**: Complete architectural refactoring following consistent init pattern
   - Added `dbInit(context, dbNameOrConnectionString?)` function that auto-connects to databases
   - Added `dbFindAndConnect(context, dbNameOrConnectionString?)` for database name resolution
