@@ -554,12 +554,37 @@ export class Db {
         this.queriesLog = [];
         this.knexInstance.queriesLog = this.queriesLog;
 
+        // Knex emits fresh Object.assign(...) copies on "query" and "query-response",
+        // so __startTime on the query object does not survive — track per-connection FIFO.
+        const startsByConnection = new Map();
+
+        const pushStart = (query) => {
+            const uid = query?.__knexUid ?? "";
+            if (!startsByConnection.has(uid)) {
+                startsByConnection.set(uid, []);
+            }
+            startsByConnection.get(uid).push(process.hrtime());
+        };
+
+        const popStart = (query) => {
+            const uid = query?.__knexUid ?? "";
+            const stack = startsByConnection.get(uid);
+            if (!stack?.length) {
+                return null;
+            }
+            return stack.pop();
+        };
+
         this.knexInstance.on("query", (query) => {
-            query.__startTime = process.hrtime();
+            pushStart(query);
         });
 
         this.knexInstance.on("query-response", (_response, query) => {
-            const [seconds, nanoseconds] = process.hrtime(query.__startTime);
+            const start = popStart(query);
+            if (!start) {
+                return;
+            }
+            const [seconds, nanoseconds] = process.hrtime(start);
             const executionTimeMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
 
             const logEntry = {
@@ -573,6 +598,7 @@ export class Db {
         });
 
         this.knexInstance.on("query-error", (error, query) => {
+            popStart(query);
             this.logger.error?.(`[Db] Query failed: ${query.sql}`, error);
         });
     }

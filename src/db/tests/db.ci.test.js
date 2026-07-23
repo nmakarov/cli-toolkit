@@ -438,13 +438,58 @@ describe("Db CI", () => {
             )?.[1];
 
             if (queryEvent && responseEvent) {
-                const mockQuery = { sql: "SELECT * FROM users", bindings: [], __startTime: [0, 0] };
-                queryEvent(mockQuery);
-                responseEvent({}, mockQuery);
+                queryEvent({ sql: "SELECT * FROM users", bindings: [], __knexUid: "conn-1" });
+                responseEvent(
+                    {},
+                    { sql: "SELECT * FROM users", bindings: [], __knexUid: "conn-1" },
+                );
             }
 
             const log = db.getQueryLog();
             expect(Array.isArray(log)).toBe(true);
+            expect(log).toHaveLength(1);
+            expect(Number(log[0].executionTimeMs)).toBeLessThan(1000);
+        });
+
+        it("should measure elapsed time when query objects differ (knex Object.assign)", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                profile: true,
+                testConnection: false,
+            });
+
+            await db.connect();
+
+            const queryEvent = mockKnexInstance.on.mock.calls.find(
+                (call) => call[0] === "query"
+            )?.[1];
+            const responseEvent = mockKnexInstance.on.mock.calls.find(
+                (call) => call[0] === "query-response"
+            )?.[1];
+
+            expect(queryEvent).toBeDefined();
+            expect(responseEvent).toBeDefined();
+
+            queryEvent(
+                Object.assign({ __knexUid: "conn-1", __knexTxId: null }, {
+                    sql: "SELECT 1",
+                    bindings: [],
+                }),
+            );
+            await new Promise((resolve) => setTimeout(resolve, 15));
+            responseEvent(
+                {},
+                Object.assign({ __knexUid: "conn-1", __knexTxId: null }, {
+                    sql: "SELECT 1",
+                    bindings: [],
+                }),
+            );
+
+            const log = db.getQueryLog();
+            expect(log).toHaveLength(1);
+            expect(Number(log[0].executionTimeMs)).toBeGreaterThanOrEqual(10);
+            expect(Number(log[0].executionTimeMs)).toBeLessThan(1000);
         });
 
         it("should return empty log when profiling is disabled", async () => {
