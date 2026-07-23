@@ -575,6 +575,49 @@ export class Db {
             return stack.pop();
         };
 
+        const isTimeoutError = (error) =>
+            error?.name === "KnexTimeoutError" ||
+            /query timeout|timeout exceeded/i.test(String(error?.message ?? ""));
+
+        const logQueryEntry = (query, start, { error } = {}) => {
+            let executionTimeMs;
+            if (start) {
+                const [seconds, nanoseconds] = process.hrtime(start);
+                executionTimeMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
+            } else if (error?.timeout != null) {
+                executionTimeMs = Number(error.timeout).toFixed(2);
+            } else {
+                executionTimeMs = "?";
+            }
+
+            let status = "ok";
+            if (error) {
+                status = isTimeoutError(error) ? "timeout" : "error";
+            }
+
+            const logEntry = {
+                sql: query?.sql,
+                bindings: query?.bindings || [],
+                executionTimeMs,
+                status,
+            };
+            if (error) {
+                logEntry.error = error.message ?? String(error);
+            }
+
+            this.queriesLog.push(logEntry);
+            const suffix = error ? ` | ${status}: ${logEntry.error}` : "";
+            this.logger.debug?.(
+                `[Db] Query: ${query?.sql} | Duration: ${executionTimeMs}ms${suffix}`,
+            );
+        };
+
+        const handleQueryError = (error, query) => {
+            const start = popStart(query);
+            logQueryEntry(query, start, { error });
+            this.logger.error?.(`[Db] Query failed: ${query?.sql}`, error);
+        };
+
         this.knexInstance.on("query", (query) => {
             pushStart(query);
         });
@@ -584,23 +627,35 @@ export class Db {
             if (!start) {
                 return;
             }
-            const [seconds, nanoseconds] = process.hrtime(start);
-            const executionTimeMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
-
-            const logEntry = {
-                sql: query.sql,
-                bindings: query.bindings || [],
-                executionTimeMs,
-            };
-
-            this.queriesLog.push(logEntry);
-            this.logger.debug?.(`[Db] Query: ${query.sql} | Duration: ${executionTimeMs}ms`);
+            logQueryEntry(query, start);
         });
 
         this.knexInstance.on("query-error", (error, query) => {
-            popStart(query);
-            this.logger.error?.(`[Db] Query failed: ${query.sql}`, error);
+            handleQueryError(error, query);
         });
+
+        // Builder queries emit "query" / "query-error" on the builder, not always on client.
+        const hookBuilder = (builder) => {
+            if (!builder || builder.__dbProfilerHooked) {
+                return;
+            }
+            builder.__dbProfilerHooked = true;
+            builder.on("query", pushStart);
+            builder.on("query-error", handleQueryError);
+        };
+
+        const client = this.knexInstance.client;
+        if (client && !client.__dbProfilerPatched) {
+            client.__dbProfilerPatched = true;
+            if (typeof client.queryBuilder === "function") {
+                const origQueryBuilder = client.queryBuilder.bind(client);
+                client.queryBuilder = (...args) => {
+                    const builder = origQueryBuilder(...args);
+                    hookBuilder(builder);
+                    return builder;
+                };
+            }
+        }
     }
 
     getQueryLog() {

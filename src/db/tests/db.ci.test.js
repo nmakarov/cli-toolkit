@@ -448,6 +448,7 @@ describe("Db CI", () => {
             const log = db.getQueryLog();
             expect(Array.isArray(log)).toBe(true);
             expect(log).toHaveLength(1);
+            expect(log[0].status).toBe("ok");
             expect(Number(log[0].executionTimeMs)).toBeLessThan(1000);
         });
 
@@ -488,8 +489,78 @@ describe("Db CI", () => {
 
             const log = db.getQueryLog();
             expect(log).toHaveLength(1);
+            expect(log[0].status).toBe("ok");
             expect(Number(log[0].executionTimeMs)).toBeGreaterThanOrEqual(10);
             expect(Number(log[0].executionTimeMs)).toBeLessThan(1000);
+        });
+
+        it("should log failed queries with elapsed time on query-error", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                profile: true,
+                testConnection: false,
+            });
+
+            await db.connect();
+
+            const queryEvent = mockKnexInstance.on.mock.calls.find(
+                (call) => call[0] === "query",
+            )?.[1];
+            const errorEvent = mockKnexInstance.on.mock.calls.find(
+                (call) => call[0] === "query-error",
+            )?.[1];
+
+            expect(queryEvent).toBeDefined();
+            expect(errorEvent).toBeDefined();
+
+            queryEvent({ sql: "SELECT slow()", bindings: [], __knexUid: "conn-1" });
+            await new Promise((resolve) => setTimeout(resolve, 12));
+            const timeoutError = Object.assign(new Error("Defined query timeout of 120000ms exceeded when running query."), {
+                name: "KnexTimeoutError",
+                timeout: 120000,
+            });
+            errorEvent(
+                timeoutError,
+                { sql: "SELECT slow()", bindings: [], __knexUid: "conn-1" },
+            );
+
+            const log = db.getQueryLog();
+            expect(log).toHaveLength(1);
+            expect(log[0].status).toBe("timeout");
+            expect(log[0].error).toMatch(/timeout/i);
+            expect(Number(log[0].executionTimeMs)).toBeGreaterThanOrEqual(10);
+            expect(Number(log[0].executionTimeMs)).toBeLessThan(1000);
+        });
+
+        it("should use configured timeout when start time is missing on query-error", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                profile: true,
+                testConnection: false,
+            });
+
+            await db.connect();
+
+            const errorEvent = mockKnexInstance.on.mock.calls.find(
+                (call) => call[0] === "query-error",
+            )?.[1];
+
+            const timeoutError = Object.assign(new Error("Defined query timeout of 120000ms exceeded when running query."), {
+                name: "KnexTimeoutError",
+                timeout: 120000,
+            });
+            errorEvent(timeoutError, {
+                sql: "select distinct \"source\" from \"listings\"",
+                bindings: [],
+                __knexUid: "conn-1",
+            });
+
+            const log = db.getQueryLog();
+            expect(log).toHaveLength(1);
+            expect(log[0].status).toBe("timeout");
+            expect(log[0].executionTimeMs).toBe("120000.00");
         });
 
         it("should return empty log when profiling is disabled", async () => {
@@ -828,7 +899,7 @@ describe("Db CI", () => {
             if (errorHandlerCall) {
                 const errorHandler = errorHandlerCall[1];
                 const queryError = new Error("Query failed");
-                const mockQuery = { sql: "SELECT * FROM users" };
+                const mockQuery = { sql: "SELECT * FROM users", __knexUid: "conn-1" };
 
                 errorHandler(queryError, mockQuery);
 
@@ -836,6 +907,8 @@ describe("Db CI", () => {
                     expect.stringContaining("Query failed"),
                     queryError
                 );
+                expect(db.getQueryLog()).toHaveLength(1);
+                expect(db.getQueryLog()[0].status).toBe("error");
             }
         });
     });
