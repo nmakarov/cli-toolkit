@@ -48,6 +48,8 @@ export class FileDatabase {
     currentRecord = 0;
     hasReadFirstPage = false;
     lastFileData = null;
+    /** Cache of the last JSON file parsed during paginated reads (avoid re-parse per page). */
+    readFileCache = null; // { filePath: string, data: any[] } | null
     metadata;
 
     // Synopsis calculation functions
@@ -1082,9 +1084,10 @@ export class FileDatabase {
         let effectivePageSize;
 
         if (nextPage && this.hasReadFirstPage) {
-            // Move to next page
+            // currentRecord was already advanced by records actually returned
+            // at the end of the previous read (not by requested pageSize — that
+            // skipped records when a read ended mid-file / short final page).
             effectivePageSize = pageSize || this.pageSize;
-            this.currentRecord += effectivePageSize;
         } else if (!nextPage) {
             // If not paginating, read all records (unless pageSize is explicitly provided)
             effectivePageSize = pageSize !== undefined ? pageSize : this.metadata.totalRecords;
@@ -1116,15 +1119,22 @@ export class FileDatabase {
             totalRecords += file.recordsCount;
         }
 
-        // Read from files
+        // Read from files (cache parsed JSON — harvest chunks are often 50–60MB;
+        // re-parsing on every nextPage with pageSize=200 is catastrophic).
         let cumulativeRecords = currentFileOffset;
         for (let i = currentFileIndex; i < this.metadata.files.length && recordsRead < effectivePageSize; i++) {
             const file = this.metadata.files[i];
             const filePath = path.join(this.getDestinationPath(this.currentVersion || undefined), file.fileName);
 
             try {
-                const rawData = await fs.promises.readFile(filePath, "utf8");
-                const fileData = deserializeData(rawData, this.metadata.dataType);
+                let fileData;
+                if (this.readFileCache?.filePath === filePath && Array.isArray(this.readFileCache.data)) {
+                    fileData = this.readFileCache.data;
+                } else {
+                    const rawData = await fs.promises.readFile(filePath, "utf8");
+                    fileData = deserializeData(rawData, this.metadata.dataType);
+                    this.readFileCache = { filePath, data: fileData };
+                }
 
                 let startIndex = 0;
                 if (i === currentFileIndex) {
@@ -1142,6 +1152,10 @@ export class FileDatabase {
                 throw new FileDatabaseError(`Failed to read file ${file.fileName}: ${(error ).message}`);
             }
         }
+
+        // Advance by what we actually returned so mid-file seeks + short pages
+        // don't skip records on the next nextPage call.
+        this.currentRecord += recordsRead;
 
         // Mark page as read for pagination tracking
         // When nextPage=true, we're explicitly paginating
@@ -1161,6 +1175,7 @@ export class FileDatabase {
     setStartRecord(startRecord) {
         this.currentRecord = startRecord - 1;
         this.hasReadFirstPage = false;
+        this.readFileCache = null;
     }
 
     /**
@@ -1169,6 +1184,7 @@ export class FileDatabase {
     resetPagination() {
         this.currentRecord = 0;
         this.hasReadFirstPage = false;
+        this.readFileCache = null;
     }
 
     /**
