@@ -216,21 +216,53 @@ export async function ensureTaskTables(context, options = {}) {
 
         const { actions } = await ensureSchema(db, spec, { dryRun, logger: context.logger });
 
+        // Older schemas had NOT NULL "task" (renamed to "name"). ensureSchema only
+        // adds columns, so a hybrid table breaks enqueueTask inserts into "name".
+        const legacyDrops = await dropLegacyTaskNameColumn(db, [tasksTable, historyTable], {
+            dryRun,
+            log,
+            label,
+        });
+
+        const allActions = [...actions, ...legacyDrops];
         if (dryRun) {
-            if (actions.length === 0) {
+            if (allActions.length === 0) {
                 log.info?.(`[tasks-schema] dryRun — ${label}: queue "${queueName}" already up to date; no DDL`);
             } else {
                 log.info?.(
-                    `[tasks-schema] dryRun — ${label}: would run ${actions.length} statement(s) for queue "${queueName}":`,
+                    `[tasks-schema] dryRun — ${label}: would run ${allActions.length} statement(s) for queue "${queueName}":`,
                 );
-                for (const s of actions) log.info?.(`  - ${s}`);
+                for (const s of allActions) log.info?.(`  - ${s}`);
             }
-        } else if (actions.length > 0) {
+        } else if (allActions.length > 0) {
             log.info?.(
-                `[tasks-schema] ${label}: applied ${actions.length} DDL statement(s) for queue "${queueName}"`,
+                `[tasks-schema] ${label}: applied ${allActions.length} DDL statement(s) for queue "${queueName}"`,
             );
         }
     }
+}
+
+/**
+ * Drop legacy `task` text column when modern `name` is already present.
+ * @returns {Promise<string[]>}
+ */
+async function dropLegacyTaskNameColumn(db, tableNames, { dryRun, log, label }) {
+    const actions = [];
+    for (const table of tableNames) {
+        if (!(await db.tableExists(table).catch(() => false))) continue;
+        const hasTask = await db.schema.hasColumn(table, "task");
+        const hasName = await db.schema.hasColumn(table, "name");
+        if (!hasTask || !hasName) continue;
+        const sql = `ALTER TABLE "${table}" DROP COLUMN IF EXISTS "task"`;
+        actions.push(sql);
+        if (dryRun) {
+            log?.info?.(`[tasks-schema] dryRun — ${label}: ${sql}`);
+        } else {
+            await db.raw(sql);
+            log?.info?.(`[tasks-schema] ${label}: dropped legacy column ${table}.task`);
+        }
+    }
+    return actions;
 }
 
 /**
@@ -274,7 +306,7 @@ export async function enqueueTask(context, options) {
         nextRunAt = nextTimeMatch(schedule, new Date());
     }
 
-    await db(tasksTable).insert({
+    const row = {
         id,
         name,
         params: toJsonColumn(options.params ?? null),
@@ -288,8 +320,26 @@ export async function enqueueTask(context, options) {
         server_name: options.serverName ?? null,
         status: "idle",
         status_changed_at: db.fn.now(),
-    });
+    };
+
+    // Hybrid DBs may still have legacy NOT NULL "task" until ensureTaskTables drops it.
+    if (await tableHasLegacyTaskColumn(db, tasksTable)) {
+        row.task = name;
+    }
+
+    await db(tasksTable).insert(row);
     return id;
+}
+
+/** @type {Map<string, boolean>} */
+const legacyTaskColumnCache = new Map();
+
+async function tableHasLegacyTaskColumn(db, tableName) {
+    const key = `${db?.config?.name ?? "db"}:${tableName}`;
+    if (!legacyTaskColumnCache.has(key)) {
+        legacyTaskColumnCache.set(key, await db.schema.hasColumn(tableName, "task"));
+    }
+    return legacyTaskColumnCache.get(key);
 }
 
 /**

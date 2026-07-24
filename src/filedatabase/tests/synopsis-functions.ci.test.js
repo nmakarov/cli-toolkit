@@ -71,6 +71,17 @@ describe("Synopsis Functions CI", () => {
             expect(result.maxModificationTimestamp).toBe("2025-01-01T12:00:00.000Z");
         });
 
+        it("picks up MediaModificationTimestamp (Bright media)", () => {
+            const fileEntry = { fileName: "000001.json", recordsCount: 2 };
+            const data = [
+                { id: 1, MediaModificationTimestamp: "2026-07-23T20:00:00Z" },
+                { id: 2, MediaModificationTimestamp: "2026-07-23T22:00:00Z" },
+            ];
+            const result = defaultFileSynopsisFunction(fileEntry, data);
+            expect(result.minModificationTimestamp).toBe("2026-07-23T20:00:00.000Z");
+            expect(result.maxModificationTimestamp).toBe("2026-07-23T22:00:00.000Z");
+        });
+
         it("counts StandardStatus occurrences", () => {
             const fileEntry = {
                 fileName: "000001.json",
