@@ -279,6 +279,11 @@ export async function init(flow, opts = {}) {
         if (context) {
             await runRegisteredCleanups(context);
         }
+        // Fatal startup errors must end the process. Setting exitCode alone is not
+        // enough — open handles (logger, timers) can keep a zombie "online" under pm2.
+        if (process.exitCode && process.exitCode !== 0) {
+            process.exit(process.exitCode);
+        }
     }
 }
 
