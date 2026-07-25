@@ -66,10 +66,13 @@ export class Args {
         const args = configToUse.args || process.argv.slice(2);
         this.parseArgs(args);
 
-        // Set environment from parsed args
+        // Runtime environment selector (--env / ENV / NODE_ENV). Default "local".
+        // On servers set ENV=production in the process environment (e.g. pm2 ecosystem)
+        // BEFORE node starts — values inside .env cannot set this (loaded below).
+        // Env-suffixed lookups then prefer KEY_PRODUCTION over KEY (see get()).
         this.env = this.get("env")?.toLowerCase() || "local";
 
-        // Load .env file
+        // Load .env file (single file with LOCAL / PRODUCTION / STAGE variants)
         this.loadDotEnv();
 
         // Load configuration files
@@ -484,47 +487,35 @@ export class Args {
             return;
         }
 
-        // Try environment-specific .env file first (e.g., .env.local, .env.production)
-        let dotEnvPathFile = null;
+        // Prefer a single .env that holds all env-suffixed keys (KEY_LOCAL,
+        // KEY_PRODUCTION, …). Optional `.env.<env>` overlay is still supported
+        // for examples / one-off overrides, but only after the base .env.
+        let dotEnvPathFile = resolve(dotEnvPath, dotEnvFile);
 
-        const envSpecificFile = `.env.${this.env}`;
-        const envSpecificPath = resolve(dotEnvPath, envSpecificFile);
-        if (existsSync(envSpecificPath)) {
-            dotEnvPathFile = envSpecificPath;
-        }
-
-        // If no environment-specific file found in current directory, try examples folder
-        if (!dotEnvPathFile && !this.get("dotEnvPath")) {
+        if (!existsSync(dotEnvPathFile) && !this.get("dotEnvPath")) {
             const examplesPath = resolve(dotEnvPath, "examples");
-            const examplesEnvSpecificPath = resolve(examplesPath, envSpecificFile);
-            if (existsSync(examplesEnvSpecificPath)) {
-                dotEnvPathFile = examplesEnvSpecificPath;
+            const examplesEnvFile = resolve(examplesPath, dotEnvFile);
+            if (existsSync(examplesEnvFile)) {
+                dotEnvPathFile = examplesEnvFile;
+            } else {
+                dotEnvPathFile = resolve(dotEnvPath, "..", dotEnvFile);
             }
         }
 
-        // If no environment-specific file found, try default .env
-        if (!dotEnvPathFile) {
-            dotEnvPathFile = resolve(dotEnvPath, dotEnvFile);
-
-            // If .env file doesn't exist in current directory, try examples folder (for our examples)
-            if (!existsSync(dotEnvPathFile)) {
-                if (!this.get("dotEnvPath")) {
-                    // Try examples folder first (for our examples)
-                    const examplesPath = resolve(dotEnvPath, "examples");
-                    const examplesEnvFile = resolve(examplesPath, dotEnvFile);
-                    if (existsSync(examplesEnvFile)) {
-                        dotEnvPathFile = examplesEnvFile;
-                    } else {
-                        // Try parent directory (like legacy)
-                        dotEnvPathFile = resolve(dotEnvPath, "..", dotEnvFile);
-                    }
-                }
-            }
-        }
-
-        // Load .env file if it exists
         if (dotEnvPathFile && existsSync(dotEnvPathFile)) {
             config({ path: dotEnvPathFile, quiet: true });
+        }
+
+        // Optional overlay: .env.production / .env.local (does not replace base .env)
+        const envSpecificFile = `.env.${this.env}`;
+        const envSpecificPath = resolve(dotEnvPath, envSpecificFile);
+        if (existsSync(envSpecificPath) && envSpecificPath !== dotEnvPathFile) {
+            config({ path: envSpecificPath, quiet: true });
+        } else if (!this.get("dotEnvPath")) {
+            const examplesOverlay = resolve(dotEnvPath, "examples", envSpecificFile);
+            if (existsSync(examplesOverlay)) {
+                config({ path: examplesOverlay, quiet: true });
+            }
         }
     }
 

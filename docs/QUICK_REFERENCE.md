@@ -67,9 +67,9 @@ VERBOSE_PRODUCTION=true
 config.local.json      # Environment-specific
 config.production.json
 
-# .env files
-.env.local             # Environment-specific
-.env.production
+# .env — prefer one file with KEY_LOCAL / KEY_PRODUCTION
+# Optional overlay still supported: .env.local, .env.production
+# Servers: set ENV=production in the process env (pm2), not only inside .env
 ```
 
 ## API Quick Reference
@@ -142,5 +142,5 @@ const { showScreen, showListScreen } = screen;
 ```
 Config files: configPath + filename + .env + .extension
 .env files: dotEnvPath + .env + .env
-Environment-specific: .env.local, .env.production, etc.
+Base .env + optional overlay .env.<env>; selectors via ENV / --env
 ```

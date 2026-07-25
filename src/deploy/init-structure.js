@@ -52,6 +52,8 @@ module.exports = {
             merge_logs: true,
             time: true,
             env: {
+                // cli-toolkit Args: ENV selects env-suffixed defaults (DB_NAME_PRODUCTION, BUCKET_PRODUCTION, …)
+                ENV: "production",
                 NODE_ENV: "production",
             },
         },

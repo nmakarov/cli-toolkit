@@ -57,8 +57,10 @@ const args = new Args({
     // Config file paths
     config: ['config.json', 'config.local.json'],
     
-    // Environment name for .env loading
-    env: 'production',  // Loads .env.production
+    // Runtime env selector (--env / ENV). Default "local".
+    // Prefer a single .env with KEY_LOCAL / KEY_PRODUCTION variants;
+    // optional .env.<env> overlay is still loaded after base .env.
+    env: 'production',
     
     // Custom .env file
     dotEnvFile: '.env.custom',
@@ -163,18 +165,25 @@ console.log(args.get('apiKey'));   // "secret123" (camelCase conversion)
 
 ### Environment-Specific Config
 
+Prefer one `.env` that holds all variants (`DB_NAME_LOCAL`, `DB_NAME_PRODUCTION`,
+`BUCKET_PRODUCTION`, `S3_BUCKET_PRODUCTION`, …). Set `ENV=production` in the
+process environment on servers (e.g. pm2) **before** node starts — values inside
+`.env` cannot choose the selector, because `.env` loads after `env` is resolved.
+
 ```typescript
 const args = new Args({
-    env: 'production',           // Loads .env.production
-    config: 'config.json',       // Also loads config.production.json
+    env: 'production',           // or process ENV=production
+    config: 'config.json',       // also loads config.production.json
     dotEnvPath: './config'
 });
 
 // Loads:
-// - ./config/.env
-// - ./config/.env.production
+// - ./config/.env                 (base; all KEY_LOCAL / KEY_PRODUCTION)
+// - ./config/.env.production      (optional overlay)
 // - config.json
 // - config.production.json
+//
+// get('dbName') → DB_NAME_PRODUCTION, get('bucket') → BUCKET_PRODUCTION, …
 ```
 
 ## API Reference

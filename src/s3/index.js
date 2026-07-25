@@ -4,36 +4,36 @@
  * Thin async wrapper over @aws-sdk/client-s3 v3 with the cli-toolkit conventions:
  *   const s3 = await S3.init(context);
  *
- * Supports multiple "profiles" (local, prod, stage, …) selected at runtime via
- * `--bucket=<profile>` (or `S3_BUCKET=<profile>`). Each profile has its own set
- * of env-suffixed parameters resolved by the framework, mirroring how `Db.init`
- * uses `dbName` to look up `dbConnectionString${Name}`.
+ * Supports multiple "profiles" (local, production, stage, …) selected at runtime
+ * via `--bucket=<profile>` (or `BUCKET` / env-suffixed `BUCKET_LOCAL`,
+ * `BUCKET_PRODUCTION`). Each profile has its own set of parameters resolved by
+ * the framework, mirroring how `Db.init` uses `dbName` → `dbConnectionString${Name}`.
  *
- * Profile selector:
- *   --bucket=local   (default)
- *   --bucket=prod
+ * Profile selector (often driven by `--env` / `ENV` via Args env-suffixes):
+ *   --bucket=local         (default when env=local)
+ *   --bucket=production    (default when ENV=production and BUCKET_PRODUCTION=production)
  *   --bucket=stage
  *
- * Per-profile parameters (all read via context.params; resolved from CLI,
- * env, .env files, defaults — see @nmakarov/cli-toolkit/params docs):
- *   s3Bucket{Profile}            string   required
+ * Per-profile parameters (CLI / env / .env — see @nmakarov/cli-toolkit/params):
+ *   s3Bucket{Profile}            string   required  (S3_BUCKET_LOCAL, S3_BUCKET_PRODUCTION, …)
  *   s3Region{Profile}            string   default us-east-1
- *   s3Endpoint{Profile}          string   optional (set for MinIO/local; unset = real AWS)
+ *   s3Endpoint{Profile}          string   optional (MinIO/local; unset = real AWS)
  *   s3ForcePathStyle{Profile}    boolean  default false (true for MinIO)
- *   s3AccessKeyId{Profile}       string   optional (omit on EC2 to use instance profile)
+ *   s3AccessKeyId{Profile}       string   optional (omit on EC2 for instance profile)
  *   s3SecretAccessKey{Profile}   string   optional
  *
- * Equivalent env vars are SCREAMING_SNAKE_CASE with the profile suffix:
- *   S3_BUCKET_LOCAL, S3_REGION_LOCAL, S3_ENDPOINT_LOCAL,
- *   S3_FORCE_PATH_STYLE_LOCAL, S3_ACCESS_KEY_ID_LOCAL, S3_SECRET_ACCESS_KEY_LOCAL
- *
- * Example (local with MinIO from docker-compose):
+ * Example (.env — all profiles in one file):
+ *   BUCKET_LOCAL=local
+ *   BUCKET_PRODUCTION=production
  *   S3_BUCKET_LOCAL=photos-local
  *   S3_REGION_LOCAL=us-east-1
  *   S3_ENDPOINT_LOCAL=http://localhost:9000
  *   S3_FORCE_PATH_STYLE_LOCAL=true
  *   S3_ACCESS_KEY_ID_LOCAL=dev
  *   S3_SECRET_ACCESS_KEY_LOCAL=devdevdev
+ *   S3_BUCKET_PRODUCTION=photos-everystate-prod
+ *   S3_REGION_PRODUCTION=ca-central-1
+ *   …
  */
 
 import {
