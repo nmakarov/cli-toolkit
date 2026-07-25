@@ -108,12 +108,68 @@ async function installLogrotate(service, options = {}) {
     logger.info(`logrotate config written: ${conf}`);
 }
 
-/** One-time host prep: pm2 systemd, optional git deploy key, logrotate. */
+const OPERATOR_SHELL_BEGIN = "# >>> mlsfarm-operator >>>";
+const OPERATOR_SHELL_END = "# <<< mlsfarm-operator <<<";
+
+/**
+ * Idempotent ~/.bashrc block: ENV=production + cd into /apps/<service>/current
+ * on interactive login. Safe to re-run; replaces any prior managed block.
+ */
+export async function installOperatorShell(service, options = {}) {
+    const { user = "ubuntu", dryRun = false, logger = console } = options;
+    const appsRoot = service.appsRoot;
+    if (!appsRoot) {
+        logger.warn("installOperatorShell: service.appsRoot missing — skipped");
+        return;
+    }
+
+    const home = user === "ubuntu" || user === process.env.USER
+        ? join(homedir(), ".bashrc")
+        : `/home/${user}/.bashrc`;
+    const currentDir = join(appsRoot, "current");
+    const block = [
+        OPERATOR_SHELL_BEGIN,
+        "# Managed by cli-toolkit deploy bootstrap — do not edit by hand.",
+        'export ENV=production',
+        `if [ -d "${currentDir}" ]; then`,
+        `  cd "${currentDir}" || true`,
+        "fi",
+        OPERATOR_SHELL_END,
+        "",
+    ].join("\n");
+
+    if (dryRun) {
+        logger.info(`[dryRun] would update ${home} (ENV=production, cd ${currentDir})`);
+        return;
+    }
+
+    let existing = "";
+    if (await pathExists(home)) {
+        existing = await readFile(home, "utf8");
+    }
+
+    const begin = existing.indexOf(OPERATOR_SHELL_BEGIN);
+    const end = existing.indexOf(OPERATOR_SHELL_END);
+    let next;
+    if (begin !== -1 && end !== -1 && end > begin) {
+        const afterEnd = end + OPERATOR_SHELL_END.length;
+        const rest = existing.slice(afterEnd).replace(/^\n/, "");
+        next = `${existing.slice(0, begin).replace(/\s*$/, "\n")}${block}${rest}`;
+    } else {
+        next = `${existing.replace(/\s*$/, "\n")}\n${block}`;
+    }
+
+    await writeFile(home, next, { mode: 0o644 });
+    logger.info(`operator shell: ${home} → ENV=production, cd ${currentDir}`);
+}
+
+/** One-time host prep: pm2 systemd, optional git deploy key, logrotate, operator shell. */
 export async function bootstrapHost(service, options = {}) {
     const { deployKey = service.deployKey, user = "ubuntu", dryRun = false, logger = console } = options;
 
     await ensurePm2Startup({ user, dryRun, logger });
     if (deployKey) await installDeployKey(deployKey, { dryRun, logger });
     await installLogrotate(service, { dryRun, logger });
+    await installOperatorShell(service, { user, dryRun, logger });
     logger.info("bootstrap-host complete");
 }

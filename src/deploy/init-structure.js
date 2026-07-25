@@ -28,10 +28,9 @@ function buildEcosystemConfig(service, paths) {
     const errLog = join(paths.logs, `${pm2.appName}.err.log`);
 
     return `/**
- * pm2 ecosystem for ${service.name} — seeded by cli-toolkit deploy (init).
- *
- * cwd points at the \`current\` symlink (created on first deploy).
- * Tweak \`args\` here, then: pm2 reload ${paths.ecosystem} --update-env
+ * pm2 ecosystem for ${service.name} — written by cli-toolkit deploy from the
+ * service manifest (init/deploy). Do not hand-edit; change pm2.* in the
+ * manifest and redeploy. cwd → \`current\` symlink.
  */
 module.exports = {
     apps: [
@@ -39,7 +38,7 @@ module.exports = {
             name: "${pm2.appName}",
             script: "${pm2.script}",
             cwd: "${paths.current}",
-            args: "${pm2.args}",
+            args: "${pm2.args ?? ""}",
             instances: 1,
             exec_mode: "fork",
             autorestart: true,
@@ -62,7 +61,7 @@ module.exports = {
 `;
 }
 
-/** Create <appsRoot>/{releases,shared,logs} and seed shared/ecosystem.config.cjs. */
+/** Create <appsRoot>/{releases,shared,logs} and sync shared/ecosystem.config.cjs from the manifest. */
 export async function initServiceStructure(service, options = {}) {
     const { dryRun = false, logger = console } = options;
     const paths = servicePaths(service);
@@ -83,18 +82,18 @@ export async function initServiceStructure(service, options = {}) {
         created.push(dir);
     }
 
-    let ecosystemCreated = false;
-    if (await pathExists(paths.ecosystem)) {
-        skipped.push(paths.ecosystem);
+    const ecosystemExisted = await pathExists(paths.ecosystem);
+    if (!dryRun) {
+        await writeFile(paths.ecosystem, buildEcosystemConfig(service, paths), { mode: 0o644 });
+    }
+    if (ecosystemExisted) {
+        logger.info(`synced ${paths.ecosystem} from manifest`);
     } else {
-        if (!dryRun) {
-            await writeFile(paths.ecosystem, buildEcosystemConfig(service, paths), { mode: 0o644 });
-        }
-        ecosystemCreated = true;
         created.push(paths.ecosystem);
+        logger.info(`seeded ${paths.ecosystem}`);
     }
 
-    const line = `[${new Date().toISOString()}] init-structure service=${service.name} dryRun=${dryRun} created=${created.length} skipped=${skipped.length}\n`;
+    const line = `[${new Date().toISOString()}] init-structure service=${service.name} dryRun=${dryRun} created=${created.length} skipped=${skipped.length} ecosystem=synced\n`;
     if (!dryRun) {
         await mkdir(paths.logs, { recursive: true });
         await appendFile(paths.deployLog, line);
@@ -103,7 +102,6 @@ export async function initServiceStructure(service, options = {}) {
     logger.info(`service=${service.name} appsRoot=${paths.root}`);
     logger.info(`created: ${created.length ? created.join(", ") : "(none)"}`);
     logger.info(`already present: ${skipped.length ? skipped.join(", ") : "(none)"}`);
-    if (ecosystemCreated) logger.info(`seeded ${paths.ecosystem}`);
 
-    return { paths, created, skipped, ecosystemCreated };
+    return { paths, created, skipped, ecosystemCreated: !ecosystemExisted, ecosystemSynced: true };
 }

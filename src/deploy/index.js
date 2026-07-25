@@ -26,7 +26,7 @@ export {
     writeReleaseBuildInfo,
 } from "./build-info.js";
 export { initServiceStructure } from "./init-structure.js";
-export { bootstrapHost } from "./bootstrap-host.js";
+export { bootstrapHost, installOperatorShell } from "./bootstrap-host.js";
 export { deployService } from "./deploy-service.js";
 export { provisionService } from "./provision-service.js";
 export { rollbackService } from "./rollback-service.js";
