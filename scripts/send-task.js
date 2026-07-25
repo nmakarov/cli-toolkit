@@ -16,6 +16,9 @@
  * npx tsx scripts/send-task.js --dbName=local --name=ping --serviceGroup=loader --noWait
  * npx tsx scripts/send-task.js --dbName=local --name=shellCommand --command='echo hi' --wait
  * npx tsx scripts/send-task.js --dbName=local --name=shellCommand --paramsJson='{"command":"echo hi"}' --wait
+ * # hot-update maxParallel on every alive photos runner:
+ * npx tsx scripts/send-task.js --dbName=everystate --name=setRuntimeParam \
+ *   --serviceGroup=photos --paramKey=maxParallel --paramValue=16 --wait
  */
 
 import { init } from "../src/init/index.js";
@@ -78,15 +81,50 @@ const flow = async (context) => {
     context.db = db;
 
     const registry = createExampleTasksRegistry();
-
-    // maybe TaskClass to be resolved first?
-    // or join these two steps?
-    const payload = await registry.resolveTaskParams(context);
-    const TaskClass = registry.requireClass(payload.name);
+    const nameHint = context.params.get("name", "string");
+    const TaskClass = registry.requireClass(
+        typeof nameHint === "string" ? nameHint.trim() : nameHint
+    );
 
     const wantWait = noWait === true
         ? false
         : (wait === true || TaskClass.defaultWaitForResult === true);
+
+    // Tasks that know how to expand targeting (e.g. setRuntimeParam broadcast).
+    if (typeof TaskClass.enqueue === "function") {
+        await ensureTaskTables(context, {
+            queueName: context.params.get("queueName", "string") || "tasks",
+            recreate: false,
+        });
+        const { ids, targets } = await TaskClass.enqueue(context, {});
+        logger.info?.(
+            `[send-task] enqueued ${ids.length} task(s) name=${nameHint} targets=${targets.join(",") || "-"}`
+        );
+        if (!wantWait) {
+            logger.info?.(ids.join(","));
+            return;
+        }
+        let anyFail = false;
+        for (const id of ids) {
+            const done = await waitForTaskResult(context, id, {
+                queueName: context.params.get("queueName", "string") || "tasks",
+                timeoutMs: Number(timeoutMs) || 120_000,
+                pollMs: Number(pollMs) || 100,
+            });
+            if (!done) {
+                logger.error?.(`send-task: timeout waiting for task ${id}`);
+                process.exitCode = 1;
+                return;
+            }
+            logger.info?.(String(id));
+            logger.info?.(formatResultReport(done));
+            if (done.success === false) anyFail = true;
+        }
+        if (anyFail) process.exitCode = 1;
+        return;
+    }
+
+    const payload = await registry.resolveTaskParams(context);
 
     await ensureTaskTables(context, { queueName: payload.queueName, recreate: false });
     const id = await enqueueTask(context, payload);
@@ -102,13 +140,11 @@ const flow = async (context) => {
 
     const done = await waitForTaskResult(context, id, {
         queueName: payload.queueName,
-        // no defaults here !!!
         timeoutMs: Number(timeoutMs) || 120_000,
         pollMs: Number(pollMs) || 100,
     });
 
     if (!done) {
-        // do not like these "?"
         logger.error?.(`send-task: timeout waiting for task ${id} in ${payload.queueName}_history (${timeoutMs}ms)`);
         process.exitCode = 1;
         return;

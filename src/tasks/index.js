@@ -25,6 +25,11 @@ export {
 } from "./time-matcher.js";
 import { TasksRegistry } from "./TasksRegistry.js";
 import { normalizeAllowedTasks } from "./serviceTaskAllowlist.js";
+import {
+    controlLaneTaskNames,
+    ensureTasksRuntime,
+    readLoopRuntime,
+} from "./runtimeParams.js";
 
 /** Sentinel value stored in the `progress` column when a task is paused due to error. */
 const LOCKED_BY_ERROR_MESSAGE = "locked by error";
@@ -68,11 +73,22 @@ export { TaskSystemInfo } from "./coreTasks/TaskSystemInfo.js";
 export { TaskSumAB } from "./coreTasks/TaskSumAB.js";
 export { TaskStopRunner } from "./coreTasks/TaskStopRunner.js";
 export { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
+export { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
 export {
     normalizeAllowedTasks,
     mergeAllowedTasksWithServiceTasks,
     SERVICE_TASK_NAMES,
 } from "./serviceTaskAllowlist.js";
+export {
+    applyRuntimeParam,
+    applyRuntimePatch,
+    coerceRuntimeValue,
+    controlLaneTaskNames,
+    ensureTasksRuntime,
+    readLoopRuntime,
+    LOOP_RUNTIME_KEYS,
+    LOGGER_RUNTIME_KEYS,
+} from "./runtimeParams.js";
 
 /** Shared default registry preloaded with every core task (including legacy aliases). */
 export const defaultTasksRegistry = TasksRegistry.withCoreTasks();
@@ -432,8 +448,12 @@ async function claimNextRunnableTask(
 /**
  * Main runner loop. Registers in the services registry (optional), then polls
  * the queue, claiming up to `maxParallel` tasks at a time plus one extra
- * "control lane" for `stop`/`stopRunner` so a graceful stop can always be picked
- * even when workers are saturated.
+ * "control lane" for `stop` / `setRuntimeParam` so control tasks can always be
+ * picked even when workers are saturated.
+ *
+ * Loop knobs (`maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit`) live on
+ * `context.tasksRuntime` and are re-read every tick — change them live with the
+ * `setRuntimeParam` core task (no restart).
  *
  * Exits when any of the following become true:
  *   - `context.isStop()` flips to `true` (external shutdown signal).
@@ -458,16 +478,13 @@ async function claimNextRunnableTask(
  *   runnerGroupMaxInstances?: number,
  *   runnerEnforceMaxInstances?: boolean,
  *   runnerMetadata?: Record<string, unknown>,
+ *   onRuntimeParam?: (key: string, value: unknown, runtime: object, context: object) => unknown,
  * }} options
  * @returns {Promise<void>}
  */
 export async function runTasksLoop(context, options) {
     const queueName = options.queueName ?? "tasks";
     const target = options.target;
-    const pollMs = options.pollMs ?? 1000;
-    const claimJitterMs = options.claimJitterMs ?? 0;
-    const maxParallel = options.maxParallel ?? 32;
-    const scanLimit = options.scanLimit ?? 100;
     const allowedTasks = normalizeAllowedTasks(options.allowedTasks);
     const registry = normalizeRegistry(options.registry);
     const { tasksTable, historyTable } = queueToTableNames(queueName);
@@ -475,10 +492,19 @@ export async function runTasksLoop(context, options) {
     if (!target) throw new Error("runTasksLoop: target is required");
 
     context.tasksQueueName = queueName;
+    ensureTasksRuntime(context, {
+        maxParallel: options.maxParallel ?? 32,
+        pollMs: options.pollMs ?? 1000,
+        claimJitterMs: options.claimJitterMs ?? 0,
+        scanLimit: options.scanLimit ?? 100,
+    });
+    if (typeof options.onRuntimeParam === "function") {
+        context.tasksRuntimeOnParam = options.onRuntimeParam;
+    }
 
     const runningPromises = new Set();
     const runningTaskInstances = new Map();
-    let runningStopControlPromise = null;
+    let runningControlPromise = null;
     let stopRequested = false;
     let stopAllowanceMs = 5000;
     context.tasksRunnerStop = false;
@@ -490,9 +516,16 @@ export async function runTasksLoop(context, options) {
     if (hbGroup) {
         const hbIntervalMs = options.runnerHeartbeatIntervalMs ?? 10_000;
         const staleMs = options.runnerHeartbeatStaleMs ?? 45_000;
+        const loop0 = readLoopRuntime(context);
         const defaultMeta = {
             component: "tasks-runner",
             allowedTasks: allowedTasks?.length ? allowedTasks.join(",") : "all",
+            runtime: {
+                maxParallel: loop0.maxParallel,
+                pollMs: loop0.pollMs,
+                claimJitterMs: loop0.claimJitterMs,
+                scanLimit: loop0.scanLimit,
+            },
         };
         registryReg = await registerInServicesRegistry(context, {
             queueName,
@@ -505,6 +538,8 @@ export async function runTasksLoop(context, options) {
             enforceMaxInstances: options.runnerEnforceMaxInstances ?? true,
             metadata: options.runnerMetadata ?? defaultMeta,
         });
+        // Expose registration so setRuntimeParam can patch metadata.
+        context.servicesRegistry = registryReg;
         runnerIdentity = {
             service_name: registryReg.serviceName,
             server_name: os.hostname(),
@@ -519,23 +554,25 @@ export async function runTasksLoop(context, options) {
 
     try {
         while (!context.isStop() && !stopRequested && context.tasksRunnerStop !== true) {
-        // Control lane: always allow stop task to be picked even when workers are busy.
-            if (!runningStopControlPromise) {
-                const claimedStopTask = await claimNextRunnableTask(
+            const { maxParallel, pollMs, claimJitterMs, scanLimit } = readLoopRuntime(context);
+
+            // Control lane: stop + setRuntimeParam even when workers are saturated.
+            if (!runningControlPromise) {
+                const claimedControlTask = await claimNextRunnableTask(
                     context,
                     tasksTable,
                     target,
                     registry,
                     10,
-                    ["stopRunner", "stop"],
+                    controlLaneTaskNames(),
                     runnerIdentity
                 );
-                if (claimedStopTask) {
-                    runningStopControlPromise = executeClaimedTask(
+                if (claimedControlTask) {
+                    runningControlPromise = executeClaimedTask(
                         context,
                         tasksTable,
                         historyTable,
-                        claimedStopTask,
+                        claimedControlTask,
                         registry,
                         runningTaskInstances
                     )
@@ -548,7 +585,7 @@ export async function runTasksLoop(context, options) {
                             }
                         })
                         .finally(() => {
-                            runningStopControlPromise = null;
+                            runningControlPromise = null;
                         });
                 }
             }
@@ -585,8 +622,8 @@ export async function runTasksLoop(context, options) {
             }
 
             const wakePromises = [...runningPromises];
-            if (runningStopControlPromise) {
-                wakePromises.push(runningStopControlPromise);
+            if (runningControlPromise) {
+                wakePromises.push(runningControlPromise);
             }
             if (wakePromises.length === 0) {
                 await sleepMs(pollMs);

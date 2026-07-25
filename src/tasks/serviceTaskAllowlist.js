@@ -14,6 +14,8 @@ export const SERVICE_TASK_NAMES = [
     "systemInfo",
     "info",
     "getLogs",
+    "setRuntimeParam",
+    "setRunnerParam",
 ];
 
 /**

@@ -174,9 +174,14 @@ From `@nmakarov/cli-toolkit/tasks`:
 **Task targeting** (columns on the queued row): `service_group`, `service_name`, `instance_number`, `server_name`. **NULL** on a column means “any” for that dimension. Registered runners match each non-null column to their registry identity. Rows with no per-instance fields (`service_name`, `instance_number`, `server_name` all null) can be claimed without registry identity; instance-specific rows require a registered worker.
 
 - **`ping`** — enqueue with no targeting for broadcast, or set `service_group` only, or set all four fields to hit one instance (same values as the registry row).
-- **`stop` / `stopRunner`** — must set all four targeting fields so exactly one instance receives it; `params.allowanceMs` controls graceful stop (default 5000).
+- **`stop` / `stopRunner`** — must set `--serviceName` (optionally narrow with group/instance/server); `params.allowanceMs` controls graceful stop (default 5000).
+- **`setRuntimeParam` / `setRunnerParam`** — hot-update runner knobs without restart. Applies to `context.tasksRuntime` (loop re-reads `maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit` every tick) and to the logger for `levels` / `silent` / etc. Targeting: `--serviceName=<one instance>` **or** `--serviceGroup=<group>` (broadcasts to every alive registry row). Examples:
+  - `--paramKey=maxParallel --paramValue=16`
+  - `--paramKey=levels --paramValue='+debug'`
+  - `--paramsJson='{"patch":{"maxParallel":16,"pollMs":500}}'`
+  Claimed on the control lane even when workers are saturated. Current knobs are mirrored into services-registry `metadata.runtime`.
 
-CLI: `npm run tasks:send` → `scripts/send-task.ts` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
+CLI: `npm run tasks:send` → `scripts/send-task.js` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
 
 ## TasksManager
 

@@ -6,6 +6,7 @@ import { TaskSystemInfo } from "./coreTasks/TaskSystemInfo.js";
 import { TaskSumAB } from "./coreTasks/TaskSumAB.js";
 import { TaskStopRunner } from "./coreTasks/TaskStopRunner.js";
 import { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
+import { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
 
 /**
  * Name → task class map. Runners look up the class by `task.name` when claiming
@@ -42,7 +43,9 @@ export class TasksRegistry {
             .add("stopRunner", TaskStopRunner)
             // Backward-compat alias
             .add("stop", TaskStopRunner)
-            .add("getLogs", TaskGetLogs);
+            .add("getLogs", TaskGetLogs)
+            .add("setRuntimeParam", TaskSetRuntimeParam)
+            .add("setRunnerParam", TaskSetRuntimeParam);
     }
 
     /**
