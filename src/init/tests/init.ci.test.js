@@ -106,6 +106,7 @@ describe("Init CI Tests", () => {
     });
 
     it("should handle ParamError and set exit code 3", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
         const flow = async (_context) => {
             throw new ParamError("Test param error");
         };
@@ -113,9 +114,12 @@ describe("Init CI Tests", () => {
         await init(flow, { silent: true });
 
         expect(process.exitCode).toBe(3);
+        expect(exitSpy).toHaveBeenCalledWith(3);
+        exitSpy.mockRestore();
     });
 
     it("should handle InitError and set exit code 4", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
         const flow = async (_context) => {
             throw new InitError("Test init error");
         };
@@ -123,9 +127,12 @@ describe("Init CI Tests", () => {
         await init(flow, { silent: true });
 
         expect(process.exitCode).toBe(4);
+        expect(exitSpy).toHaveBeenCalledWith(4);
+        exitSpy.mockRestore();
     });
 
     it("should handle other errors and set exit code 5", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
         const flow = async (_context) => {
             throw new Error("Test other error");
         };
@@ -133,6 +140,8 @@ describe("Init CI Tests", () => {
         await init(flow, { silent: true });
 
         expect(process.exitCode).toBe(5);
+        expect(exitSpy).toHaveBeenCalledWith(5);
+        exitSpy.mockRestore();
     });
 
     it("should run cleanup functions in reverse order", async () => {
@@ -215,6 +224,7 @@ describe("Init CI Tests", () => {
     });
 
     it("runs cleanup when flow throws", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
         const cleanupOrder = [];
         const flow = async (context) => {
             context.registerCleanup(() => cleanupOrder.push(1));
@@ -222,6 +232,8 @@ describe("Init CI Tests", () => {
         };
         await init(flow, { silent: true });
         expect(cleanupOrder).toEqual([1]);
+        expect(exitSpy).toHaveBeenCalledWith(5);
+        exitSpy.mockRestore();
     });
 
     it("--stopAfter=init prints params and exits", async () => {
