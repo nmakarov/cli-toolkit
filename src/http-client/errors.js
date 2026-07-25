@@ -88,8 +88,8 @@ export function classifyError(error) {
         return { type: "requestCancelled", retryable: false, isAuth: false, status: "unknown" };
     }
 
-    // Default fallback
-    return { type: "unknown", retryable: false, isAuth: false, status: "unknown" };
+    // Default fallback — treat as transient (socket/TLS glitches often lack a code).
+    return { type: "unknown", retryable: true, isAuth: false, status: "unknown" };
 }
 
 /**

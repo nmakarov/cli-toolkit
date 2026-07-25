@@ -11,10 +11,39 @@ export {
 
 const KNEX_DEFAULTS = {
     testConnection: true,
-    pool: { min: 2, max: 10 },
+    // min: 0 avoids holding idle sockets that go stale during long-running CLIs
+    pool: { min: 0, max: 10, idleTimeoutMillis: 30_000 },
     acquireConnectionTimeout: 10000,
     ssl: { rejectUnauthorized: false },
 };
+
+/** Node / pg / knex signals that the socket or pool is dead and a reconnect may help. */
+const CONNECTION_ERROR_CODES = new Set([
+    "ECONNRESET",
+    "ECONNREFUSED",
+    "EPIPE",
+    "ETIMEDOUT",
+    "ENOTFOUND",
+    "EHOSTUNREACH",
+    "ENETUNREACH",
+    "ECONNABORTED",
+    "CONNECTION_ENDED",
+    "CONNECTION_CLOSED",
+    // PostgreSQL SQLSTATE class 08xxx (connection exception) + admin shutdowns
+    "08000",
+    "08001",
+    "08003",
+    "08004",
+    "08006",
+    "08007",
+    "08P01",
+    "57P01",
+    "57P02",
+    "57P03",
+]);
+
+const CONNECTION_ERROR_MESSAGE_RE =
+    /connection (terminated|ended|closed|destroyed|reset|refused|not open)|Connection terminated unexpectedly|Client has encountered a connection error|server closed the connection|Cannot use a pool after calling end|This socket has been ended|connect ECONNRESET|Timeout acquiring a connection/i;
 
 export class Db {
     static async init(context, options = {}) {
@@ -305,11 +334,12 @@ export class Db {
         this.knexInstance = null;
         this.isConnected = false;
         this.queriesLog = [];
+        this._reconnectPromise = null;
 
         this.config = {
             testConnection: true,
             profile: false,
-            pool: { min: 2, max: 10 },
+            pool: { min: 0, max: 10, idleTimeoutMillis: 30_000 },
             acquireConnectionTimeout: 10000,
             ssl: { rejectUnauthorized: false },
             logger: console,
@@ -330,7 +360,7 @@ export class Db {
                 if (!inst.knexInstance) {
                     throw new Error("Db: Not connected. Call connect() first.");
                 }
-                return inst.knexInstance(...argumentsList);
+                return inst.wrapQueryBuilder(inst.knexInstance(...argumentsList));
             },
             get: (target, prop) => {
                 if (prop === "_instance") {
@@ -342,8 +372,12 @@ export class Db {
                 const ownMethods = [
                     "connect",
                     "disconnect",
+                    "reconnect",
                     "testConnection",
                     "tableExists",
+                    "raw",
+                    "withConnectionRetry",
+                    "isConnectionError",
                     "getQueryLog",
                     "getKnex",
                     "isConnectedToDb",
@@ -365,6 +399,9 @@ export class Db {
                 if (inst.knexInstance) {
                     const knexProp = inst.knexInstance[prop];
                     if (typeof knexProp === "function") {
+                        if (prop === "raw") {
+                            return (...args) => inst.raw(...args);
+                        }
                         return knexProp.bind(inst.knexInstance);
                     }
                     return knexProp;
@@ -455,6 +492,149 @@ export class Db {
             this.logger.error?.(`[Db] Error disconnecting: ${errorMsg}`);
             throw error;
         }
+    }
+
+    /**
+     * True when the error indicates a dead socket / pool that a fresh connect may fix.
+     * Safe to call as `Db.prototype.isConnectionError(err)` or via a connected handle.
+     */
+    isConnectionError(error) {
+        if (!error) {
+            return false;
+        }
+
+        if (error instanceof AggregateError && Array.isArray(error.errors)) {
+            return error.errors.some((e) => this.isConnectionError(e));
+        }
+
+        const code = error.code ?? error.errno;
+        if (code != null && CONNECTION_ERROR_CODES.has(String(code))) {
+            return true;
+        }
+
+        const msg = error instanceof Error ? error.message : String(error);
+        return CONNECTION_ERROR_MESSAGE_RE.test(msg);
+    }
+
+    /**
+     * Destroy the current knex pool and open a new one. Concurrent callers share one attempt.
+     */
+    async reconnect() {
+        if (this._reconnectPromise) {
+            await this._reconnectPromise;
+            return;
+        }
+
+        this._reconnectPromise = (async () => {
+            const old = this.knexInstance;
+            this.isConnected = false;
+            this.knexInstance = null;
+            this.queriesLog = [];
+
+            if (old) {
+                try {
+                    await old.destroy();
+                } catch (error) {
+                    this.logger.debug?.(
+                        `[Db] destroy during reconnect: ${this.getErrorMessage(error)}`
+                    );
+                }
+            }
+
+            await this.connect();
+        })();
+
+        try {
+            await this._reconnectPromise;
+        } finally {
+            this._reconnectPromise = null;
+        }
+    }
+
+    async reconnectAfterConnectionError(error) {
+        this.logger.warn?.(
+            `[Db] Connection lost (${this.getErrorMessage(error)}) — reconnecting…`
+        );
+        await this.reconnect();
+    }
+
+    /**
+     * Run `fn`; on a connection error, reconnect once (by default) and retry `fn`.
+     * `fn` should look up `this.knexInstance` each call so the retry uses the new client.
+     */
+    async withConnectionRetry(fn, { retries = 1 } = {}) {
+        let lastError;
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                return await fn();
+            } catch (error) {
+                lastError = error;
+                if (!this.isConnectionError(error) || attempt >= retries) {
+                    throw error;
+                }
+                await this.reconnectAfterConnectionError(error);
+            }
+        }
+        throw lastError;
+    }
+
+    /**
+     * Wrap a knex QueryBuilder / Raw so that awaiting it retries once after reconnect
+     * when the first attempt dies with a connection error.
+     */
+    wrapQueryBuilder(builder) {
+        if (!builder || typeof builder.then !== "function" || builder.__dbReconnectWrapped) {
+            return builder;
+        }
+
+        builder.__dbReconnectWrapped = true;
+        const inst = this;
+        const protoThen = Object.getPrototypeOf(builder)?.then;
+        if (typeof protoThen !== "function") {
+            return builder;
+        }
+
+        builder.then = function (onFulfilled, onRejected) {
+            const run = async () => {
+                try {
+                    return await protoThen.call(builder);
+                } catch (error) {
+                    if (!inst.isConnectionError(error)) {
+                        throw error;
+                    }
+                    await inst.reconnectAfterConnectionError(error);
+
+                    if (typeof builder.clone === "function") {
+                        const retry = builder.clone();
+                        retry.client = inst.knexInstance.client;
+                        return await protoThen.call(retry);
+                    }
+
+                    if (typeof builder.toSQL === "function" && inst.knexInstance) {
+                        const sql = builder.toSQL();
+                        const statements = Array.isArray(sql) ? sql : [sql];
+                        let last;
+                        for (const stmt of statements) {
+                            last = await inst.knexInstance.raw(stmt.sql, stmt.bindings);
+                        }
+                        return last;
+                    }
+
+                    throw error;
+                }
+            };
+            return run().then(onFulfilled, onRejected);
+        };
+
+        return builder;
+    }
+
+    /** knex.raw with auto-reconnect on dead connections. */
+    raw(...args) {
+        if (!this.knexInstance) {
+            throw new Error("Db: Not connected. Call connect() first.");
+        }
+        return this.wrapQueryBuilder(this.knexInstance.raw(...args));
     }
 
     getErrorMessage(error) {
@@ -668,7 +848,9 @@ export class Db {
         }
 
         try {
-            return await this.knexInstance.schema.hasTable(tableName);
+            return await this.withConnectionRetry(() =>
+                this.knexInstance.schema.hasTable(tableName)
+            );
         } catch (error) {
             this.logger.error?.(`[Db] Error checking table existence: ${error.message}`);
             throw error;

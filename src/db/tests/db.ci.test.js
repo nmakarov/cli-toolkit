@@ -417,6 +417,118 @@ describe("Db CI", () => {
             await db.connect();
             await expect(db.tableExists("users")).rejects.toThrow();
         });
+
+        it("should reconnect and retry tableExists on connection terminated", async () => {
+            const connError = new Error("Connection terminated unexpectedly");
+            mockKnexInstance.schema.hasTable
+                .mockRejectedValueOnce(connError)
+                .mockResolvedValueOnce(true);
+
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            const knexCallsBefore = mockKnex.mock.calls.length;
+
+            const exists = await db.tableExists("users");
+
+            expect(exists).toBe(true);
+            expect(mockKnexInstance.schema.hasTable).toHaveBeenCalledTimes(2);
+            expect(mockKnexInstance.destroy).toHaveBeenCalled();
+            expect(mockKnex.mock.calls.length).toBeGreaterThan(knexCallsBefore);
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                expect.stringContaining("Connection lost")
+            );
+        });
+
+        it("should not reconnect for non-connection tableExists errors", async () => {
+            mockKnexInstance.schema.hasTable.mockRejectedValueOnce(
+                new Error("permission denied for table")
+            );
+
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            const knexCallsBefore = mockKnex.mock.calls.length;
+
+            await expect(db.tableExists("users")).rejects.toThrow("permission denied");
+            expect(mockKnexInstance.schema.hasTable).toHaveBeenCalledTimes(1);
+            expect(mockKnex.mock.calls.length).toBe(knexCallsBefore);
+            expect(mockLogger.warn).not.toHaveBeenCalledWith(
+                expect.stringContaining("Connection lost")
+            );
+        });
+    });
+
+    describe("isConnectionError", () => {
+        beforeEach(() => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+        });
+
+        it("should detect terminated / reset connection errors", () => {
+            expect(
+                db.isConnectionError(new Error("Connection terminated unexpectedly"))
+            ).toBe(true);
+            expect(db.isConnectionError({ code: "ECONNRESET", message: "read ECONNRESET" })).toBe(
+                true
+            );
+            expect(db.isConnectionError({ code: "57P01", message: "terminating connection" })).toBe(
+                true
+            );
+        });
+
+        it("should reject ordinary query errors", () => {
+            expect(db.isConnectionError(new Error("Table check failed"))).toBe(false);
+            expect(db.isConnectionError(new Error("permission denied for table"))).toBe(false);
+        });
+    });
+
+    describe("reconnect", () => {
+        it("should destroy and reconnect the knex pool", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            const knexCallsBefore = mockKnex.mock.calls.length;
+
+            await db.reconnect();
+
+            expect(mockKnexInstance.destroy).toHaveBeenCalled();
+            expect(mockKnex.mock.calls.length).toBeGreaterThan(knexCallsBefore);
+            expect(db.isConnectedToDb()).toBe(true);
+        });
+
+        it("should coalesce concurrent reconnect attempts", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            mockKnexInstance.destroy.mockImplementation(
+                () => new Promise((resolve) => setTimeout(resolve, 20))
+            );
+
+            await Promise.all([db.reconnect(), db.reconnect(), db.reconnect()]);
+
+            expect(mockKnexInstance.destroy).toHaveBeenCalledTimes(1);
+            expect(db.isConnectedToDb()).toBe(true);
+        });
     });
 
     describe("query profiling", () => {
