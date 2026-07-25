@@ -78,7 +78,8 @@
   "bin": {
     "cli-runner": "./dist/cli-runner.js",
     "cli-deploy": "./scripts/deploy/cli.js",
-    "cli-aws-discover": "./scripts/aws/discover.js"
+    "cli-aws-discover": "./scripts/aws/discover.js",
+    "cli-send-task": "./scripts/send-task.js"
   },
   "scripts": {
     "ssm:list": "node scripts/ssm/ssm-admin.js list",
@@ -158,6 +159,7 @@
     "scripts/ssm/",
     "scripts/deploy/",
     "scripts/aws/",
+    "scripts/send-task.js",
     "README.md",
     "LICENSE"
   ],

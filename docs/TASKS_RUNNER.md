@@ -181,7 +181,7 @@ From `@nmakarov/cli-toolkit/tasks`:
   - `--paramsJson='{"patch":{"maxParallel":16,"pollMs":500}}'`
   Claimed on the control lane even when workers are saturated. Current knobs are mirrored into services-registry `metadata.runtime`.
 
-CLI: `npm run tasks:send` → `scripts/send-task.js` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
+CLI: `npx cli-send-task` (published bin) or `npm run tasks:send` in this repo → `scripts/send-task.js` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
 
 ## TasksManager
 

@@ -1,30 +1,30 @@
 #!/usr/bin/env node
 /**
- * Enqueue a task row on the queue table (e.g. `tasks`).
+ * cli-send-task — enqueue a task row on the queue (e.g. `tasks`).
  *
- * The script is intentionally thin: it takes `--name`, hands resolution to
- * `TasksRegistry#resolveTaskParams`, and the matching `Task*` class validates
- * its own envelope + custom params (throwing `ParamError` on bad input). The
- * result is shaped for `enqueueTask`, so the script just inserts and (for
- * tasks whose class declares `defaultWaitForResult = true`, e.g. `ping`,
- * `systemInfo`, `taskSumAB`) waits for the history row and prints a report.
+ * Thin CLI: `--name` → `TasksRegistry#resolveTaskParams` → `enqueueTask`.
+ * Tasks with `defaultWaitForResult` (or `--wait`) wait for the history row.
  *
- * `--wait` / `--noWait` override the per-task default.
+ * Published as the `cli-send-task` bin. From an app that depends on
+ * `@nmakarov/cli-toolkit`:
  *
- * @example
- * npx tsx scripts/send-task.js --dbName=local --queueName=tasks --name=ping
- * npx tsx scripts/send-task.js --dbName=local --name=ping --serviceGroup=loader --noWait
- * npx tsx scripts/send-task.js --dbName=local --name=shellCommand --command='echo hi' --wait
- * npx tsx scripts/send-task.js --dbName=local --name=shellCommand --paramsJson='{"command":"echo hi"}' --wait
- * # hot-update maxParallel on every alive photos runner:
- * npx tsx scripts/send-task.js --dbName=everystate --name=setRuntimeParam \
- *   --serviceGroup=photos --paramKey=maxParallel --paramValue=16 --wait
+ *   npx cli-send-task --dbName=everystate --name=ping --wait
+ *   npx cli-send-task --dbName=everystate --name=setRuntimeParam \
+ *     --serviceGroup=photos --paramKey=maxParallel --paramValue=16 --wait
+ *
+ * From this repo (after `npm run build`):
+ *
+ *   npm run tasks:send -- --dbName=local --name=ping --wait
  */
 
-import { init } from "../src/init/index.js";
-import { Db } from "../src/db/index.js";
-import { enqueueTask, ensureTaskTables, waitForTaskResult } from "../src/tasks/index.js";
-import { createExampleTasksRegistry } from "./customTasks/registry.js";
+import { init } from "../dist/init.js";
+import { Db } from "../dist/db.js";
+import {
+    enqueueTask,
+    ensureTaskTables,
+    waitForTaskResult,
+    TasksRegistry,
+} from "../dist/tasks.js";
 
 const scriptDefs = {
     /** Override: wait for completion regardless of TaskClass.defaultWaitForResult. */
@@ -34,6 +34,19 @@ const scriptDefs = {
     timeoutMs: "number default 120000",
     pollMs: "number default 100",
 };
+
+/**
+ * Prefer example/dummy registry when present (local checkout); otherwise core tasks only
+ * (published npm package — `scripts/customTasks` is not shipped).
+ */
+async function loadRegistry() {
+    try {
+        const mod = await import("./customTasks/registry.js");
+        return mod.createExampleTasksRegistry();
+    } catch {
+        return TasksRegistry.withCoreTasks();
+    }
+}
 
 function parseTime(v) {
     if (v == null) return null;
@@ -80,7 +93,7 @@ const flow = async (context) => {
     const db = await Db.init(context);
     context.db = db;
 
-    const registry = createExampleTasksRegistry();
+    const registry = await loadRegistry();
     const nameHint = context.params.get("name", "string");
     const TaskClass = registry.requireClass(
         typeof nameHint === "string" ? nameHint.trim() : nameHint
