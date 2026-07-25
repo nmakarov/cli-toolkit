@@ -1,6 +1,6 @@
 {
   "name": "@nmakarov/cli-toolkit",
-  "version": "0.47.1",
+  "version": "0.48.0",
   "description": "A comprehensive toolkit for building CLI applications",
   "type": "module",
   "main": "./dist/index.js",
