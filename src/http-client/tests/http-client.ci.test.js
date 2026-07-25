@@ -713,11 +713,22 @@ describe("HttpClient CI", () => {
 
         mockAxiosInstance.request.mockRejectedValue(mockError);
 
-        const response = await client.get("http://example.com");
+        // Unknown/uncoded errors are treated as transient and retried.
+        const responsePromise = client.get("http://example.com");
+
+        if (!USE_REAL_TIMEOUTS) {
+            for (let i = 0; i < 2; i++) {
+                vi.advanceTimersByTime(1000);
+                await vi.runOnlyPendingTimersAsync();
+            }
+        }
+
+        const response = await responsePromise;
 
         expect(response.status).toBe("unknown");
         expect(response.error).toBe("unknown");
-        expect(response.retryCount).toBe(0);
+        expect(response.retryCount).toBe(2);
+        expect(mockAxiosInstance.request).toHaveBeenCalledTimes(3);
     });
 
     it("handles null config gracefully", () => {
@@ -905,6 +916,14 @@ describe("HttpClient Error Classification", () => {
         expect(result.type).toBe("timeout");
         expect(result.retryable).toBe(true);
         expect(result.status).toBe("timeout");
+    });
+
+    it("classifies generic unknown errors as retryable", () => {
+        const error = { message: "Unknown error occurred", isAxiosError: true };
+        const result = classifyError(error);
+        expect(result.type).toBe("unknown");
+        expect(result.retryable).toBe(true);
+        expect(result.status).toBe("unknown");
     });
 
     it("provides error descriptions", () => {
