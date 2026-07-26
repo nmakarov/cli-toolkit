@@ -150,14 +150,14 @@ describe("Logger CI", () => {
             route: "console"
         });
 
-        logger.progress("work", { prefix: "task", count: 1, total: 5 });
+        expect(logger.progress("work", { prefix: "task", count: 1, total: 5 })).toBe(true);
         vi.advanceTimersByTime(400);
-        logger.progress("work", { prefix: "task", count: 2, total: 5 });
+        expect(logger.progress("work", { prefix: "task", count: 2, total: 5 })).toBe(false);
         vi.advanceTimersByTime(600);
-        logger.progress("work", { prefix: "task", count: 3, total: 5 });
+        expect(logger.progress("work", { prefix: "task", count: 3, total: 5 })).toBe(true);
         vi.advanceTimersByTime(1000);
-        logger.progress("work", { prefix: "task", count: 4, total: 5 });
-        logger.progress("work", { prefix: "task", count: 5, total: 5 });
+        expect(logger.progress("work", { prefix: "task", count: 4, total: 5 })).toBe(true);
+        expect(logger.progress("work", { prefix: "task", count: 5, total: 5 })).toBe(true);
 
         // Should print first call, third (after throttle), fourth (after throttle), and final
         expect(consoleInfo.mock.calls.length).toBeGreaterThanOrEqual(3);

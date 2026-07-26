@@ -42,8 +42,10 @@ const CONNECTION_ERROR_CODES = new Set([
     "57P03",
 ]);
 
+// Note: "Timeout acquiring a connection" is pool contention (all slots busy),
+// not a dead socket — reconnecting destroys healthy clients and makes it worse.
 const CONNECTION_ERROR_MESSAGE_RE =
-    /connection (terminated|ended|closed|destroyed|reset|refused|not open)|Connection terminated unexpectedly|Client has encountered a connection error|server closed the connection|Cannot use a pool after calling end|This socket has been ended|connect ECONNRESET|Timeout acquiring a connection/i;
+    /connection (terminated|ended|closed|destroyed|reset|refused|not open)|Connection terminated unexpectedly|Client has encountered a connection error|server closed the connection|Cannot use a pool after calling end|This socket has been ended|connect ECONNRESET/i;
 
 export class Db {
     static async init(context, options = {}) {
@@ -51,6 +53,8 @@ export class Db {
             const defs = {
                 dbName: "string",
                 dbProfile: "boolean default false",
+                /** Cap knex pool size (default 10). Size ≈ expected concurrency + headroom. */
+                dbPoolMax: "number",
             };
             const discovered = context?.params?.getAllForModule?.("db", defs) ?? {};
             const merged = { ...discovered, ...options };
@@ -119,12 +123,26 @@ export class Db {
                 merged.name
             );
 
+            const poolMaxRaw = merged.dbPoolMax ?? merged.pool?.max;
+            const poolMax = Number(poolMaxRaw);
+            const pool = {
+                ...KNEX_DEFAULTS.pool,
+                ...(merged.pool && typeof merged.pool === "object" ? merged.pool : {}),
+            };
+            if (Number.isFinite(poolMax) && poolMax >= 1) {
+                pool.max = Math.floor(poolMax);
+            }
+
             return {
                 ...KNEX_DEFAULTS,
                 connectionString: dbConnectionString,
                 name: displayName,
                 profile: !!dbProfile,
                 logger: context.logger,
+                pool,
+                ...(merged.acquireConnectionTimeout != null
+                    ? { acquireConnectionTimeout: merged.acquireConnectionTimeout }
+                    : {}),
             };
         };
 

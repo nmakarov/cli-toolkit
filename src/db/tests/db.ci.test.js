@@ -492,6 +492,17 @@ describe("Db CI", () => {
             expect(db.isConnectionError(new Error("Table check failed"))).toBe(false);
             expect(db.isConnectionError(new Error("permission denied for table"))).toBe(false);
         });
+
+        it("should not treat pool acquire timeout as a dead connection", () => {
+            // Knex: all pool slots busy — reconnect would make contention worse.
+            expect(
+                db.isConnectionError(
+                    new Error(
+                        "Knex: Timeout acquiring a connection. The pool is probably full. Are you missing a .transacting(trx) call?"
+                    )
+                )
+            ).toBe(false);
+        });
     });
 
     describe("reconnect", () => {

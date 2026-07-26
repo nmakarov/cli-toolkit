@@ -223,7 +223,10 @@ interface TaskInstance {
 }
 ```
 
-`reportProgress` updates the `progress` column in queue row.
+`reportProgress` updates the `progress` column in the queue row. The runner wraps it
+with a per-task coalescer (at most one in-flight UPDATE; latest value wins) so
+fire-and-forget progress under high `maxParallel` cannot saturate the Knex pool.
+Photo-care also gates DB progress on the logger's `progressThrottleMs` (default 2000).
 
 ## CLI runner executable
 

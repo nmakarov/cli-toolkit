@@ -358,3 +358,45 @@ export async function updateTaskProgress(context, tasksTable, taskId, progress) 
         progress: typeof progress === "string" ? progress : JSON.stringify(progress),
     });
 }
+
+/**
+ * Progress reporter for one running task: at most one in-flight UPDATE, with
+ * the latest value coalesced. Prevents fire-and-forget per-photo writes from
+ * saturating the Knex pool under high `maxParallel`.
+ *
+ * @param {object} context
+ * @param {string} tasksTable
+ * @param {string} taskId
+ * @returns {(progress: unknown) => Promise<void>}
+ */
+export function createTaskProgressReporter(context, tasksTable, taskId) {
+    let pump = null;
+    let pending = undefined;
+    let hasPending = false;
+
+    return (progress) => {
+        pending = progress;
+        hasPending = true;
+        if (pump) return pump;
+
+        pump = (async () => {
+            try {
+                while (hasPending) {
+                    hasPending = false;
+                    const value = pending;
+                    try {
+                        await updateTaskProgress(context, tasksTable, taskId, value);
+                    } catch (err) {
+                        context.logger?.warn?.(
+                            `[tasks] progress update failed for ${taskId}: ${err?.message ?? err}`
+                        );
+                    }
+                }
+            } finally {
+                pump = null;
+            }
+        })();
+
+        return pump;
+    };
+}

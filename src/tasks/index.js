@@ -10,7 +10,7 @@ import {
     ensureTaskTables,
     queueToTableNames,
     taskHistoryInsertFromQueueRow,
-    updateTaskProgress,
+    createTaskProgressReporter,
 } from "./taskUtils.js";
 import { appendTaskIpcLog } from "./taskLogs.js";
 import { nextTimeMatch, timeMatcher } from "./time-matcher.js";
@@ -40,6 +40,7 @@ export {
     queueToTableNames,
     taskHistoryInsertFromQueueRow,
     updateTaskProgress,
+    createTaskProgressReporter,
 } from "./taskUtils.js";
 export {
     listServicesRegistry,
@@ -224,7 +225,8 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
     try {
         taskInstance = new TaskClass(context, row);
         runningTaskInstances.set(row.id, taskInstance);
-        const runResult = await taskInstance.run((progress) => updateTaskProgress(context, tasksTable, row.id, progress));
+        const reportProgress = createTaskProgressReporter(context, tasksTable, row.id);
+        const runResult = await taskInstance.run(reportProgress);
         success = !!runResult?.success;
         results = runResult?.results ?? null;
     } catch (error) {

@@ -201,6 +201,9 @@ export class Logger  {
         this.out({ level: "response", message });
     }
 
+    /**
+     * @returns {boolean} true when the progress line was emitted (not throttled)
+     */
     progress(message, opts) {
         const { prefix, count, total } = opts;
         const paddedTotal = String(total).length;
@@ -237,7 +240,9 @@ export class Logger  {
             if (this.options.progressThrottle && prefix) {
                 this.lastProgressTimes[prefix] = Date.now();
             }
+            return true;
         }
+        return false;
     }
 
     shouldOutputProgress(prefix, count, total) {
