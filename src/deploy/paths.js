@@ -29,6 +29,8 @@ export function servicePaths(service) {
         current: join(root, "current"),
         sharedEnv: join(root, "shared", ".env"),
         ecosystem: join(root, "shared", "ecosystem.config.cjs"),
+        /** Preloaded by pm2 `node_args --require` so ENV survives flaky restarts. */
+        ensureEnv: join(root, "shared", "ensure-env.cjs"),
         deployLog: join(root, "logs", "deploy.log"),
         lockHashFile: join(root, "shared", ".package-lock.sha256"),
     };

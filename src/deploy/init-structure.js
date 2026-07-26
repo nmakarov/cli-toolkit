@@ -39,12 +39,25 @@ function resolvePm2Args(pm2) {
     return `${base}${base ? " " : ""}--stopAllowance=${Math.floor(stopSec)}`.trim();
 }
 
+/** CJS snippet required before the app — fills ENV if pm2 drops ecosystem env on restart. */
+function buildEnsureEnvScript() {
+    return `/**
+ * Written by cli-toolkit deploy (init-structure). Do not hand-edit.
+ * Preloaded via pm2 node_args --require so Args sees ENV=production even when
+ * a post-SIGKILL restart briefly omits ecosystem env (otherwise Db → local:6032).
+ */
+if (!process.env.ENV) process.env.ENV = "production";
+if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
+`;
+}
+
 function buildEcosystemConfig(service, paths) {
     const { pm2 } = service;
     const outLog = join(paths.logs, `${pm2.appName}.out.log`);
     const errLog = join(paths.logs, `${pm2.appName}.err.log`);
     const killTimeoutMs = resolveKillTimeoutMs(pm2);
     const args = resolvePm2Args(pm2);
+    const ensureEnv = paths.ensureEnv;
 
     return `/**
  * pm2 ecosystem for ${service.name} — written by cli-toolkit deploy from the
@@ -58,6 +71,8 @@ module.exports = {
             script: "${pm2.script}",
             cwd: "${paths.current}",
             args: ${JSON.stringify(args)},
+            // Absolute --require so ENV is set before Args constructs (see shared/ensure-env.cjs).
+            node_args: ${JSON.stringify(`--require ${ensureEnv}`)},
             instances: 1,
             exec_mode: "fork",
             autorestart: true,
@@ -104,8 +119,16 @@ export async function initServiceStructure(service, options = {}) {
     }
 
     const ecosystemExisted = await pathExists(paths.ecosystem);
+    const ensureEnvExisted = await pathExists(paths.ensureEnv);
     if (!dryRun) {
+        await writeFile(paths.ensureEnv, buildEnsureEnvScript(), { mode: 0o644 });
         await writeFile(paths.ecosystem, buildEcosystemConfig(service, paths), { mode: 0o644 });
+    }
+    if (ensureEnvExisted) {
+        logger.info(`synced ${paths.ensureEnv}`);
+    } else {
+        created.push(paths.ensureEnv);
+        logger.info(`seeded ${paths.ensureEnv}`);
     }
     if (ecosystemExisted) {
         logger.info(`synced ${paths.ecosystem} from manifest`);

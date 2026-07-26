@@ -67,13 +67,19 @@ export class Args {
         this.parseArgs(args);
 
         // Runtime environment selector (--env / ENV / NODE_ENV). Default "local".
-        // On servers set ENV=production in the process environment (e.g. pm2 ecosystem)
-        // BEFORE node starts — values inside .env cannot set this (loaded below).
-        // Env-suffixed lookups then prefer KEY_PRODUCTION over KEY (see get()).
+        // Prefer process env before .env (pm2 ecosystem / ensure-env.cjs). After
+        // loadDotEnv, re-resolve so a late ENV (or .env ENV=) still applies —
+        // pm2 has been observed to omit ecosystem env on the first start after
+        // a kill_timeout SIGKILL.
         this.env = this.get("env")?.toLowerCase() || "local";
 
         // Load .env file (single file with LOCAL / PRODUCTION / STAGE variants)
         this.loadDotEnv();
+
+        const envAfterDotEnv = this.get("env")?.toLowerCase();
+        if (envAfterDotEnv) {
+            this.env = envAfterDotEnv;
+        }
 
         // Load configuration files
         this.loadConfigFiles();
