@@ -450,8 +450,8 @@ async function claimNextRunnableTask(
 /**
  * Main runner loop. Registers in the services registry (optional), then polls
  * the queue, claiming up to `maxParallel` tasks at a time plus one extra
- * "control lane" for `stop` / `setRuntimeParam` so control tasks can always be
- * picked even when workers are saturated.
+ * "control lane" for `stop` / `setRuntimeParam` (and optional
+ * `controlLaneTasks`) so those can run even when workers are saturated.
  *
  * Loop knobs (`maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit`) live on
  * `context.tasksRuntime` and are re-read every tick — change them live with the
@@ -471,6 +471,7 @@ async function claimNextRunnableTask(
  *   maxParallel?: number,
  *   scanLimit?: number,
  *   allowedTasks?: string | string[],
+ *   controlLaneTasks?: string | string[],
  *   registry?: TasksRegistry | Record<string, Function>,
  *   runnerServiceGroup?: string,
  *   runnerServiceName?: string,
@@ -488,6 +489,7 @@ export async function runTasksLoop(context, options) {
     const queueName = options.queueName ?? "tasks";
     const target = options.target;
     const allowedTasks = normalizeAllowedTasks(options.allowedTasks);
+    const controlLaneNames = controlLaneTaskNames(options.controlLaneTasks);
     const registry = normalizeRegistry(options.registry);
     const { tasksTable, historyTable } = queueToTableNames(queueName);
 
@@ -558,7 +560,7 @@ export async function runTasksLoop(context, options) {
         while (!context.isStop() && !stopRequested && context.tasksRunnerStop !== true) {
             const { maxParallel, pollMs, claimJitterMs, scanLimit } = readLoopRuntime(context);
 
-            // Control lane: stop + setRuntimeParam even when workers are saturated.
+            // Control lane: stop / setRuntimeParam / extras even when workers are saturated.
             if (!runningControlPromise) {
                 const claimedControlTask = await claimNextRunnableTask(
                     context,
@@ -566,7 +568,7 @@ export async function runTasksLoop(context, options) {
                     target,
                     registry,
                     10,
-                    controlLaneTaskNames(),
+                    controlLaneNames,
                     runnerIdentity
                 );
                 if (claimedControlTask) {

@@ -86,6 +86,13 @@ describe("runtimeParams", () => {
             expect.arrayContaining(["stop", "stopRunner", "setRuntimeParam", "setRunnerParam"])
         );
     });
+
+    it("control lane merges optional extras (deduped)", () => {
+        expect(controlLaneTaskNames(["hostInfo", "stop"])).toEqual(
+            expect.arrayContaining(["stop", "hostInfo"])
+        );
+        expect(controlLaneTaskNames("hostInfo,ping").filter((n) => n === "hostInfo")).toHaveLength(1);
+    });
 });
 
 describe("TaskSetRuntimeParam", () => {

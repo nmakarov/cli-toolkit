@@ -21,10 +21,24 @@ const CONTROL_LANE_TASK_NAMES = ["stopRunner", "stop", "setRuntimeParam", "setRu
 
 /**
  * Task names claimed on the dedicated control lane (even when workers are saturated).
+ * Pass `extra` from `runTasksLoop({ controlLaneTasks })` for app-specific ops
+ * probes (e.g. v2 `hostInfo`) that must run while regular workers are full.
+ *
+ * @param {string|string[]|undefined|null} [extra]
  * @returns {string[]}
  */
-export function controlLaneTaskNames() {
-    return [...CONTROL_LANE_TASK_NAMES];
+export function controlLaneTaskNames(extra) {
+    const names = [...CONTROL_LANE_TASK_NAMES];
+    if (extra == null || extra === "") return names;
+    const more = Array.isArray(extra) ? extra : String(extra).split(",");
+    const seen = new Set(names);
+    for (const raw of more) {
+        const n = String(raw ?? "").trim();
+        if (!n || seen.has(n)) continue;
+        seen.add(n);
+        names.push(n);
+    }
+    return names;
 }
 
 /**
