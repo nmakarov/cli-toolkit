@@ -335,6 +335,10 @@ await db.write(products);
 
 ### Custom Synopsis Functions
 
+Synopsis is opt-in: FileDatabase does not apply domain digests by default.
+MLS harvest digests (ModificationTimestamp min/max + StandardStatus counts) live
+in mlsfarm `v2/mls-toolkit` (`attachHarvestSynopsis`), not in this package.
+
 Add data analysis functions:
 
 ```typescript

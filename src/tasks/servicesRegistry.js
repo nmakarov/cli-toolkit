@@ -45,6 +45,9 @@ const DEFAULT_GROUP_MAX_INSTANCES = {
     harvest: 1,
     harvester: 0,
     loader: 0,
+    toolkit: 0,
+    photocare: 0,
+    /** @deprecated use photocare */
     photos: 0,
     photosprocessor: 0,
     ingest: 0,

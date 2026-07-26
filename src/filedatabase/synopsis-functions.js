@@ -1,4 +1,14 @@
 /**
+ * Legacy MLS-oriented synopsis helpers.
+ *
+ * @deprecated MLS harvest digests (ModificationTimestamp min/max + StandardStatus
+ * counts) live in mlsfarm `v2/mls-toolkit/src/harvest/synopsis.js`
+ * (`attachHarvestSynopsis`). FileDatabase stays domain-agnostic — attach a
+ * synopsis plugin from the app layer. These exports remain for older callers /
+ * tests; prefer mls-toolkit for new harvest code.
+ */
+
+/**
  * Default file-level synopsis function
  * Extracts min/max *ModificationTimestamp and StandardStatus counts from records.
  * Matches ModificationTimestamp and MediaModificationTimestamp (any key ending
