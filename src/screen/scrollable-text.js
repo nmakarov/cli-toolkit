@@ -11,8 +11,13 @@
 
 import { useState, useEffect, useMemo, useRef, createElement } from "react";
 import { Box, Text } from "ink";
+import { getScreenWidth } from "./components.js";
 
 const h = createElement;
+
+/** ASCII-only: full-block `█` is often double-width in terminals and forces a wrap. */
+const BAR_THUMB = "#";
+const BAR_TRACK = "|";
 
 /**
  * Hard-wrap text to `cols` (keeps empty lines).
@@ -55,7 +60,7 @@ export function scrollbarGlyphs(viewportRows, totalLines, scrollTop) {
 
     const glyphs = [];
     for (let i = 0; i < view; i++) {
-        glyphs.push(i >= thumbStart && i < thumbStart + thumbSize ? "█" : "│");
+        glyphs.push(i >= thumbStart && i < thumbStart + thumbSize ? BAR_THUMB : BAR_TRACK);
     }
     return glyphs;
 }
@@ -104,24 +109,25 @@ export function ScrollableText({
     const [scrollTop, setScrollTop] = useState(0);
     const [, bump] = useState(0);
 
-    const termCols = process.stdout.columns || 80;
     const termRows = process.stdout.rows || 24;
     const viewportRows = Math.max(
         4,
         maxHeight != null ? Math.floor(maxHeight) : Math.max(8, termRows - 8),
     );
 
-    // Reserve 1 col for the bar when we might need it; recompute after wrap.
-    const provisionalBar = showScrollbar ? 1 : 0;
-    const wrapCols = Math.max(8, termCols - provisionalBar);
+    // Match ScreenContainer inner width: container is term-4, minus border+paddingX → term-8
+    // (same heuristic as ListComponent / ScreenDivider).
+    const contentCols = Math.max(20, getScreenWidth() - 4);
+    // Always reserve the bar column when enabled so wrap width does not jump when overflow starts.
+    const barCols = showScrollbar ? 1 : 0;
+    const textWidth = Math.max(8, contentCols - barCols);
 
     const allLines = useMemo(() => {
         if (Array.isArray(linesProp)) return linesProp.map((l) => String(l ?? ""));
-        return wrap ? wrapTextLines(text, wrapCols) : String(text ?? "").split("\n");
-    }, [linesProp, text, wrap, wrapCols]);
+        return wrap ? wrapTextLines(text, textWidth) : String(text ?? "").split("\n");
+    }, [linesProp, text, wrap, textWidth]);
 
     const needsBar = showScrollbar && allLines.length > viewportRows;
-    const textWidth = Math.max(8, termCols - (needsBar ? 1 : 0));
     const maxScroll = Math.max(0, allLines.length - viewportRows);
     const clamped = Math.min(Math.max(0, scrollTop), maxScroll);
     const visible = allLines.slice(clamped, clamped + viewportRows);
@@ -171,15 +177,17 @@ export function ScrollableText({
             : `lines ${clamped + 1}-${Math.min(clamped + visible.length, allLines.length)} of ${allLines.length}` +
               (needsBar ? " · ⌥↑/↓ or PgUp/Dn page" : "");
 
+    // Single Text per row (not a row Box): avoids yoga width surprises; ASCII bar is 1 cell.
     const rowNodes = visible.map((line, i) => {
         const body = padEndVisible(line, textWidth);
-        const glyph = bar ? bar[i] ?? "│" : "";
+        const glyph = bar ? bar[i] ?? BAR_TRACK : showScrollbar ? " " : "";
+        const isThumb = glyph === BAR_THUMB;
         return h(
-            Box,
-            { key: `L${clamped + i}`, flexDirection: "row" },
-            h(Text, {}, body),
+            Text,
+            { key: `L${clamped + i}` },
+            body,
             glyph
-                ? h(Text, { color: bar[i] === "█" ? "cyan" : "gray" }, glyph)
+                ? h(Text, { color: isThumb ? "cyan" : "gray" }, glyph)
                 : null,
         );
     });
@@ -187,12 +195,13 @@ export function ScrollableText({
     // Pad short final page so the scrollbar track stays full height.
     if (bar && visible.length < viewportRows) {
         for (let i = visible.length; i < viewportRows; i++) {
+            const glyph = bar[i] ?? BAR_TRACK;
             rowNodes.push(
                 h(
-                    Box,
-                    { key: `pad${i}`, flexDirection: "row" },
-                    h(Text, {}, padEndVisible("", textWidth)),
-                    h(Text, { color: bar[i] === "█" ? "cyan" : "gray" }, bar[i] ?? "│"),
+                    Text,
+                    { key: `pad${i}` },
+                    padEndVisible("", textWidth),
+                    h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph),
                 ),
             );
         }

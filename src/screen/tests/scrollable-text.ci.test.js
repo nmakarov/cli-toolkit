@@ -19,15 +19,15 @@ describe("scrollbarGlyphs", () => {
         expect(scrollbarGlyphs(10, 10, 0)).toBeNull();
     });
 
-    it("places a proportional thumb", () => {
+    it("places a proportional thumb (ASCII, 1-cell wide)", () => {
         const top = scrollbarGlyphs(10, 100, 0);
         expect(top).toHaveLength(10);
-        expect(top.filter((g) => g === "█").length).toBeGreaterThanOrEqual(1);
-        expect(top[0]).toBe("█");
+        expect(top.filter((g) => g === "#").length).toBeGreaterThanOrEqual(1);
+        expect(top[0]).toBe("#");
 
         const bottom = scrollbarGlyphs(10, 100, 90);
-        expect(bottom[bottom.length - 1]).toBe("█");
-        expect(bottom[0]).toBe("│");
+        expect(bottom[bottom.length - 1]).toBe("#");
+        expect(bottom[0]).toBe("|");
     });
 });
 
