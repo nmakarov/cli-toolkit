@@ -26,6 +26,12 @@ export {
 export { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
 export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, ScreenDivider } from "./components.js";
 export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-elements.js";
+export { ScrollableText, wrapTextLines, scrollbarGlyphs } from "./scrollable-text.js";
+export {
+    bindingIdentity,
+    bindingMatchesInput,
+    formatBindingKey,
+} from "./key-bindings.js";
 
 // Utilities
 export { buildBreadcrumb, buildDetailBreadcrumb } from "./utils.js";

@@ -110,12 +110,35 @@ const screen = require('@nmakarov/cli-toolkit/screen');
 
 - 🖥️ **Interactive Screens** - Full-screen terminal UIs with navigation
 - 📋 **List Components** - Scrollable, sortable, searchable lists
+- 📜 **ScrollableText** - Long text with line/page scroll and a proportional scrollbar
 - 🎯 **Multi-column Grids** - Word grids and column-based layouts
 - 🔍 **Preview Panes** - Show details for selected items
-- ⌨️ **Keyboard Navigation** - Arrow keys, shortcuts, custom bindings
+- ⌨️ **Keyboard Navigation** - Arrow keys, shortcuts, custom bindings (optional `meta`/`ctrl`)
 - 🎨 **Customizable UI** - Colors, styles, layouts, and components
 - 📍 **Breadcrumb Navigation** - Clear navigation context
 - 🔄 **State Management** - React hooks for interactive behavior
+
+### ScrollableText
+
+```js
+import { showScreen, ScrollableText, h } from "@nmakarov/cli-toolkit/screen";
+
+await showScreen({
+    title: "Details",
+    onRender: (ctx) => {
+        ctx.setAction("back", () => ctx.close(null));
+        return h(ScrollableText, {
+            ctx,
+            text: longString,
+            bindKeys: true,       // ↑/↓ line; ⌥↑/↓, ^↑/↓, PgUp/PgDn page
+            showScrollbar: true,  // right-edge thumb when content overflows
+        });
+    },
+});
+```
+
+Bindings may set `meta: true` / `ctrl: true` so `↑` and `⌥↑` coexist. Ink’s `meta` is
+Option/Alt on macOS — the terminal often swallows ⌘, so Prefer ⌥ or PgUp/PgDn for page jumps.
 
 ## Core Functions
 

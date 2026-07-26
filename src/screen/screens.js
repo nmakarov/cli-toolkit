@@ -6,6 +6,11 @@ import { useState, createElement as h } from "react";
 import { render, useInput, Text } from "ink";
 import { ScreenContainer, ScreenRow, ScreenTitle, ScreenDivider, ScreenFooter } from "./components.js";
 import { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
+import {
+    bindingIdentity,
+    bindingMatchesInput,
+    formatBindingKey,
+} from "./key-bindings.js";
 
 // Types
 
@@ -106,7 +111,7 @@ export function groupKeyBindings(bindings) {
                 order: binding.order || 999
             };
         }
-        groups[caption].keys.push(binding.key);
+        groups[caption].keys.push(formatBindingKey(binding));
     });
 
     return Object.values(groups);
@@ -169,16 +174,19 @@ export function formatKeyBindings(bindings, mode = "long") {
  * Format keys for display
  */
 export function formatKeys(keys) {
+    // `keys` may already be display labels (from groupKeyBindings) or raw key names.
     const keyMap = {
-        "escape": "esc",
-        "leftArrow": "←",
-        "rightArrow": "→",
-        "upArrow": "↑",
-        "downArrow": "↓",
-        "return": "enter"
+        escape: "esc",
+        leftArrow: "←",
+        rightArrow: "→",
+        upArrow: "↑",
+        downArrow: "↓",
+        return: "enter",
+        pageUp: "PgUp",
+        pageDown: "PgDn",
     };
 
-    return keys.map(k => keyMap[k] || k).join("/");
+    return keys.map((k) => keyMap[k] || k).join("/");
 }
 
 /**
@@ -238,8 +246,10 @@ export async function showScreen(config) {
                     const bindingsToSet = Array.isArray(bindingOrBindings) ? bindingOrBindings : [bindingOrBindings];
 
                     bindingsToSet.forEach(binding => {
-                        // Check if key already exists
-                        const existingIndex = keyBindings.findIndex(b => b.key === binding.key);
+                        const id = bindingIdentity(binding);
+                        const existingIndex = keyBindings.findIndex(
+                            (b) => bindingIdentity(b) === id,
+                        );
 
                         if (existingIndex >= 0) {
                             const existing = keyBindings[existingIndex];
@@ -270,7 +280,14 @@ export async function showScreen(config) {
                 },
 
                 updateKeyBinding: (keyName, updates) => {
-                    const index = keyBindings.findIndex(b => b.key === keyName);
+                    // Prefer identity match when updates carry modifiers; else first key name.
+                    const id =
+                        updates && (updates.meta != null || updates.ctrl != null || updates.shift != null)
+                            ? bindingIdentity({ key: keyName, ...updates })
+                            : null;
+                    const index = keyBindings.findIndex((b) =>
+                        id ? bindingIdentity(b) === id : b.key === keyName,
+                    );
                     if (index >= 0) {
                         // Update only specified properties
                         keyBindings[index] = {
@@ -280,11 +297,16 @@ export async function showScreen(config) {
                     }
                 },
 
-                removeKeyBinding: (keyName) => {
-                    const index = keyBindings.findIndex(b => b.key === keyName);
+                removeKeyBinding: (keyNameOrBinding) => {
+                    const index =
+                        typeof keyNameOrBinding === "object" && keyNameOrBinding
+                            ? keyBindings.findIndex(
+                                  (b) => bindingIdentity(b) === bindingIdentity(keyNameOrBinding),
+                              )
+                            : keyBindings.findIndex((b) => b.key === keyNameOrBinding);
                     if (index >= 0) {
                         if (keyBindings[index].protected) {
-                            console.warn(`Cannot remove protected key: ${keyName}`);
+                            console.warn(`Cannot remove protected key: ${keyNameOrBinding}`);
                             return;
                         }
                         keyBindings.splice(index, 1);
@@ -340,32 +362,12 @@ export async function showScreen(config) {
                 let matchedBinding = null;
 
                 for (const binding of keyBindings) {
-                    let keyMatches = false;
+                    if (binding.enabled === false) continue;
+                    if (!bindingMatchesInput(binding, input, key)) continue;
+                    if (binding.condition && !binding.condition(context)) continue;
 
-                    // Check key match
-                    if (key[binding.key]) {
-                        keyMatches = true;
-                    } else if (input === binding.key) {
-                        keyMatches = true;
-                    } else if (key?.name === binding.key) {
-                        // Ink sets `key.name` for regular character keys; `input` can be empty in some terminals.
-                        keyMatches = true;
-                    }
-
-                    if (keyMatches) {
-                        // Check if binding is enabled
-                        if (binding.enabled === false) {
-                            continue;
-                        }
-
-                        // Check condition if present
-                        if (binding.condition && !binding.condition(context)) {
-                            continue;
-                        }
-
-                        matchedBinding = binding;
-                        break;
-                    }
+                    matchedBinding = binding;
+                    break;
                 }
 
                 if (matchedBinding && actions[matchedBinding.action]) {
