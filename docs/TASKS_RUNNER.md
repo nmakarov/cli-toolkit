@@ -167,7 +167,10 @@ From `@nmakarov/cli-toolkit/tasks`:
 - `queueToTableNames(queue)` → `{ tasksTable, historyTable, registryTable }` (e.g. `<queue>_services_registry` for `registryTable`)
 - `registerInServicesRegistry`, `touchServicesRegistry`, `unregisterServicesRegistry`, `listServicesRegistry`, `updateServicesRegistryMetadata`
 - Deprecated aliases: `registerRunnerHeartbeat`, `touchRunnerHeartbeat`, `unregisterRunnerHeartbeat`, `listAliveRunnerHeartbeats`
-- `waitForTaskResult(context, taskId, { queue, timeoutMs, pollMs })`
+- `waitForTaskResult(context, taskId, { queueName, timeoutMs, pollMs, name, opid })` —
+  polls until history appears or timeout. Fast one-shots may finish before the first
+  poll sees the queue row; history correlates via `opid` (stamped to the queue id when
+  unset) or optional `name`/`opid` hints. Does not treat “queue row gone” as failure.
 - `TasksManager.init(context, options?)`
 - `defaultTasksRegistry` (includes built-in `ping`)
 
@@ -175,6 +178,7 @@ From `@nmakarov/cli-toolkit/tasks`:
 
 - **`ping`** — enqueue with no targeting for broadcast, or set `service_group` only, or set all four fields to hit one instance (same values as the registry row).
 - **`stop` / `stopRunner`** — must set `--serviceName` (optionally narrow with group/instance/server); `params.allowanceMs` controls graceful stop (default **60000** ms). Process SIGTERM/SIGINT uses `--stopAllowance` (**seconds**, default **60**) from init; both paths drain in-flight work then unregister.
+- **`pause` / `pauseRunner`** / **`unpause` / `unpauseRunner`** — must set `--serviceName`. Pause finishes in-flight worker tasks and stops new worker-lane claims; control-lane tasks (stop, pause, unpause, setRuntimeParam, …) still run. Sets `context.tasksRuntime.paused` and mirrors `metadata.paused` / `metadata.pausedAt` on services_registry (TUI status shows **paused**). Unpause clears the flag and resumes claiming.
 - **`setRuntimeParam` / `setRunnerParam`** — hot-update runner knobs without restart. Applies to `context.tasksRuntime` (loop re-reads `maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit` every tick) and to the logger for `levels` / `silent` / etc. Targeting: `--serviceName=<one instance>` **or** `--serviceGroup=<group>` (broadcasts to every alive registry row). Examples:
   - `--paramKey=maxParallel --paramValue=16`
   - `--paramKey=levels --paramValue='+debug'`

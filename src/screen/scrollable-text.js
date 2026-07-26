@@ -12,12 +12,16 @@
 import { useState, useEffect, useMemo, useRef, createElement } from "react";
 import { Box, Text } from "ink";
 import { getScreenWidth } from "./components.js";
+import {
+    BAR_THUMB,
+    BAR_TRACK,
+    PAGE_SCROLL_KEY_BINDINGS,
+    scrollbarGlyphs,
+} from "./scrollbar.js";
+
+export { scrollbarGlyphs } from "./scrollbar.js";
 
 const h = createElement;
-
-/** ASCII-only: full-block `█` is often double-width in terminals and forces a wrap. */
-const BAR_THUMB = "#";
-const BAR_TRACK = "|";
 
 /**
  * Hard-wrap text to `cols` (keeps empty lines).
@@ -43,28 +47,6 @@ export function wrapTextLines(text, cols) {
     return out;
 }
 
-/**
- * Proportional scrollbar glyphs for a viewport.
- * @returns {string[]|null} one glyph per viewport row, or null when no overflow
- */
-export function scrollbarGlyphs(viewportRows, totalLines, scrollTop) {
-    const view = Math.max(1, Math.floor(viewportRows));
-    const total = Math.max(0, Math.floor(totalLines));
-    if (total <= view) return null;
-
-    const maxScroll = total - view;
-    const thumbSize = Math.max(1, Math.round((view / total) * view));
-    const travel = Math.max(0, view - thumbSize);
-    const s = Math.min(Math.max(0, Math.floor(scrollTop)), maxScroll);
-    const thumbStart = maxScroll === 0 ? 0 : Math.round((s / maxScroll) * travel);
-
-    const glyphs = [];
-    for (let i = 0; i < view; i++) {
-        glyphs.push(i >= thumbStart && i < thumbStart + thumbSize ? BAR_THUMB : BAR_TRACK);
-    }
-    return glyphs;
-}
-
 function padEndVisible(s, w) {
     const t = String(s ?? "");
     if (t.length >= w) return t.slice(0, w);
@@ -74,14 +56,8 @@ function padEndVisible(s, w) {
 const SCROLL_KEYS = [
     { key: "upArrow", caption: "scroll", action: "scrollUp", order: 0 },
     { key: "downArrow", caption: "scroll", action: "scrollDown", order: 0 },
-    { key: "upArrow", meta: true, caption: "page", action: "pageUp", order: 0 },
-    { key: "downArrow", meta: true, caption: "page", action: "pageDown", order: 0 },
-    { key: "upArrow", ctrl: true, caption: "page", action: "pageUp", order: 0 },
-    { key: "downArrow", ctrl: true, caption: "page", action: "pageDown", order: 0 },
-    { key: "pageUp", caption: "page", action: "pageUp", order: 0 },
-    { key: "pageDown", caption: "page", action: "pageDown", order: 0 },
+    ...PAGE_SCROLL_KEY_BINDINGS,
 ];
-
 /**
  * @param {{
  *   ctx: object,

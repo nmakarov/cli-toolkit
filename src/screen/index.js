@@ -28,6 +28,11 @@ export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, Scre
 export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-elements.js";
 export { ScrollableText, wrapTextLines, scrollbarGlyphs } from "./scrollable-text.js";
 export {
+    PAGE_SCROLL_KEY_BINDINGS,
+    BAR_THUMB,
+    BAR_TRACK,
+} from "./scrollbar.js";
+export {
     bindingIdentity,
     bindingMatchesInput,
     formatBindingKey,

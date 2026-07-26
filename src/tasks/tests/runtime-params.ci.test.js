@@ -81,9 +81,18 @@ describe("runtimeParams", () => {
         expect(hook).toHaveBeenCalledWith("customKnob", "x", ctx.tasksRuntime, ctx);
     });
 
-    it("control lane includes setRuntimeParam", () => {
+    it("control lane includes setRuntimeParam and pause/unpause", () => {
         expect(controlLaneTaskNames()).toEqual(
-            expect.arrayContaining(["stop", "stopRunner", "setRuntimeParam", "setRunnerParam"])
+            expect.arrayContaining([
+                "stop",
+                "stopRunner",
+                "pause",
+                "pauseRunner",
+                "unpause",
+                "unpauseRunner",
+                "setRuntimeParam",
+                "setRunnerParam",
+            ])
         );
     });
 

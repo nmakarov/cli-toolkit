@@ -17,7 +17,16 @@ export const LOGGER_RUNTIME_KEYS = [
     "progressThrottleMs",
 ];
 
-const CONTROL_LANE_TASK_NAMES = ["stopRunner", "stop", "setRuntimeParam", "setRunnerParam"];
+const CONTROL_LANE_TASK_NAMES = [
+    "stopRunner",
+    "stop",
+    "pauseRunner",
+    "pause",
+    "unpauseRunner",
+    "unpause",
+    "setRuntimeParam",
+    "setRunnerParam",
+];
 
 /**
  * Task names claimed on the dedicated control lane (even when workers are saturated).
@@ -100,7 +109,7 @@ export function coerceRuntimeValue(key, value) {
  * Ensure `context.tasksRuntime` exists (used by the loop and by setRuntimeParam).
  *
  * @param {object} context
- * @param {Partial<{ maxParallel: number, pollMs: number, claimJitterMs: number, scanLimit: number }>} [seed]
+ * @param {Partial<{ maxParallel: number, pollMs: number, claimJitterMs: number, scanLimit: number, paused: boolean }>} [seed]
  * @returns {Record<string, unknown>}
  */
 export function ensureTasksRuntime(context, seed = {}) {
@@ -112,6 +121,7 @@ export function ensureTasksRuntime(context, seed = {}) {
     if (rt.pollMs === undefined) rt.pollMs = seed.pollMs ?? 1000;
     if (rt.claimJitterMs === undefined) rt.claimJitterMs = seed.claimJitterMs ?? 0;
     if (rt.scanLimit === undefined) rt.scanLimit = seed.scanLimit ?? 100;
+    if (rt.paused === undefined) rt.paused = seed.paused === true;
     return rt;
 }
 

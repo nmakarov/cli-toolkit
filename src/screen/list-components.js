@@ -5,8 +5,26 @@
 import React, { useState, useEffect, useRef, createElement } from "react";
 import { Box, Text } from "ink";
 import { ScreenRow, ScreenDivider } from "./components.js";
+import {
+    BAR_THUMB,
+    BAR_TRACK,
+    PAGE_SCROLL_KEY_BINDINGS,
+    scrollbarGlyphs,
+} from "./scrollbar.js";
 
 const h = createElement;
+
+/**
+ * Make room for a 1-cell scrollbar. Full-width table rows are padEnd'd (trailing
+ * space) — trim one cell. Short labels are left alone (bar just appends).
+ */
+function clipNameForScrollbar(name, needsBar) {
+    if (!needsBar || name == null) return name;
+    const s = String(name);
+    if (s.length <= 1) return s;
+    if (/\s$/.test(s)) return s.slice(0, -1);
+    return s;
+}
 
 // TODO: Define proper context type interface
 
@@ -346,21 +364,51 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
             forceUpdate({});
         });
 
-        // Add scroll actions for arrow clicks
+        // Viewport scroll (without moving selection)
         ctx.setAction("scrollUp", () => {
             const { scrollOffset: currentScrollOffset } = scrollStateRef.current;
-            const newScrollOffset = Math.max(0, currentScrollOffset - 1);
-            setScrollOffset(newScrollOffset);
+            setScrollOffset(Math.max(0, currentScrollOffset - 1));
             forceUpdate({});
         });
 
         ctx.setAction("scrollDown", () => {
-            const { scrollOffset: currentScrollOffset, maxHeight: currentMaxHeight, totalItems } = scrollStateRef.current;
+            const { scrollOffset: currentScrollOffset, maxHeight: currentMaxHeight, totalItems } =
+                scrollStateRef.current;
             const currentMaxScrollOffset = Math.max(0, totalItems - currentMaxHeight);
-            const newScrollOffset = Math.min(currentMaxScrollOffset, currentScrollOffset + 1);
-            setScrollOffset(newScrollOffset);
+            setScrollOffset(Math.min(currentMaxScrollOffset, currentScrollOffset + 1));
             forceUpdate({});
         });
+
+        // Page: move selection by one viewport, keep it visible (⌥/Ctrl+↑↓, PgUp/PgDn)
+        ctx.setAction("pageUp", () => {
+            const { maxHeight: vh } = scrollStateRef.current;
+            const page = Math.max(1, vh || 1);
+            const newIndex = Math.max(0, selectedIndexRef.current - page);
+            selectedIndexRef.current = newIndex;
+            const list = displayItemsRef.current;
+            onSelectionChangeRef.current?.(newIndex, list[newIndex]);
+            setScrollOffset(newIndex);
+            forceUpdate({});
+        });
+
+        ctx.setAction("pageDown", () => {
+            const { maxHeight: vh, totalItems } = scrollStateRef.current;
+            const page = Math.max(1, vh || 1);
+            const maxIndex = Math.max(0, totalItems - 1);
+            const newIndex = Math.min(maxIndex, selectedIndexRef.current + page);
+            selectedIndexRef.current = newIndex;
+            const list = displayItemsRef.current;
+            onSelectionChangeRef.current?.(newIndex, list[newIndex]);
+            const maxScroll = Math.max(0, totalItems - page);
+            setScrollOffset(Math.min(maxScroll, Math.max(0, newIndex - page + 1)));
+            forceUpdate({});
+        });
+
+        const navBindings = [
+            { key: "upArrow", caption: "navigate", action: "moveUp", order: 0 },
+            { key: "downArrow", caption: "navigate", action: "moveDown", order: 0 },
+            ...PAGE_SCROLL_KEY_BINDINGS,
+        ];
 
         // Set up sort action if sortable
         if (sortable) {
@@ -423,134 +471,123 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
                 }
             };
 
-            // Update key bindings with sort
             ctx.setKeyBinding([
-                { key: "upArrow", caption: "navigate", action: "moveUp", order: 0 },
-                { key: "downArrow", caption: "navigate", action: "moveDown", order: 0 },
-                { 
-                    key: "s", 
+                ...navBindings,
+                {
+                    key: "s",
                     caption: sortCaption,
-                    action: "toggleSort", 
-                    order: 5 
-                }
+                    action: "toggleSort",
+                    order: 5,
+                },
             ]);
 
             // Force update to show the new caption in footer
             ctx.update();
         } else {
-            // No sorting
-            ctx.setKeyBinding([
-                { key: "upArrow", caption: "navigate", action: "moveUp", order: 0 },
-                { key: "downArrow", caption: "navigate", action: "moveDown", order: 0 }
-            ]);
+            ctx.setKeyBinding(navBindings);
         }
     }, [sortOrder, sortable]);
 
     const selectedIndex = selectedIndexRef.current;
-    
+    const needsBar = displayItems.length > effectiveMaxHeight;
+    const barGlyphs = needsBar
+        ? scrollbarGlyphs(effectiveMaxHeight, displayItems.length, clampedScrollOffset)
+        : null;
 
-    // Default renderer with static scroll indicators for debugging
-    const defaultRenderItem = (item, isSelected, displayIndex, actualIndex) => {
-        const isFirstVisible = displayIndex === 0;
-        const isLastVisible = displayIndex === visibleItems.length - 1;
-        
-        // Build prefix with arrows and selection marker
-        let arrowPrefix = "";
-        let selectionPrefix = "";
-        
-        // Only show arrows when scrolling is actually needed and available
-        if (isFirstVisible && canScrollUp) {
-            arrowPrefix = "↑ ";
-        } else if (isLastVisible && canScrollDown) {
-            arrowPrefix = "↓ ";
-        } else {
-            // No arrow, but reserve the same space
-            arrowPrefix = "  ";
-        }
-        
-        // Always reserve space for selection marker (pad with spaces if not selected)
-        if (isSelected) {
-            selectionPrefix = selectionMarker;
-        } else {
-            // Pad with spaces to match the length of the selection marker
-            selectionPrefix = " ".repeat(selectionMarker.length);
-        }
-        
-        return h(Box, { flexDirection: "row" },
-            // Arrow (clickable if functional, not highlighted)
-            h(Text, { 
-                key: `arrow-${actualIndex}`,
-                color: "white"
-            }, arrowPrefix),
-            // Selection marker space (always same width, not highlighted) 
-            h(Text, { key: `marker-${actualIndex}`, color: "white" }, selectionPrefix),
-            // Item name (highlighted if selected)
-            h(Text, {
-                key: `name-${actualIndex}`,
-                color: isSelected ? "black" : "white",
-                backgroundColor: isSelected ? "cyan" : undefined,
-                bold: isSelected
-            }, item.name)
+    const appendBar = (rowContent, displayIndex) => {
+        if (!barGlyphs) return rowContent;
+        const glyph = barGlyphs[displayIndex] ?? BAR_TRACK;
+        return h(
+            Box,
+            { flexDirection: "row" },
+            rowContent,
+            h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph),
         );
     };
 
-    // Use custom renderer if provided, otherwise use default
+    // Default renderer — edge ↑/↓ only when there is no scrollbar (bar replaces them).
+    const defaultRenderItem = (item, isSelected, displayIndex, actualIndex) => {
+        const isFirstVisible = displayIndex === 0;
+        const isLastVisible = displayIndex === visibleItems.length - 1;
+
+        let arrowPrefix = "  ";
+        if (!needsBar) {
+            if (isFirstVisible && canScrollUp) arrowPrefix = "↑ ";
+            else if (isLastVisible && canScrollDown) arrowPrefix = "↓ ";
+        }
+
+        const selectionPrefix = isSelected
+            ? selectionMarker
+            : " ".repeat(selectionMarker.length);
+
+        const label = clipNameForScrollbar(item.name, needsBar);
+
+        return h(
+            Box,
+            { flexDirection: "row" },
+            h(Text, { key: `arrow-${actualIndex}`, color: "white" }, arrowPrefix),
+            h(Text, { key: `marker-${actualIndex}`, color: "white" }, selectionPrefix),
+            h(
+                Text,
+                {
+                    key: `name-${actualIndex}`,
+                    color: isSelected ? "black" : "white",
+                    backgroundColor: isSelected ? "cyan" : undefined,
+                    bold: isSelected,
+                },
+                label,
+            ),
+        );
+    };
+
     const itemRenderer = renderItem || defaultRenderItem;
 
-    // Render visible menu items with scroll indicators
-    return h(Box, { flexDirection: "column" },
+    return h(
+        Box,
+        { flexDirection: "column" },
         ...visibleItems.map((item, displayIndex) => {
             const actualIndex = clampedScrollOffset + displayIndex;
             const isSelected = actualIndex === selectedIndex;
-            
-            // If using custom renderer, wrap it with scroll indicators
+
             if (renderItem) {
                 const isFirstVisible = displayIndex === 0;
                 const isLastVisible = displayIndex === visibleItems.length - 1;
-                
-                // Build prefix with arrows and selection marker
-                let arrowPrefix = "";
-                let selectionPrefix = "";
-                
-                // Only show arrows when scrolling is actually needed and available
-                if (isFirstVisible && canScrollUp) {
-                    arrowPrefix = "↑ ";
-                } else if (isLastVisible && canScrollDown) {
-                    arrowPrefix = "↓ ";
-                } else {
-                    // No arrow, but reserve the same space
-                    arrowPrefix = "  ";
+
+                let arrowPrefix = "  ";
+                if (!needsBar) {
+                    if (isFirstVisible && canScrollUp) arrowPrefix = "↑ ";
+                    else if (isLastVisible && canScrollDown) arrowPrefix = "↓ ";
                 }
-                
-                // Always reserve space for selection marker (pad with spaces if not selected)
-                if (isSelected) {
-                    selectionPrefix = selectionMarker;
-                } else {
-                    // Pad with spaces to match the length of the selection marker
-                    selectionPrefix = " ".repeat(selectionMarker.length);
-                }
-                
+
+                const selectionPrefix = isSelected
+                    ? selectionMarker
+                    : " ".repeat(selectionMarker.length);
+
+                const clipped = needsBar
+                    ? { ...item, name: clipNameForScrollbar(item.name, true) }
+                    : item;
+
+                const row = h(
+                    Box,
+                    { flexDirection: "row" },
+                    h(Text, { key: `arrow-${actualIndex}`, color: "white" }, arrowPrefix),
+                    h(Text, { key: `marker-${actualIndex}`, color: "white" }, selectionPrefix),
+                    renderItem(clipped, isSelected, displayIndex),
+                );
+
                 return h(ScreenRow, {
                     key: `item-${actualIndex}`,
-                    children: h(Box, { flexDirection: "row" },
-                        // Arrow (clickable if functional, not highlighted)
-                        h(Text, { 
-                            key: `arrow-${actualIndex}`,
-                            color: "white"
-                        }, arrowPrefix),
-                        // Selection marker space (always same width, not highlighted) 
-                        h(Text, { key: `marker-${actualIndex}`, color: "white" }, selectionPrefix),
-                        // Custom rendered content
-                        renderItem(item, isSelected, displayIndex)
-                    )
-                });
-            } else {
-                // Use default renderer (which already includes scroll indicators)
-                return h(ScreenRow, {
-                    key: `item-${actualIndex}`,
-                    children: itemRenderer(item, isSelected, displayIndex, actualIndex)
+                    children: appendBar(row, displayIndex),
                 });
             }
-        })
+
+            return h(ScreenRow, {
+                key: `item-${actualIndex}`,
+                children: appendBar(
+                    itemRenderer(item, isSelected, displayIndex, actualIndex),
+                    displayIndex,
+                ),
+            });
+        }),
     );
 }

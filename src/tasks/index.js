@@ -73,6 +73,11 @@ export { TaskShellCommand } from "./coreTasks/TaskShellCommand.js";
 export { TaskSystemInfo } from "./coreTasks/TaskSystemInfo.js";
 export { TaskSumAB } from "./coreTasks/TaskSumAB.js";
 export { TaskStopRunner } from "./coreTasks/TaskStopRunner.js";
+export {
+    TaskPauseRunner,
+    TaskUnpauseRunner,
+    applyRunnerPaused,
+} from "./coreTasks/TaskPauseRunner.js";
 export { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
 export { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
 export {
@@ -450,8 +455,10 @@ async function claimNextRunnableTask(
 /**
  * Main runner loop. Registers in the services registry (optional), then polls
  * the queue, claiming up to `maxParallel` tasks at a time plus one extra
- * "control lane" for `stop` / `setRuntimeParam` (and optional
- * `controlLaneTasks`) so those can run even when workers are saturated.
+ * "control lane" for `stop` / `pause` / `unpause` / `setRuntimeParam` (and
+ * optional `controlLaneTasks`) so those can run even when workers are saturated.
+ * When `context.tasksRuntime.paused` is true, in-flight worker tasks finish but
+ * no new worker-lane claims are made until unpause.
  *
  * Loop knobs (`maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit`) live on
  * `context.tasksRuntime` and are re-read every tick — change them live with the
@@ -524,6 +531,7 @@ export async function runTasksLoop(context, options) {
         const defaultMeta = {
             component: "tasks-runner",
             allowedTasks: allowedTasks?.length ? allowedTasks.join(",") : "all",
+            paused: false,
             runtime: {
                 maxParallel: loop0.maxParallel,
                 pollMs: loop0.pollMs,
@@ -598,31 +606,42 @@ export async function runTasksLoop(context, options) {
                 await sleepMs(Math.floor(Math.random() * (claimJitterMs + 1)));
             }
 
-            while (runningPromises.size < maxParallel) {
-                const claimed = await claimNextRunnableTask(
-                    context,
-                    tasksTable,
-                    target,
-                    registry,
-                    scanLimit,
-                    allowedTasks,
-                    runnerIdentity
-                );
-                if (!claimed) break;
+            // Worker lane: skip new claims while paused (in-flight work still drains).
+            const paused = context.tasksRuntime?.paused === true;
+            if (!paused) {
+                while (runningPromises.size < maxParallel) {
+                    const claimed = await claimNextRunnableTask(
+                        context,
+                        tasksTable,
+                        target,
+                        registry,
+                        scanLimit,
+                        allowedTasks,
+                        runnerIdentity
+                    );
+                    if (!claimed) break;
 
-                const p = executeClaimedTask(context, tasksTable, historyTable, claimed, registry, runningTaskInstances)
-                    .then(async (outcome) => {
-                        if (outcome.stopRunnerRequested && !stopRequested) {
-                            stopRequested = true;
-                            stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
-                            context.tasksRunnerStop = true;
-                            await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
-                        }
-                    })
-                    .finally(() => {
-                        runningPromises.delete(p);
-                    });
-                runningPromises.add(p);
+                    const p = executeClaimedTask(
+                        context,
+                        tasksTable,
+                        historyTable,
+                        claimed,
+                        registry,
+                        runningTaskInstances
+                    )
+                        .then(async (outcome) => {
+                            if (outcome.stopRunnerRequested && !stopRequested) {
+                                stopRequested = true;
+                                stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
+                                context.tasksRunnerStop = true;
+                                await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
+                            }
+                        })
+                        .finally(() => {
+                            runningPromises.delete(p);
+                        });
+                    runningPromises.add(p);
+                }
             }
 
             const wakePromises = [...runningPromises];
@@ -677,17 +696,28 @@ export async function runTasksLoop(context, options) {
 
 /**
  * Poll for the outcome of a task by id. Returns the matching `_history` row when
- * the task completes, or `null` when the wait times out / the queue row vanishes
- * without a history entry (unusual; usually a manual delete).
+ * the task completes, or `null` when the wait times out.
  *
- * Resolves either of:
- *   - Legacy path: a history row whose `id` matches the original task id.
- *   - Modern path: a history row with the same `name`+`opid` whose
- *     `completed_at` is ≥ when we started waiting (so we don't pick up an older run).
+ * Resolves any of:
+ *   - Legacy: history row whose `id` equals the queue task id.
+ *   - `opid` equals the queue task id (stamped when enqueue had no opid — see
+ *     {@link taskHistoryInsertFromQueueRow}).
+ *   - Same `name`+`opid` with `completed_at` ≥ wait start (optional `name`/`opid`
+ *     hints help when the queue row is already gone on the first poll).
+ *
+ * Fast one-shot tasks (e.g. hostInfo) often finish before the first poll sees the
+ * queue row — we keep polling until `timeoutMs` rather than treating “row gone”
+ * as failure.
  *
  * @param {object} context
  * @param {string} taskId
- * @param {{ queueName?: string, timeoutMs?: number, pollMs?: number }} [options]
+ * @param {{
+ *   queueName?: string,
+ *   timeoutMs?: number,
+ *   pollMs?: number,
+ *   name?: string,
+ *   opid?: string|null,
+ * }} [options]
  * @returns {Promise<object|null>}
  */
 export async function waitForTaskResult(context, taskId, options = {}) {
@@ -697,25 +727,47 @@ export async function waitForTaskResult(context, taskId, options = {}) {
     const pollMs = options.pollMs ?? 500;
     const { tasksTable, historyTable } = queueToTableNames(queueName);
     const deadline = Date.now() + timeoutMs;
-    /** Only match history rows completed after we began waiting (avoids picking an older run with the same name/opid). */
-    const waitStartedAt = new Date();
-    let cachedNameOpid = null;
+    // Small skew grace so a fast complete on a slightly-behind DB clock still matches.
+    const waitStartedAt = new Date(Date.now() - 5_000);
+    let cachedNameOpid =
+        options.name != null && String(options.name).trim() !== ""
+            ? {
+                  name: String(options.name).trim(),
+                  opid: options.opid !== undefined ? options.opid : null,
+              }
+            : null;
 
     /**
-     * Look for a matching history entry completed since we started waiting.
-     *
      * @param {string} name
      * @param {string|null|undefined} opid
      * @returns {Promise<object|undefined>}
      */
-    async function historySinceWait(name, opid) {
-        let q = db(historyTable).where({ name }).where("completed_at", ">=", waitStartedAt);
-        if (opid == null || opid === "") {
-            q = q.whereNull("opid");
-        } else {
-            q = q.where({ opid });
+    async function findHistory(name, opid) {
+        const base = () =>
+            db(historyTable).where({ name }).where("completed_at", ">=", waitStartedAt);
+
+        if (opid != null && String(opid).trim() !== "") {
+            const byOpid = await base().where({ opid }).orderBy("completed_at", "desc").first();
+            if (byOpid) return byOpid;
         }
-        return await q.orderBy("completed_at", "desc").first();
+
+        // Queue id stamped into history.opid when the task had no opid.
+        const byQueueId = await base().where({ opid: taskId }).orderBy("completed_at", "desc").first();
+        if (byQueueId) return byQueueId;
+
+        // Also try without the time gate for the unique queue-id opid (clock skew).
+        const byQueueIdAny = await db(historyTable)
+            .where({ name, opid: taskId })
+            .orderBy("completed_at", "desc")
+            .first();
+        if (byQueueIdAny) return byQueueIdAny;
+
+        if (opid == null || opid === "") {
+            const byNull = await base().whereNull("opid").orderBy("completed_at", "desc").first();
+            if (byNull) return byNull;
+        }
+
+        return undefined;
     }
 
     while (Date.now() <= deadline) {
@@ -727,19 +779,24 @@ export async function waitForTaskResult(context, taskId, options = {}) {
         const pending = await db(tasksTable).where({ id: taskId }).first();
         if (pending) {
             cachedNameOpid = { name: pending.name, opid: pending.opid };
-            const done = await historySinceWait(pending.name, pending.opid);
-            if (done) {
-                return done;
-            }
-        } else if (cachedNameOpid) {
-            const done = await historySinceWait(cachedNameOpid.name, cachedNameOpid.opid);
-            if (done) {
-                return done;
-            }
-            return null;
-        } else {
-            return null;
         }
+
+        if (cachedNameOpid) {
+            const done = await findHistory(cachedNameOpid.name, cachedNameOpid.opid);
+            if (done) {
+                return done;
+            }
+        } else {
+            // Name unknown yet — still try correlation by stamped opid=taskId across names.
+            const byQueueId = await db(historyTable)
+                .where({ opid: taskId })
+                .orderBy("completed_at", "desc")
+                .first();
+            if (byQueueId) {
+                return byQueueId;
+            }
+        }
+
         await sleepMs(pollMs);
     }
     return null;

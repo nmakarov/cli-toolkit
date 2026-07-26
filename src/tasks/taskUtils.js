@@ -153,16 +153,26 @@ export function tasksSchemaSpec(queueName = "tasks") {
  * Build an insert payload for `*_history`: never copies the queue row `id` as the history PK — PostgreSQL default
  * generates a new `id`. The snapshot still carries `name`, `opid`, `params`, etc. for auditing and ad hoc queries.
  *
+ * When the queue row has no `opid`, we stamp `opid` with the queue row id so
+ * {@link waitForTaskResult} can correlate history after the queue row is deleted
+ * (history PK ≠ queue id). Explicit `opid` on the row or in `overrides` wins.
+ *
  * @param {object} row      Original queue row.
  * @param {object} overrides Fields to override on the snapshot (e.g. `completed_at`, `success`).
  * @returns {object}
  */
-export function taskHistoryInsertFromQueueRow(row, overrides) {
+export function taskHistoryInsertFromQueueRow(row, overrides = {}) {
     const { id, ...snapshot } = row;
-    void id;
+    const opid =
+        overrides.opid !== undefined
+            ? overrides.opid
+            : snapshot.opid != null && String(snapshot.opid).trim() !== ""
+              ? snapshot.opid
+              : id;
     return {
         ...snapshot,
         ...overrides,
+        opid,
     };
 }
 

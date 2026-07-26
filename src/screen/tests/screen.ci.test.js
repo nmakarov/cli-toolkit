@@ -494,6 +494,8 @@ describe("Screen CI", () => {
             "moveDown",
             "scrollUp",
             "scrollDown",
+            "pageUp",
+            "pageDown",
             "toggleSort"
         ]));
 
@@ -503,13 +505,20 @@ describe("Screen CI", () => {
         expect(selectedIndexRef.current).toBe(1);
         actions.scrollDown();
         actions.scrollUp();
+        actions.pageDown();
+        expect(selectedIndexRef.current).toBe(3);
+        actions.pageUp();
+        expect(selectedIndexRef.current).toBe(1);
         actions.toggleSort();
         expect(ctx.update).toHaveBeenCalled();
 
         expect(keyBindings.map(binding => binding.key)).toEqual(expect.arrayContaining([
             "upArrow",
-            "downArrow"
+            "downArrow",
+            "pageUp",
+            "pageDown",
         ]));
+        expect(keyBindings.some((b) => b.key === "upArrow" && b.meta)).toBe(true);
 
         const rows = tree.children;
         expect(rows).toHaveLength(2);

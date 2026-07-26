@@ -5,6 +5,7 @@ import { TaskShellCommand } from "./coreTasks/TaskShellCommand.js";
 import { TaskSystemInfo } from "./coreTasks/TaskSystemInfo.js";
 import { TaskSumAB } from "./coreTasks/TaskSumAB.js";
 import { TaskStopRunner } from "./coreTasks/TaskStopRunner.js";
+import { TaskPauseRunner, TaskUnpauseRunner } from "./coreTasks/TaskPauseRunner.js";
 import { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
 import { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
 
@@ -43,6 +44,10 @@ export class TasksRegistry {
             .add("stopRunner", TaskStopRunner)
             // Backward-compat alias
             .add("stop", TaskStopRunner)
+            .add("pauseRunner", TaskPauseRunner)
+            .add("pause", TaskPauseRunner)
+            .add("unpauseRunner", TaskUnpauseRunner)
+            .add("unpause", TaskUnpauseRunner)
             .add("getLogs", TaskGetLogs)
             .add("setRuntimeParam", TaskSetRuntimeParam)
             .add("setRunnerParam", TaskSetRuntimeParam);
