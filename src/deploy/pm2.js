@@ -4,6 +4,18 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** True if `pid` still exists (same host). */
+export function isPidAlive(pid) {
+    const n = Number(pid);
+    if (!Number.isFinite(n) || n <= 0) return false;
+    try {
+        process.kill(n, 0);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Parse `pm2 jlist` and return the process entry for `appName`, or null.
  *
@@ -58,6 +70,21 @@ export async function waitPm2(appName, predicate, options = {}) {
     );
 }
 
+/**
+ * True when pm2 reports the app online on a *new* pid (old process fully gone).
+ * Avoids treating a not-yet-dead pre-reload process as a successful restart.
+ */
+export function isFreshOnline(proc, oldPid) {
+    if (proc?.pm2_env?.status !== "online") return false;
+    const pid = Number(proc.pid);
+    if (!Number.isFinite(pid) || pid <= 0) return false;
+    if (oldPid != null) {
+        if (pid === oldPid) return false;
+        if (isPidAlive(oldPid)) return false;
+    }
+    return true;
+}
+
 /** `pm2 startOrReload <ecosystem> --update-env` — rolling restart (default deploy path). */
 export async function reloadPm2(paths, options = {}) {
     const { dryRun = false, logger = console, appName = null, waitTimeoutMs = 65_000 } = options;
@@ -67,16 +94,32 @@ export async function reloadPm2(paths, options = {}) {
         return;
     }
 
+    let oldPid = null;
+    if (appName) {
+        const before = await getPm2Process(appName, { logger });
+        const n = Number(before?.pid);
+        if (Number.isFinite(n) && n > 0 && before?.pm2_env?.status === "online") {
+            oldPid = n;
+            logger.info(`pm2 ${appName}: reloading (old pid=${oldPid})`);
+        }
+    }
+
     await runShell(`pm2 startOrReload "${paths.ecosystem}" --update-env`, { logger });
     logger.info("pm2 reloaded");
 
     if (appName) {
-        await waitPm2(
+        const proc = await waitPm2(
             appName,
-            (proc) => proc?.pm2_env?.status === "online",
-            { timeoutMs: waitTimeoutMs, logger, label: "online after reload" }
+            (p) => isFreshOnline(p, oldPid),
+            {
+                timeoutMs: waitTimeoutMs,
+                logger,
+                label: oldPid
+                    ? `online on new pid (old ${oldPid} gone)`
+                    : "online after reload",
+            }
         );
-        logger.info(`pm2 ${appName} online`);
+        logger.info(`pm2 ${appName} online pid=${proc?.pid ?? "?"}`);
     }
 }
 
@@ -99,10 +142,15 @@ export async function stopPm2(appName, options = {}) {
         return;
     }
 
+    const oldPid = Number(before.pid);
     await runShell(`pm2 stop "${appName}"`, { logger });
     await waitPm2(
         appName,
-        (proc) => !proc || proc.pm2_env?.status === "stopped",
+        (proc) => {
+            if (proc && proc.pm2_env?.status !== "stopped") return false;
+            if (Number.isFinite(oldPid) && oldPid > 0 && isPidAlive(oldPid)) return false;
+            return true;
+        },
         { timeoutMs: waitTimeoutMs, logger, label: "stopped" }
     );
     logger.info(`pm2 ${appName} stopped`);
@@ -121,11 +169,11 @@ export async function startPm2(paths, options = {}) {
     logger.info("pm2 started");
 
     if (appName) {
-        await waitPm2(
+        const proc = await waitPm2(
             appName,
-            (proc) => proc?.pm2_env?.status === "online",
+            (p) => isFreshOnline(p, null),
             { timeoutMs: waitTimeoutMs, logger, label: "online after start" }
         );
-        logger.info(`pm2 ${appName} online`);
+        logger.info(`pm2 ${appName} online pid=${proc?.pid ?? "?"}`);
     }
 }

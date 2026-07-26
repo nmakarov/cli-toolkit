@@ -236,6 +236,38 @@ describe("Init CI Tests", () => {
         exitSpy.mockRestore();
     });
 
+    it("exits 0 after cleanup when stop was signaled (no zombie for pm2)", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
+        const handlers = {};
+        process.on = vi.fn((event, fn) => {
+            handlers[event] = fn;
+            return process;
+        });
+
+        let cleanupRan = false;
+        const flow = async (context) => {
+            context.registerCleanup(() => {
+                cleanupRan = true;
+            });
+            // Simulate pm2 SIGINT / SIGTERM cooperative stop mid-flow.
+            handlers.SIGINT?.();
+            expect(context.isStop()).toBe(true);
+        };
+
+        await init(flow, { silent: true });
+
+        expect(cleanupRan).toBe(true);
+        expect(exitSpy).toHaveBeenCalledWith(0);
+        exitSpy.mockRestore();
+    });
+
+    it("does not force-exit 0 when flow finishes without stop", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
+        await init(async () => {}, { silent: true });
+        expect(exitSpy).not.toHaveBeenCalled();
+        exitSpy.mockRestore();
+    });
+
     it("--stopAfter=init prints params and exits", async () => {
         const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) );
         const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});

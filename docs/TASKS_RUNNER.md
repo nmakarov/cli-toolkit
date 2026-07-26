@@ -185,7 +185,7 @@ CLI: `npx cli-send-task` (published bin) or `npm run tasks:send` in this repo �
 
 ### Deploy + graceful restart
 
-`cli-deploy deploy` (default **rolling**): build + flip `current` while the old process keeps running, then `pm2 startOrReload` (SIGTERM → drain within `kill_timeout` → autorestart on new code). Use `--stopFirst` to `pm2 stop` → wait → activate → `pm2 start` when a runner is wedged. Ecosystem `kill_timeout` is derived from manifest `pm2.stopAllowance` (seconds) / `pm2.killTimeout` (ms).
+`cli-deploy deploy` (default **rolling**): build + flip `current` while the old process keeps running, then `pm2 startOrReload` (SIGINT/SIGTERM → drain within `kill_timeout` → process **exits 0** → pm2 starts new code). Deploy waits until the **new pid** is online and the old pid is gone (not merely `status=online`). Use `--stopFirst` to `pm2 stop` → wait → activate → `pm2 start` when a runner is wedged. Ecosystem `kill_timeout` is derived from manifest `pm2.stopAllowance` (seconds) / `pm2.killTimeout` (ms).
 
 ## TasksManager
 

@@ -289,10 +289,14 @@ export async function init(flow, opts = {}) {
         if (context) {
             await runRegisteredCleanups(context);
         }
-        // Fatal startup errors must end the process. Setting exitCode alone is not
-        // enough — open handles (logger, timers) can keep a zombie "online" under pm2.
+        // Open handles (logger, SDK agents, signal listeners, …) can keep Node
+        // alive after the flow returns. Under pm2 that becomes a zombie: the
+        // runner has unregistered and disconnected, but pm2 waits kill_timeout
+        // then SIGKILL. Force-exit on errors and on cooperative/signal stop.
         if (process.exitCode && process.exitCode !== 0) {
             process.exit(process.exitCode);
+        } else if (stop) {
+            process.exit(0);
         }
     }
 }

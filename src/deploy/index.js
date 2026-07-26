@@ -16,7 +16,15 @@ export { activateRelease } from "./activate.js";
 export { installDeps } from "./deps.js";
 export { runReleaseTests } from "./test.js";
 export { pruneReleases } from "./prune.js";
-export { reloadPm2, stopPm2, startPm2, getPm2Process, waitPm2 } from "./pm2.js";
+export {
+    reloadPm2,
+    stopPm2,
+    startPm2,
+    getPm2Process,
+    waitPm2,
+    isPidAlive,
+    isFreshOnline,
+} from "./pm2.js";
 export { enableNginxUpstream } from "./nginx.js";
 export { syncEnv, scrubEnvContent } from "./sync-env.js";
 export {
