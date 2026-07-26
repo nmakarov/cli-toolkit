@@ -85,12 +85,69 @@ export function isFreshOnline(proc, oldPid) {
     return true;
 }
 
-/** `pm2 startOrReload <ecosystem> --update-env` — rolling restart (default deploy path). */
+/**
+ * Remove app from pm2 (SIGINT + kill_timeout drain) and wait until gone.
+ * No-op if the app is not present.
+ */
+async function deletePm2App(appName, options = {}) {
+    const { dryRun = false, logger = console, waitTimeoutMs = 65_000, oldPid = null } = options;
+
+    if (dryRun) {
+        logger.info(`[dryRun] would pm2 delete ${appName}`);
+        return;
+    }
+
+    const before = await getPm2Process(appName, { logger });
+    if (!before) {
+        logger.info(`pm2 ${appName}: not present (skip delete)`);
+        return;
+    }
+
+    await runShell(`pm2 delete "${appName}"`, { logger });
+    await waitPm2(
+        appName,
+        (proc) => {
+            if (proc) return false;
+            if (oldPid != null && isPidAlive(oldPid)) return false;
+            return true;
+        },
+        { timeoutMs: waitTimeoutMs, logger, label: "deleted (process gone)" }
+    );
+    logger.info(`pm2 ${appName} deleted`);
+}
+
+/** Fresh `pm2 start <ecosystem> --update-env` with production ENV on the CLI. */
+async function startFromEcosystem(paths, options = {}) {
+    const { dryRun = false, logger = console } = options;
+
+    if (dryRun) {
+        logger.info(`[dryRun] would pm2 start ${paths.ecosystem} --update-env`);
+        return;
+    }
+
+    // Prefix ENV on the pm2 CLI: --update-env copies the invoking shell env.
+    await runShell(
+        `ENV=production NODE_ENV=production pm2 start "${paths.ecosystem}" --update-env`,
+        { logger }
+    );
+    logger.info("pm2 started from ecosystem");
+}
+
+/**
+ * Rolling restart: `pm2 delete` then `pm2 start <ecosystem> --update-env`.
+ *
+ * Prefer delete+start over `startOrReload --update-env`: reload can leave a first
+ * spawn with a stale/wrong ENV (e.g. S3 profile=local) and does not refresh
+ * immutable fields like `script` / `node_args`. Delete honors kill_timeout so the
+ * old process can drain, then start applies the full ecosystem.
+ */
 export async function reloadPm2(paths, options = {}) {
     const { dryRun = false, logger = console, appName = null, waitTimeoutMs = 65_000 } = options;
 
     if (dryRun) {
-        logger.info(`[dryRun] would pm2 startOrReload ${paths.ecosystem} --update-env`);
+        logger.info(
+            `[dryRun] would pm2 delete${appName ? ` ${appName}` : ""} + start ${paths.ecosystem} --update-env`
+        );
         return;
     }
 
@@ -100,17 +157,17 @@ export async function reloadPm2(paths, options = {}) {
         const n = Number(before?.pid);
         if (Number.isFinite(n) && n > 0 && before?.pm2_env?.status === "online") {
             oldPid = n;
-            logger.info(`pm2 ${appName}: reloading (old pid=${oldPid})`);
+            logger.info(`pm2 ${appName}: recreate (old pid=${oldPid})`);
         }
+        await deletePm2App(appName, { dryRun, logger, waitTimeoutMs, oldPid });
+    } else {
+        logger.warn?.(
+            "reloadPm2: appName missing; starting ecosystem without delete " +
+                "(pass appName so script/env always recreate cleanly)"
+        );
     }
 
-    // Prefix ENV on the pm2 CLI itself: --update-env copies the invoking shell's
-    // environment into the app, which otherwise may omit / stale-out ecosystem env.
-    await runShell(
-        `ENV=production NODE_ENV=production pm2 startOrReload "${paths.ecosystem}" --update-env`,
-        { logger }
-    );
-    logger.info("pm2 reloaded");
+    await startFromEcosystem(paths, { dryRun, logger });
 
     if (appName) {
         const proc = await waitPm2(
@@ -121,7 +178,7 @@ export async function reloadPm2(paths, options = {}) {
                 logger,
                 label: oldPid
                     ? `online on new pid (old ${oldPid} gone)`
-                    : "online after reload",
+                    : "online after recreate",
             }
         );
         logger.info(`pm2 ${appName} online pid=${proc?.pid ?? "?"}`);
@@ -161,20 +218,26 @@ export async function stopPm2(appName, options = {}) {
     logger.info(`pm2 ${appName} stopped`);
 }
 
-/** `pm2 start <ecosystem> --update-env` and wait until online. */
+/**
+ * `pm2 start <ecosystem> --update-env` after deleting any existing registration
+ * so immutable fields (script, node_args) and env always come from the ecosystem.
+ */
 export async function startPm2(paths, options = {}) {
     const { dryRun = false, logger = console, appName = null, waitTimeoutMs = 65_000 } = options;
 
     if (dryRun) {
-        logger.info(`[dryRun] would pm2 start ${paths.ecosystem} --update-env`);
+        logger.info(
+            `[dryRun] would pm2 delete${appName ? ` ${appName}` : ""} + start ${paths.ecosystem} --update-env`
+        );
         return;
     }
 
-    await runShell(
-        `ENV=production NODE_ENV=production pm2 start "${paths.ecosystem}" --update-env`,
-        { logger }
-    );
-    logger.info("pm2 started");
+    if (appName) {
+        // stopFirst leaves a stopped registration; delete so start is a full recreate.
+        await deletePm2App(appName, { dryRun, logger, waitTimeoutMs });
+    }
+
+    await startFromEcosystem(paths, { dryRun, logger });
 
     if (appName) {
         const proc = await waitPm2(

@@ -40,7 +40,9 @@ export async function rollbackService(service, options = {}) {
         logger.info(`rollback target: v${buildInfo.version} release=${buildInfo.release ?? rollbackTarget.name}`);
     }
     await activateRelease(rollbackTarget.path, paths, { dryRun, logger });
-    await reloadPm2(paths, { dryRun, logger });
+    const appName = service.pm2?.appName ?? null;
+    const waitTimeoutMs = 65_000;
+    await reloadPm2(paths, { dryRun, logger, appName, waitTimeoutMs });
 
     const summary = `rollback ${activeName} → ${rollbackTarget.name} dryRun=${dryRun}`;
     if (!dryRun) await appendDeployLog(paths.deployLog, summary);

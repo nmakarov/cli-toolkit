@@ -44,7 +44,7 @@ function buildEnsureEnvScript() {
     return `/**
  * Written by cli-toolkit deploy (init-structure). Do not hand-edit.
  * Preloaded via pm2 node_args --require. Always set (do not only fill when unset):
- * \`pm2 startOrReload --update-env\` can inject a non-production ENV from the
+ * \`pm2 start … --update-env\` can inject a non-production ENV from the
  * deploy shell / prior dump, and a conditional assign would leave it in place.
  */
 process.env.ENV = "production";

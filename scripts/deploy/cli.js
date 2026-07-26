@@ -22,8 +22,8 @@
  *   --host        ssh Host alias → run remotely (omit to run locally)
  *   --appsRoot    override the manifest appsRoot (handy for /tmp dry runs)
  *   --dryRun --skipPull --skipTests --skipNginx
- *   --stopFirst                       (deploy: pm2 stop → wait → activate → pm2 start;
- *                                      default is rolling: activate then startOrReload)
+ *   --stopFirst                       (deploy: pm2 stop → wait → activate → delete+start;
+ *                                      default is rolling: activate then delete+start)
  *   --withBootstrap --noDeploy        (provision)
  *   --release=<stamp>                  (rollback to a specific release)
  *   --deployKey=~/.ssh/key             (git deploy key, ssh repos)

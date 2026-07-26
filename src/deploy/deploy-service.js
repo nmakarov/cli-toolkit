@@ -30,12 +30,12 @@ function resolveKillTimeoutMs(service) {
  * Full deploy: pull → env → release → deps → test → activate → pm2 → prune → nginx.
  *
  * Default (**rolling**): keep the process running while the new release is built and
- * `current` is flipped; then `pm2 startOrReload` (SIGTERM + kill_timeout) so the
- * runner drains and pm2 brings it back on the new code. Previous release is not
- * pruned until after that restart.
+ * `current` is flipped; then `pm2 delete` + `pm2 start` (SIGINT + kill_timeout drain,
+ * then full ecosystem recreate) so script/node_args/env always apply. Previous
+ * release is not pruned until after that restart.
  *
- * **`--stopFirst`**: `pm2 stop` + wait → activate/prune → `pm2 start`. Use when a
- * runner is wedged and will not honor graceful stop.
+ * **`--stopFirst`**: `pm2 stop` + wait → activate/prune → delete + `pm2 start`.
+ * Use when a runner is wedged and will not honor graceful stop.
  */
 export async function deployService(service, options = {}) {
     const {
