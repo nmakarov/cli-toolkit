@@ -157,6 +157,67 @@ describe("FileDatabase CI", () => {
         expect(dataV2).toEqual([{ id: 2, version: 2 }]);
     });
 
+    it("names new versions from wall clock, not max(existing)+1s", async () => {
+        const tableName = "clock-versions";
+        const oldVersion = "2020-01-01T00:00:00Z";
+        const oldDir = path.join(testBasePath, "test-namespace", tableName, oldVersion);
+        await fs.promises.mkdir(oldDir, { recursive: true });
+        await fs.promises.writeFile(
+            path.join(oldDir, "metadata.json"),
+            JSON.stringify({
+                version: oldVersion,
+                files: [],
+                totalRecords: 0,
+                createdAt: oldVersion,
+                modifiedAt: oldVersion,
+            }),
+        );
+
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName,
+            maxVersions: 10,
+            logger: testLogger,
+        });
+
+        await store.write([{ id: 1 }], { forceNewVersion: true });
+        const v = store.getCurrentVersion();
+        expect(v).not.toBe("2020-01-01T00:00:01Z");
+        const ageMs = Math.abs(Date.now() - new Date(v).getTime());
+        expect(ageMs).toBeLessThan(10_000);
+    });
+
+    it("advances +1s only when the wall-clock version name already exists", async () => {
+        const tableName = "clash-versions";
+        const nowName = new Date().toISOString().split(".")[0] + "Z";
+        const clashDir = path.join(testBasePath, "test-namespace", tableName, nowName);
+        await fs.promises.mkdir(clashDir, { recursive: true });
+        await fs.promises.writeFile(
+            path.join(clashDir, "metadata.json"),
+            JSON.stringify({
+                version: nowName,
+                files: [],
+                totalRecords: 0,
+                createdAt: nowName,
+                modifiedAt: nowName,
+            }),
+        );
+
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName,
+            maxVersions: 10,
+            logger: testLogger,
+        });
+
+        await store.write([{ id: 1 }], { forceNewVersion: true });
+        const v = store.getCurrentVersion();
+        expect(v).not.toBe(nowName);
+        expect(new Date(v).getTime()).toBeGreaterThan(new Date(nowName).getTime());
+    });
+
     it("rotates old versions when maxVersions is exceeded", async () => {
         const store = new FileDatabase({
             basePath: testBasePath,

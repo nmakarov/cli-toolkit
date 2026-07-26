@@ -159,8 +159,13 @@ export class FileDatabase {
     }
 
     /**
-     * Create a new version folder with comprehensive timestamp logic
-     * Only works in versioned mode
+     * Create a new version folder named with the current UTC second.
+     * Only works in versioned mode.
+     *
+     * Clash protection: if that name already exists (two writers in the same
+     * second, or wall clock behind the latest version), advance +1s until free.
+     * Do NOT always derive from max(existing)+1s — that made successive harvests
+     * hours apart still land one second apart on disk.
      */
     async makeNewVersion() {
         if (!this.versioned) {
@@ -171,24 +176,25 @@ export class FileDatabase {
         this.metadata = this.getDefaultMetadata();
 
         const existingVersions = await this.getVersions();
-        let versionName;
+        const existingSet = new Set(existingVersions);
 
+        let candidateMs = Date.now();
         if (existingVersions.length > 0) {
-            // Find the maximum timestamp among all existing versions
-            const maxTimestamp = existingVersions.reduce((max, version) => {
-                const versionDate = new Date(version.replace("Z", ""));
-                const maxDate = new Date(max.replace("Z", ""));
-                return versionDate > maxDate ? version : max;
-            });
+            let maxMs = 0;
+            for (const version of existingVersions) {
+                const ms = new Date(version).getTime();
+                if (Number.isFinite(ms) && ms > maxMs) maxMs = ms;
+            }
+            // Same-second clash or clock behind latest folder — start just after it.
+            if (candidateMs <= maxMs) {
+                candidateMs = maxMs + 1000;
+            }
+        }
 
-            // Increment the maximum timestamp by 1 second
-            const maxDate = new Date(maxTimestamp.replace("Z", ""));
-            const nextDate = new Date(maxDate.getTime() + 1000);
-            versionName = nextDate.toISOString().split(".")[0] + "Z";
-        } else {
-            // No existing versions, use current timestamp
-            const now = new Date();
-            versionName = now.toISOString().split(".")[0] + "Z";
+        let versionName = new Date(candidateMs).toISOString().split(".")[0] + "Z";
+        while (existingSet.has(versionName)) {
+            candidateMs += 1000;
+            versionName = new Date(candidateMs).toISOString().split(".")[0] + "Z";
         }
 
         await this.setCurrentVersion(versionName);
