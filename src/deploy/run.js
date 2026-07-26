@@ -39,3 +39,35 @@ export function run(cmd, args, options = {}) {
 export function runShell(command, options = {}) {
     return run("bash", ["-lc", command], options);
 }
+
+/**
+ * Run a command capturing stdout/stderr (for `pm2 jlist`, etc.).
+ * Rejects on non-zero exit unless `allowFail` is set.
+ *
+ * @returns {Promise<{ stdout: string, stderr: string, code: number|null }>}
+ */
+export function runCapture(cmd, args, options = {}) {
+    const { cwd, env, logger, allowFail = false } = options;
+
+    return new Promise((resolve, reject) => {
+        logger?.info?.(`$ ${cmd} ${args.join(" ")}${cwd ? `  (cwd=${cwd})` : ""}`);
+        const child = spawn(cmd, args, {
+            cwd,
+            env: env ?? process.env,
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        let stdout = "";
+        let stderr = "";
+        child.stdout?.on("data", (chunk) => {
+            stdout += chunk.toString();
+        });
+        child.stderr?.on("data", (chunk) => {
+            stderr += chunk.toString();
+        });
+        child.on("error", reject);
+        child.on("close", (code) => {
+            if (code === 0 || allowFail) resolve({ stdout, stderr, code });
+            else reject(new Error(`${cmd} exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`));
+        });
+    });
+}

@@ -134,7 +134,7 @@ function normalizeRegistry(registry) {
  * @param {number} [allowanceMs]
  * @returns {Promise<string>} UUID of the enqueued stop task.
  */
-export async function enqueueStopTask(context, serviceGroup, queueName = "tasks", allowanceMs = 5000) {
+export async function enqueueStopTask(context, serviceGroup, queueName = "tasks", allowanceMs = 60_000) {
     return enqueueTask(context, {
         queueName,
         name: "stopRunner",
@@ -308,7 +308,7 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
     }
 
     const stopRunnerRequested = !!(results && typeof results === "object" && results.stopRunner === true);
-    const stopAllowanceMs = stopRunnerRequested ? Number(results.allowanceMs ?? 5000) : 0;
+    const stopAllowanceMs = stopRunnerRequested ? Number(results.allowanceMs ?? 60_000) : 0;
     return { stopRunnerRequested, stopAllowanceMs };
 }
 
@@ -506,7 +506,7 @@ export async function runTasksLoop(context, options) {
     const runningTaskInstances = new Map();
     let runningControlPromise = null;
     let stopRequested = false;
-    let stopAllowanceMs = 5000;
+    let stopAllowanceMs = Number(context.stopAllowanceMs) > 0 ? Number(context.stopAllowanceMs) : 60_000;
     context.tasksRunnerStop = false;
 
     let registryReg = null;
@@ -579,7 +579,7 @@ export async function runTasksLoop(context, options) {
                         .then(async (outcome) => {
                             if (outcome.stopRunnerRequested && !stopRequested) {
                                 stopRequested = true;
-                                stopAllowanceMs = outcome.stopAllowanceMs || 5000;
+                                stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
                                 context.tasksRunnerStop = true;
                                 await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
                             }
@@ -610,7 +610,7 @@ export async function runTasksLoop(context, options) {
                     .then(async (outcome) => {
                         if (outcome.stopRunnerRequested && !stopRequested) {
                             stopRequested = true;
-                            stopAllowanceMs = outcome.stopAllowanceMs || 5000;
+                            stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
                             context.tasksRunnerStop = true;
                             await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
                         }
@@ -634,7 +634,11 @@ export async function runTasksLoop(context, options) {
         }
 
         if (context.isStop() && !stopRequested) {
-            await signalRunningTasksStop(context, runningTaskInstances, 5000);
+            stopRequested = true;
+            stopAllowanceMs = Number(context.stopAllowanceMs) > 0
+                ? Number(context.stopAllowanceMs)
+                : stopAllowanceMs;
+            await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
         }
 
         if (runningPromises.size > 0) {

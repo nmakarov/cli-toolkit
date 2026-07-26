@@ -7,7 +7,7 @@ import { AbstractTask } from "../AbstractTask.js";
  * outcome and flips its own stop state, propagating `requestStop(allowanceMs)`
  * to every currently-running task.
  *
- * `params.allowanceMs` controls the grace window (default 5000 ms).
+ * `params.allowanceMs` controls the grace window (default 60000 ms).
  */
 export class TaskStopRunner extends AbstractTask {
     /**
@@ -36,7 +36,7 @@ export class TaskStopRunner extends AbstractTask {
      */
     static async resolveCustomParams(context, overrides = {}) {
         const merged = AbstractTask._mergeTypedParams(context, "task-stop", {
-            allowanceMs: "number default 5000",
+            allowanceMs: "number default 60000",
         }, overrides);
         const allowanceMs = Number(merged.allowanceMs);
         if (!Number.isFinite(allowanceMs) || allowanceMs < 0) {
@@ -51,7 +51,7 @@ export class TaskStopRunner extends AbstractTask {
      * @returns {Promise<{ success: true, results: { stopRunner: true, allowanceMs: number, message: string } }>}
      */
     async run() {
-        const allowanceMs = Number(this.task?.params?.allowanceMs ?? 5000);
+        const allowanceMs = Number(this.task?.params?.allowanceMs ?? 60_000);
         this.context.logger.warn?.(`[TaskStopRunner] stop requested (allowanceMs=${allowanceMs})`);
         return {
             success: true,

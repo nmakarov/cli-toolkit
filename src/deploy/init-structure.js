@@ -22,10 +22,29 @@ async function requireDeployRoot(parentDir, serviceRoot) {
     );
 }
 
+function resolveKillTimeoutMs(pm2) {
+    const explicit = Number(pm2?.killTimeout);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.floor(explicit);
+    const stopSec = Number(pm2?.stopAllowance);
+    if (Number.isFinite(stopSec) && stopSec > 0) return Math.floor(stopSec * 1000) + 5000;
+    return 65_000;
+}
+
+/** Append `--stopAllowance=<sec>` to pm2 args when manifest sets pm2.stopAllowance. */
+function resolvePm2Args(pm2) {
+    const base = String(pm2?.args ?? "").trim();
+    const stopSec = Number(pm2?.stopAllowance);
+    if (!Number.isFinite(stopSec) || stopSec <= 0) return base;
+    if (/(?:^|\s)--stopAllowance=/.test(base)) return base;
+    return `${base}${base ? " " : ""}--stopAllowance=${Math.floor(stopSec)}`.trim();
+}
+
 function buildEcosystemConfig(service, paths) {
     const { pm2 } = service;
     const outLog = join(paths.logs, `${pm2.appName}.out.log`);
     const errLog = join(paths.logs, `${pm2.appName}.err.log`);
+    const killTimeoutMs = resolveKillTimeoutMs(pm2);
+    const args = resolvePm2Args(pm2);
 
     return `/**
  * pm2 ecosystem for ${service.name} — written by cli-toolkit deploy from the
@@ -38,7 +57,7 @@ module.exports = {
             name: "${pm2.appName}",
             script: "${pm2.script}",
             cwd: "${paths.current}",
-            args: "${pm2.args ?? ""}",
+            args: ${JSON.stringify(args)},
             instances: 1,
             exec_mode: "fork",
             autorestart: true,
@@ -46,6 +65,8 @@ module.exports = {
             max_restarts: 10,
             restart_delay: 2000,
             max_memory_restart: "1500M",
+            // Grace window after SIGINT/SIGTERM before SIGKILL (ms). Align with --stopAllowance.
+            kill_timeout: ${killTimeoutMs},
             out_file: "${outLog}",
             error_file: "${errLog}",
             merge_logs: true,

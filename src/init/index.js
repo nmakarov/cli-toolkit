@@ -204,9 +204,15 @@ export async function init(flow, opts = {}) {
         // Setup modules (future feature)
         context = await setupModules(context, opts);
 
-        // Resolve params used by init (stopAfter, stopAllowance) early
+        // Resolve params used by init (stopAfter, stopAllowance) early.
+        // `stopAllowance` is seconds (CLI/env); runners and pm2 kill_timeout use ms.
         const stopAfter = context.args.get("stopAfter");
-        const stopAllowance = context.params.get("stopAllowance", "number default 5");
+        const stopAllowanceSec = Number(context.params.get("stopAllowance", "number default 60"));
+        const stopAllowanceMs = (Number.isFinite(stopAllowanceSec) && stopAllowanceSec >= 0
+            ? stopAllowanceSec
+            : 60) * 1000;
+        context.stopAllowanceSec = stopAllowanceSec;
+        context.stopAllowanceMs = stopAllowanceMs;
 
         if (stopAfter === "init") {
             printAllParameters(context);
@@ -224,8 +230,10 @@ export async function init(flow, opts = {}) {
                 sigintCount = 1;
                 firstSigintAt = now;
                 stop = true;
-                context.logger.info(`>> emitting stop with allowance ${stopAllowance}`);
-                context.emitter.emit("stop", stopAllowance);
+                context.logger.info(
+                    `>> emitting stop with allowance ${stopAllowanceSec}s (${stopAllowanceMs}ms)`
+                );
+                context.emitter.emit("stop", stopAllowanceMs);
                 return;
             }
             // A single Ctrl+C can reach Node as TWO SIGINTs (e.g. under
@@ -243,8 +251,10 @@ export async function init(flow, opts = {}) {
         process.on("SIGTERM", () => {
             if (!context || stop) return;
             stop = true;
-            context.logger.info(`>> SIGTERM: emitting stop with allowance ${stopAllowance}`);
-            context.emitter.emit("stop", stopAllowance);
+            context.logger.info(
+                `>> SIGTERM: emitting stop with allowance ${stopAllowanceSec}s (${stopAllowanceMs}ms)`
+            );
+            context.emitter.emit("stop", stopAllowanceMs);
         });
 
         // Execute the flow function

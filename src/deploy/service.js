@@ -18,7 +18,11 @@
  *   buildInfoPath   default: "build-info.json"  (written into each release, relative to release root)
  *   deployKey       default: null  (path to a git deploy key; only needed for ssh repoUrl)
  *   requireEnv      default: false (true = fail if no .env found; false = continue with empty)
- *   pm2: { appName=name, script, args="", port }
+ *   pm2: {
+ *     appName=name, script, args="", port,
+ *     stopAllowance=60,   // seconds → injected as --stopAllowance=N on the process
+ *     killTimeout=65000,  // ms; pm2 kill_timeout (default: stopAllowance*1000+5000)
+ *   }
  *   nginx: { siteName=name, fqdn }   (omit nginx entirely to skip the nginx step)
  */
 export function deriveRepoDirName(repoUrl) {
@@ -35,8 +39,15 @@ export function defineService(service) {
     const pm2 = {
         appName: service.name,
         args: "",
+        stopAllowance: 60,
         ...service.pm2,
     };
+    if (pm2.killTimeout == null) {
+        const stopSec = Number(pm2.stopAllowance);
+        pm2.killTimeout = Number.isFinite(stopSec) && stopSec > 0
+            ? Math.floor(stopSec * 1000) + 5000
+            : 65_000;
+    }
     const nginx = service.nginx
         ? { siteName: service.name, ...service.nginx }
         : null;

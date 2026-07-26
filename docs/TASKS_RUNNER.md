@@ -174,7 +174,7 @@ From `@nmakarov/cli-toolkit/tasks`:
 **Task targeting** (columns on the queued row): `service_group`, `service_name`, `instance_number`, `server_name`. **NULL** on a column means “any” for that dimension. Registered runners match each non-null column to their registry identity. Rows with no per-instance fields (`service_name`, `instance_number`, `server_name` all null) can be claimed without registry identity; instance-specific rows require a registered worker.
 
 - **`ping`** — enqueue with no targeting for broadcast, or set `service_group` only, or set all four fields to hit one instance (same values as the registry row).
-- **`stop` / `stopRunner`** — must set `--serviceName` (optionally narrow with group/instance/server); `params.allowanceMs` controls graceful stop (default 5000).
+- **`stop` / `stopRunner`** — must set `--serviceName` (optionally narrow with group/instance/server); `params.allowanceMs` controls graceful stop (default **60000** ms). Process SIGTERM/SIGINT uses `--stopAllowance` (**seconds**, default **60**) from init; both paths drain in-flight work then unregister.
 - **`setRuntimeParam` / `setRunnerParam`** — hot-update runner knobs without restart. Applies to `context.tasksRuntime` (loop re-reads `maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit` every tick) and to the logger for `levels` / `silent` / etc. Targeting: `--serviceName=<one instance>` **or** `--serviceGroup=<group>` (broadcasts to every alive registry row). Examples:
   - `--paramKey=maxParallel --paramValue=16`
   - `--paramKey=levels --paramValue='+debug'`
@@ -182,6 +182,10 @@ From `@nmakarov/cli-toolkit/tasks`:
   Claimed on the control lane even when workers are saturated. Current knobs are mirrored into services-registry `metadata.runtime`.
 
 CLI: `npx cli-send-task` (published bin) or `npm run tasks:send` in this repo → `scripts/send-task.js` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
+
+### Deploy + graceful restart
+
+`cli-deploy deploy` (default **rolling**): build + flip `current` while the old process keeps running, then `pm2 startOrReload` (SIGTERM → drain within `kill_timeout` → autorestart on new code). Use `--stopFirst` to `pm2 stop` → wait → activate → `pm2 start` when a runner is wedged. Ecosystem `kill_timeout` is derived from manifest `pm2.stopAllowance` (seconds) / `pm2.killTimeout` (ms).
 
 ## TasksManager
 

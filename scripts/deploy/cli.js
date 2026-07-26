@@ -22,6 +22,8 @@
  *   --host        ssh Host alias → run remotely (omit to run locally)
  *   --appsRoot    override the manifest appsRoot (handy for /tmp dry runs)
  *   --dryRun --skipPull --skipTests --skipNginx
+ *   --stopFirst                       (deploy: pm2 stop → wait → activate → pm2 start;
+ *                                      default is rolling: activate then startOrReload)
  *   --withBootstrap --noDeploy        (provision)
  *   --release=<stamp>                  (rollback to a specific release)
  *   --deployKey=~/.ssh/key             (git deploy key, ssh repos)
@@ -49,7 +51,7 @@ const COMMANDS = ["setup", "bootstrap", "init", "provision", "deploy", "rollback
 
 function remotePassthrough(flags) {
     const out = [];
-    const bools = ["dryRun", "skipPull", "skipTests", "skipNginx", "noDeploy", "withBootstrap"];
+    const bools = ["dryRun", "skipPull", "skipTests", "skipNginx", "stopFirst", "noDeploy", "withBootstrap"];
     for (const k of bools) if (flags[k]) out.push(`--${k}`);
     if (flags.release) out.push(`--release=${flags.release}`);
     if (flags.deployKey) out.push(`--deployKey=${flags.deployKey}`);
@@ -78,6 +80,7 @@ const flow = async (context) => {
         skipPull: "boolean default false",
         skipTests: "boolean default false",
         skipNginx: "boolean default false",
+        stopFirst: "boolean default false",
         withBootstrap: "boolean default false",
         noDeploy: "boolean default false",
         appsRoot: "string optional",
@@ -159,6 +162,7 @@ const flow = async (context) => {
                 skipPull: flags.skipPull,
                 skipTests: flags.skipTests,
                 skipNginx: flags.skipNginx,
+                stopFirst: flags.stopFirst,
                 logger,
             });
             break;
