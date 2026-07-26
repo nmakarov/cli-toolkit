@@ -104,7 +104,12 @@ export async function reloadPm2(paths, options = {}) {
         }
     }
 
-    await runShell(`pm2 startOrReload "${paths.ecosystem}" --update-env`, { logger });
+    // Prefix ENV on the pm2 CLI itself: --update-env copies the invoking shell's
+    // environment into the app, which otherwise may omit / stale-out ecosystem env.
+    await runShell(
+        `ENV=production NODE_ENV=production pm2 startOrReload "${paths.ecosystem}" --update-env`,
+        { logger }
+    );
     logger.info("pm2 reloaded");
 
     if (appName) {
@@ -165,7 +170,10 @@ export async function startPm2(paths, options = {}) {
         return;
     }
 
-    await runShell(`pm2 start "${paths.ecosystem}" --update-env`, { logger });
+    await runShell(
+        `ENV=production NODE_ENV=production pm2 start "${paths.ecosystem}" --update-env`,
+        { logger }
+    );
     logger.info("pm2 started");
 
     if (appName) {

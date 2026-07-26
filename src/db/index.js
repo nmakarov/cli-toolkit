@@ -92,6 +92,14 @@ export class Db {
 
             if (!dbConnectionString) {
                 if (!dbName) {
+                    const env = context?.args?.env;
+                    // Never silently fall back to "local" on production/stage — that
+                    // masked missing DB_NAME_* / --dbName as a localhost:6032 connect.
+                    if (env && String(env).toLowerCase() !== "local") {
+                        throw new ParamError(
+                            `Db: dbName not set for env="${env}" (set --dbName or DB_NAME_${String(env).toUpperCase()})`
+                        );
+                    }
                     dbName = "local";
                 }
                 const paramName = `dbConnectionString${capitalizeFirstLetter(dbName)}`;

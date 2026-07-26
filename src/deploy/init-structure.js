@@ -39,15 +39,16 @@ function resolvePm2Args(pm2) {
     return `${base}${base ? " " : ""}--stopAllowance=${Math.floor(stopSec)}`.trim();
 }
 
-/** CJS snippet required before the app — fills ENV if pm2 drops ecosystem env on restart. */
+/** CJS snippet required before the app — always force production on deployed hosts. */
 function buildEnsureEnvScript() {
     return `/**
  * Written by cli-toolkit deploy (init-structure). Do not hand-edit.
- * Preloaded via pm2 node_args --require so Args sees ENV=production even when
- * a post-SIGKILL restart briefly omits ecosystem env (otherwise Db → local:6032).
+ * Preloaded via pm2 node_args --require. Always set (do not only fill when unset):
+ * \`pm2 startOrReload --update-env\` can inject a non-production ENV from the
+ * deploy shell / prior dump, and a conditional assign would leave it in place.
  */
-if (!process.env.ENV) process.env.ENV = "production";
-if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
+process.env.ENV = "production";
+process.env.NODE_ENV = "production";
 `;
 }
 
