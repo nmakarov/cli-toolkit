@@ -1285,6 +1285,13 @@ export class FileDatabase {
     }
 
     /**
+     * Max retained version folders (used by harvest_sync.loaded_versions cap, etc.).
+     */
+    getMaxVersions() {
+        return this.maxVersions;
+    }
+
+    /**
      * Get current metadata
      */
     getMetadata() {

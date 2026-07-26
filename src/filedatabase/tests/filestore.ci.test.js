@@ -127,6 +127,7 @@ describe("FileDatabase CI", () => {
             maxVersions: 3,
             logger: testLogger,
         });
+        expect(store.getMaxVersions()).toBe(3);
 
         // Write version 1
         await store.write([{ id: 1, version: 1 }]);
