@@ -7,6 +7,10 @@ import {
     ensureTasksRuntime,
     readLoopRuntime,
     controlLaneTaskNames,
+    mergeRuntimeParamSpecs,
+    runtimeValuesForSpecs,
+    runtimeParamSpecsFromMetadata,
+    DEFAULT_RUNTIME_PARAM_SPECS,
 } from "../runtimeParams.js";
 import { TaskSetRuntimeParam } from "../coreTasks/TaskSetRuntimeParam.js";
 import { TasksRegistry } from "../TasksRegistry.js";
@@ -101,6 +105,36 @@ describe("runtimeParams", () => {
             expect.arrayContaining(["stop", "hostInfo"])
         );
         expect(controlLaneTaskNames("hostInfo,ping").filter((n) => n === "hostInfo")).toHaveLength(1);
+    });
+
+    it("mergeRuntimeParamSpecs keeps defaults and merges extras", () => {
+        const specs = mergeRuntimeParamSpecs([
+            { key: "maxParallel", label: "Parallelism" },
+            { key: "customKnob", type: "string", label: "Custom", description: "app-specific" },
+        ]);
+        expect(specs.find((s) => s.key === "maxParallel")?.label).toBe("Parallelism");
+        expect(specs.find((s) => s.key === "customKnob")).toEqual(
+            expect.objectContaining({ type: "string", label: "Custom" })
+        );
+        expect(specs.map((s) => s.key)).toEqual(
+            expect.arrayContaining(DEFAULT_RUNTIME_PARAM_SPECS.map((s) => s.key))
+        );
+    });
+
+    it("runtimeValuesForSpecs / runtimeParamSpecsFromMetadata", () => {
+        const ctx = makeContext();
+        ensureTasksRuntime(ctx, { maxParallel: 8, pollMs: 250 });
+        expect(runtimeValuesForSpecs(ctx)).toEqual(
+            expect.objectContaining({ maxParallel: 8, pollMs: 250 })
+        );
+        expect(runtimeParamSpecsFromMetadata({}).map((s) => s.key)).toEqual(
+            DEFAULT_RUNTIME_PARAM_SPECS.map((s) => s.key)
+        );
+        expect(
+            runtimeParamSpecsFromMetadata({
+                runtimeParams: [{ key: "onlyThis", type: "number", label: "Only" }],
+            }).find((s) => s.key === "onlyThis")?.label
+        ).toBe("Only");
     });
 });
 

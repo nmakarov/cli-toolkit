@@ -183,7 +183,7 @@ From `@nmakarov/cli-toolkit/tasks`:
   - `--paramKey=maxParallel --paramValue=16`
   - `--paramKey=levels --paramValue='+debug'`
   - `--paramsJson='{"patch":{"maxParallel":16,"pollMs":500}}'`
-  Claimed on the control lane even when workers are saturated. Current knobs are mirrored into services-registry `metadata.runtime`.
+  Claimed on the control lane even when workers are saturated. Current knobs are mirrored into services-registry `metadata.runtime`. Declared editable knobs live in `metadata.runtimeParams` (defaults: maxParallel / pollMs / claimJitterMs / scanLimit). Pass `runnerRuntimeParams` to `runTasksLoop` to add/override specs. tasksmm registry → **Change param(s)** edits those and submits one patch.
 
 CLI: `npx cli-send-task` (published bin) or `npm run tasks:send` in this repo → `scripts/send-task.js` (`--name`, optional `--paramsJson`, optional targeting flags, `--allowanceMs` for stop).
 

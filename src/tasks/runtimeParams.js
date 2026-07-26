@@ -17,6 +17,108 @@ export const LOGGER_RUNTIME_KEYS = [
     "progressThrottleMs",
 ];
 
+/**
+ * Declared knobs operators may edit via setRuntimeParam / tasksmm "Change param(s)".
+ * Written into services_registry `metadata.runtimeParams` at registration.
+ *
+ * @typedef {{
+ *   key: string,
+ *   type: "number" | "boolean" | "string",
+ *   label: string,
+ *   description?: string,
+ * }} RuntimeParamSpec
+ */
+
+/** @type {RuntimeParamSpec[]} */
+export const DEFAULT_RUNTIME_PARAM_SPECS = [
+    {
+        key: "maxParallel",
+        type: "number",
+        label: "Max parallel",
+        description: "Worker-lane concurrency (how many tasks claim at once)",
+    },
+    {
+        key: "pollMs",
+        type: "number",
+        label: "Poll ms",
+        description: "Idle poll interval between claim attempts",
+    },
+    {
+        key: "claimJitterMs",
+        type: "number",
+        label: "Claim jitter ms",
+        description: "Random delay before worker claims (0 = off)",
+    },
+    {
+        key: "scanLimit",
+        type: "number",
+        label: "Scan limit",
+        description: "Max idle rows scanned per claim attempt",
+    },
+];
+
+/**
+ * Normalize / merge runner-supplied specs with defaults (by key; extras append).
+ *
+ * @param {RuntimeParamSpec[] | undefined | null} [extra]
+ * @returns {RuntimeParamSpec[]}
+ */
+export function mergeRuntimeParamSpecs(extra) {
+    const byKey = new Map(DEFAULT_RUNTIME_PARAM_SPECS.map((s) => [s.key, { ...s }]));
+    if (Array.isArray(extra)) {
+        for (const raw of extra) {
+            if (!raw || typeof raw !== "object") continue;
+            const key = String(raw.key ?? "").trim();
+            if (!key) continue;
+            const prev = byKey.get(key) ?? {};
+            const type = ["number", "boolean", "string"].includes(raw.type) ? raw.type : prev.type ?? "string";
+            byKey.set(key, {
+                key,
+                type,
+                label: String(raw.label ?? prev.label ?? key),
+                description:
+                    raw.description != null
+                        ? String(raw.description)
+                        : prev.description != null
+                          ? String(prev.description)
+                          : undefined,
+            });
+        }
+    }
+    return Array.from(byKey.values());
+}
+
+/**
+ * Snapshot current values for the given specs from `context.tasksRuntime`.
+ *
+ * @param {object} context
+ * @param {RuntimeParamSpec[]} [specs]
+ * @returns {Record<string, unknown>}
+ */
+export function runtimeValuesForSpecs(context, specs = DEFAULT_RUNTIME_PARAM_SPECS) {
+    const rt = ensureTasksRuntime(context);
+    const out = {};
+    for (const s of specs) {
+        if (rt[s.key] !== undefined) out[s.key] = rt[s.key];
+    }
+    return out;
+}
+
+/**
+ * Parse specs from registry metadata (tolerant of older runners).
+ *
+ * @param {unknown} metadata
+ * @returns {RuntimeParamSpec[]}
+ */
+export function runtimeParamSpecsFromMetadata(metadata) {
+    const meta = metadata && typeof metadata === "object" ? metadata : null;
+    const raw = meta?.runtimeParams;
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return mergeRuntimeParamSpecs();
+    }
+    return mergeRuntimeParamSpecs(raw);
+}
+
 const CONTROL_LANE_TASK_NAMES = [
     "stopRunner",
     "stop",
@@ -160,12 +262,18 @@ export async function applyRuntimeParam(context, key, value) {
     const reg = context.servicesRegistry;
     if (reg?.rowId && reg?.registryTable) {
         try {
-            const loopSnapshot = {};
+            // Prefer specs declared at loop start (also in registry metadata.runtimeParams).
+            const specs = Array.isArray(context.tasksRuntimeParamSpecs)
+                ? context.tasksRuntimeParamSpecs
+                : DEFAULT_RUNTIME_PARAM_SPECS;
+            const runtimeSnapshot = runtimeValuesForSpecs(context, specs);
             for (const lk of LOOP_RUNTIME_KEYS) {
-                if (runtime[lk] !== undefined) loopSnapshot[lk] = runtime[lk];
+                if (runtime[lk] !== undefined && runtimeSnapshot[lk] === undefined) {
+                    runtimeSnapshot[lk] = runtime[lk];
+                }
             }
             await updateServicesRegistryMetadata(context, reg, {
-                runtime: loopSnapshot,
+                runtime: runtimeSnapshot,
                 runtimeUpdatedAt: new Date().toISOString(),
             });
             applied.push("servicesRegistry");

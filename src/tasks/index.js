@@ -29,6 +29,8 @@ import {
     controlLaneTaskNames,
     ensureTasksRuntime,
     readLoopRuntime,
+    mergeRuntimeParamSpecs,
+    runtimeValuesForSpecs,
 } from "./runtimeParams.js";
 
 /** Sentinel value stored in the `progress` column when a task is paused due to error. */
@@ -92,8 +94,12 @@ export {
     controlLaneTaskNames,
     ensureTasksRuntime,
     readLoopRuntime,
+    mergeRuntimeParamSpecs,
+    runtimeValuesForSpecs,
+    runtimeParamSpecsFromMetadata,
     LOOP_RUNTIME_KEYS,
     LOGGER_RUNTIME_KEYS,
+    DEFAULT_RUNTIME_PARAM_SPECS,
 } from "./runtimeParams.js";
 
 /** Shared default registry preloaded with every core task (including legacy aliases). */
@@ -488,6 +494,7 @@ async function claimNextRunnableTask(
  *   runnerGroupMaxInstances?: number,
  *   runnerEnforceMaxInstances?: boolean,
  *   runnerMetadata?: Record<string, unknown>,
+ *   runnerRuntimeParams?: import("./runtimeParams.js").RuntimeParamSpec[],
  *   onRuntimeParam?: (key: string, value: unknown, runtime: object, context: object) => unknown,
  * }} options
  * @returns {Promise<void>}
@@ -527,18 +534,27 @@ export async function runTasksLoop(context, options) {
     if (hbGroup) {
         const hbIntervalMs = options.runnerHeartbeatIntervalMs ?? 10_000;
         const staleMs = options.runnerHeartbeatStaleMs ?? 45_000;
-        const loop0 = readLoopRuntime(context);
+        const runtimeParamSpecs = mergeRuntimeParamSpecs(options.runnerRuntimeParams);
+        context.tasksRuntimeParamSpecs = runtimeParamSpecs;
         const defaultMeta = {
             component: "tasks-runner",
             allowedTasks: allowedTasks?.length ? allowedTasks.join(",") : "all",
             paused: false,
-            runtime: {
-                maxParallel: loop0.maxParallel,
-                pollMs: loop0.pollMs,
-                claimJitterMs: loop0.claimJitterMs,
-                scanLimit: loop0.scanLimit,
-            },
+            runtimeParams: runtimeParamSpecs,
+            runtime: runtimeValuesForSpecs(context, runtimeParamSpecs),
         };
+        const metadata = {
+            ...defaultMeta,
+            ...(options.runnerMetadata && typeof options.runnerMetadata === "object"
+                ? options.runnerMetadata
+                : {}),
+        };
+        if (!Array.isArray(metadata.runtimeParams) || metadata.runtimeParams.length === 0) {
+            metadata.runtimeParams = defaultMeta.runtimeParams;
+        }
+        if (!metadata.runtime || typeof metadata.runtime !== "object") {
+            metadata.runtime = defaultMeta.runtime;
+        }
         registryReg = await registerInServicesRegistry(context, {
             queueName,
             target,
@@ -548,7 +564,7 @@ export async function runTasksLoop(context, options) {
             staleMs,
             groupMaxInstances: options.runnerGroupMaxInstances,
             enforceMaxInstances: options.runnerEnforceMaxInstances ?? true,
-            metadata: options.runnerMetadata ?? defaultMeta,
+            metadata,
         });
         // Expose registration so setRuntimeParam can patch metadata.
         context.servicesRegistry = registryReg;
