@@ -6,6 +6,7 @@ import { TaskSystemInfo } from "./coreTasks/TaskSystemInfo.js";
 import { TaskSumAB } from "./coreTasks/TaskSumAB.js";
 import { TaskStopRunner } from "./coreTasks/TaskStopRunner.js";
 import { TaskPauseRunner, TaskUnpauseRunner } from "./coreTasks/TaskPauseRunner.js";
+import { TaskPauseTask, TaskResumeTask } from "./coreTasks/TaskPauseTask.js";
 import { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
 import { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
 
@@ -48,6 +49,8 @@ export class TasksRegistry {
             .add("pause", TaskPauseRunner)
             .add("unpauseRunner", TaskUnpauseRunner)
             .add("unpause", TaskUnpauseRunner)
+            .add("pauseTask", TaskPauseTask)
+            .add("resumeTask", TaskResumeTask)
             .add("getLogs", TaskGetLogs)
             .add("setRuntimeParam", TaskSetRuntimeParam)
             .add("setRunnerParam", TaskSetRuntimeParam);

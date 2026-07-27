@@ -94,6 +94,8 @@ describe("runtimeParams", () => {
                 "pauseRunner",
                 "unpause",
                 "unpauseRunner",
+                "pauseTask",
+                "resumeTask",
                 "setRuntimeParam",
                 "setRunnerParam",
             ])

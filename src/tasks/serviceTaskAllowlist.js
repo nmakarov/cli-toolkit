@@ -14,6 +14,8 @@ export const SERVICE_TASK_NAMES = [
     "pauseRunner",
     "unpause",
     "unpauseRunner",
+    "pauseTask",
+    "resumeTask",
     "shellCommand",
     "systemInfo",
     "info",

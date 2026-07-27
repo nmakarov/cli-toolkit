@@ -126,6 +126,8 @@ const CONTROL_LANE_TASK_NAMES = [
     "pause",
     "unpauseRunner",
     "unpause",
+    "pauseTask",
+    "resumeTask",
     "setRuntimeParam",
     "setRunnerParam",
 ];

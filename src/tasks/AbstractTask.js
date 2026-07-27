@@ -46,6 +46,10 @@ export class AbstractTask {
     constructor(context, task) {
         this.context = context;
         this.task = task;
+        /** @type {boolean} */
+        this._stopRequested = false;
+        /** @type {boolean} */
+        this._pauseRequested = false;
     }
 
     /**
@@ -65,7 +69,29 @@ export class AbstractTask {
      * @param {number} [_allowanceMs] Grace period the runner promises before hard exit.
      */
     requestStop(_allowanceMs) {
-        // Default no-op; long-running tasks can override.
+        this._stopRequested = true;
+    }
+
+    /**
+     * Cooperative pause signal (from `pauseTask` control-lane task). Long-running
+     * tasks should finish the current unit of work, persist a checkpoint, and
+     * return `{ success: true, results: { taskPaused: true, … } }` so the runner
+     * keeps the row as `status=paused` instead of deleting it.
+     *
+     * @param {number} [_allowanceMs]
+     */
+    requestPause(_allowanceMs) {
+        this._pauseRequested = true;
+    }
+
+    /** @returns {boolean} */
+    isStopRequested() {
+        return this._stopRequested === true;
+    }
+
+    /** @returns {boolean} */
+    isPauseRequested() {
+        return this._pauseRequested === true;
     }
 
     /**

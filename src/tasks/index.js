@@ -80,6 +80,12 @@ export {
     TaskUnpauseRunner,
     applyRunnerPaused,
 } from "./coreTasks/TaskPauseRunner.js";
+export {
+    TaskPauseTask,
+    TaskResumeTask,
+    applyPauseTask,
+    applyResumeTask,
+} from "./coreTasks/TaskPauseTask.js";
 export { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
 export { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
 export {
@@ -251,11 +257,14 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
         runningTaskInstances.delete(row.id);
     }
 
+    const taskPaused =
+        success && results && typeof results === "object" && results.taskPaused === true;
+
     await db(historyTable).insert(
         taskHistoryInsertFromQueueRow(row, {
             completed_at: new Date(),
             success,
-            status: success ? "completed" : "failed",
+            status: taskPaused ? "paused" : success ? "completed" : "failed",
             status_changed_at: db.fn.now(),
             params: toJsonColumn(row.params),
             results: toJsonColumn(results),
@@ -281,7 +290,32 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
         });
     }
 
-    if (row.schedule) {
+    // Cooperative pause: keep the queue row as paused with optional checkpoint params.
+    // Survives runner restart — resumeTask (or manual status→idle) continues later.
+    if (taskPaused) {
+        const checkpointParams =
+            results.checkpointParams && typeof results.checkpointParams === "object"
+                ? results.checkpointParams
+                : row.params;
+        const progressPayload =
+            results.progress != null
+                ? results.progress
+                : { paused: true, pausedAt: new Date().toISOString(), message: "paused" };
+        await db(tasksTable).where({ id: row.id }).update({
+            started_at: null,
+            completed_at: new Date(),
+            success: true,
+            results: toJsonColumn(results),
+            params: toJsonColumn(checkpointParams),
+            progress: toJsonColumn(progressPayload),
+            status: "paused",
+            status_changed_at: db.fn.now(),
+            past_due: null,
+            service_name: null,
+            server_name: null,
+            instance_number: null,
+        });
+    } else if (row.schedule) {
         if (success) {
             let nextRunAt = null;
             try {
@@ -522,6 +556,8 @@ export async function runTasksLoop(context, options) {
 
     const runningPromises = new Set();
     const runningTaskInstances = new Map();
+    // Expose so control-lane pauseTask can signal in-process workers.
+    context.runningTaskInstances = runningTaskInstances;
     let runningControlPromise = null;
     let stopRequested = false;
     let stopAllowanceMs = Number(context.stopAllowanceMs) > 0 ? Number(context.stopAllowanceMs) : 60_000;
