@@ -34,6 +34,8 @@ describe("Init CI Tests", () => {
         expect(context.cleanupFunctions).toBeDefined();
         expect(context.registerCleanup).toBeDefined();
         expect(typeof context.isStop).toBe("function");
+        expect(typeof context.isKill).toBe("function");
+        expect(context.isKill()).toBe(false);
     });
 
     it("should execute flow function with context", async () => {
@@ -190,7 +192,7 @@ describe("Init CI Tests", () => {
         await expect(init(flow, { silent: true })).resolves.not.toThrow();
     });
 
-    it("should set isStop function", async () => {
+    it("should set isStop and isKill functions", async () => {
         let receivedContext = null;
         
         const flow = async (context) => {
@@ -201,6 +203,33 @@ describe("Init CI Tests", () => {
 
         expect(typeof receivedContext.isStop).toBe("function");
         expect(receivedContext.isStop()).toBe(false);
+        expect(typeof receivedContext.isKill).toBe("function");
+        expect(receivedContext.isKill()).toBe(false);
+    });
+
+    it("SIGUSR2 sets isKill + isStop and emits kill", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
+        const handlers = {};
+        process.on = vi.fn((event, fn) => {
+            handlers[event] = fn;
+            return process;
+        });
+
+        let killEmitted = false;
+        const flow = async (context) => {
+            context.emitter.on("kill", () => {
+                killEmitted = true;
+            });
+            handlers.SIGUSR2?.();
+            expect(context.isKill()).toBe(true);
+            expect(context.isStop()).toBe(true);
+        };
+
+        await init(flow, { silent: true });
+
+        expect(killEmitted).toBe(true);
+        expect(exitSpy).toHaveBeenCalledWith(0);
+        exitSpy.mockRestore();
     });
 
     it("setupContext with overrides and defaults", () => {

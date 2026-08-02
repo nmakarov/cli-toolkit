@@ -52,6 +52,7 @@ function setup(opts = {}) {
     const partialContext = {
         emitter: new EventEmitter(),
         isStop: () => false,
+        isKill: () => false,
         cleanupFunctions: [],
         registerCleanup: (fn) => {
             partialContext.cleanupFunctions.push(fn);
@@ -82,6 +83,7 @@ function setup(opts = {}) {
         logger,
         emitter: partialContext.emitter,
         isStop: partialContext.isStop,
+        isKill: partialContext.isKill,
         cleanupFunctions: partialContext.cleanupFunctions,
         registerCleanup: partialContext.registerCleanup,
         // For long-running scripts (servers): with --showUsedParams=top, print
@@ -155,6 +157,7 @@ function printAllParameters(context) {
  */
 export async function init(flow, opts = {}) {
     let stop = false;
+    let kill = false;
     let context = null;
     let cleanupRan = false;
 
@@ -198,8 +201,10 @@ export async function init(flow, opts = {}) {
         // Setup context with Args, Params, Logger
         context = setup(opts);
         
-        // Set isStop function
+        // Cooperative stop (SIGINT/SIGTERM) vs urgent kill (SIGUSR2).
+        // Kill also sets stop so existing `isStop()` loops exit promptly.
         context.isStop = () => stop;
+        context.isKill = () => kill;
 
         // Setup modules (future feature)
         context = await setupModules(context, opts);
@@ -257,6 +262,18 @@ export async function init(flow, opts = {}) {
             context.emitter.emit("stop", stopAllowanceMs);
         });
 
+        // Urgent abort (e.g. `pm2 sendSignal SIGUSR2 <app>`). Parents that spawn
+        // children (retro loops) should forward SIGUSR2 on the "kill" event so the
+        // child init flips isKill() and breaks its own loops cooperatively.
+        process.on("SIGUSR2", () => {
+            if (!context || kill) return;
+            kill = true;
+            stop = true;
+            context.logger.warn(">> SIGUSR2: emitting kill (urgent stop)");
+            context.emitter.emit("kill");
+            context.emitter.emit("stop", stopAllowanceMs);
+        });
+
         // Execute the flow function
         await flow(context);
 
@@ -295,7 +312,7 @@ export async function init(flow, opts = {}) {
         // then SIGKILL. Force-exit on errors and on cooperative/signal stop.
         if (process.exitCode && process.exitCode !== 0) {
             process.exit(process.exitCode);
-        } else if (stop) {
+        } else if (stop || kill) {
             process.exit(0);
         }
     }
