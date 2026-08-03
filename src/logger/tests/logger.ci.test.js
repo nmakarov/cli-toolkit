@@ -167,6 +167,26 @@ describe("Logger CI", () => {
         });
     });
 
+    it("prints items/sec when progressWithRate is enabled", () => {
+        vi.useFakeTimers();
+        const context = createTestContext();
+        const logger = new Logger(context, {
+            showLevel: true,
+            progress: { withTimes: true, withRate: true, throttleMs: 0 },
+            route: "console",
+        });
+
+        expect(logger.progress("work", { prefix: "job", count: 1, total: 10 })).toBe(true);
+        expect(consoleInfo.mock.calls.at(-1)[0]).toContain("-/s");
+
+        vi.advanceTimersByTime(2000);
+        expect(logger.progress("work", { prefix: "job", count: 5, total: 10 })).toBe(true);
+        const line = consoleInfo.mock.calls.at(-1)[0];
+        // 4 intervals in 2s → 2/s
+        expect(line).toMatch(/\b2(\.0+)?\/s\b/);
+        expect(line).toContain("/"); // elapsed/remaining still present
+    });
+
     it("handles request/response inspection", () => {
         const context = createTestContext();
         const logger = new Logger(context, { showLevel: true, route: "console" });

@@ -53,7 +53,7 @@ Available log levels (in order of severity):
 | `silly` | Verbose debugging | Gray |
 | `request` | API/HTTP requests | Green |
 | `response` | API/HTTP responses | Yellow |
-| `progress` | Progress updates | Green |
+| `progress` | Progress updates | Magenta (bright) |
 | `results` | Final results/summary | Magenta |
 
 ## Constructor Options
@@ -84,9 +84,13 @@ const logger = new Logger({
     
     // Progress options
     progress: {
-        withTimes: true,        // Show elapsed/remaining time
+        withTimes: true,        // Show elapsed/remaining seconds (elapsed/remaining)
+        withRate: true,         // Show items per second (N/s)
         throttleMs: 1000        // Min ms between progress messages
     }
+
+    // Or via CLI / flat params (Logger.init):
+    //   --progressWithTimes --progressWithRate --progressThrottleMs=1000
 });
 ```
 
@@ -251,11 +255,11 @@ PROGRESS task 50/100 Processing
 PROGRESS task 100/100 Processing
 ```
 
-### Progress with Timing
+### Progress with Timing and Rate
 
 ```typescript
 const logger = new Logger({
-    progress: { withTimes: true }
+    progress: { withTimes: true, withRate: true }
 });
 
 for (let i = 1; i <= 100; i++) {
@@ -270,12 +274,13 @@ for (let i = 1; i <= 100; i++) {
 
 **Output:**
 ```
-PROGRESS import 1/100 Items 0/-1
-PROGRESS import 50/100 Items 5.2/5.2
-PROGRESS import 100/100 Items 10.5/0
+PROGRESS import 1/100 Items 0/-1 -/s
+PROGRESS import 50/100 Items 5.2/5.2 9.42/s
+PROGRESS import 100/100 Items 10.5/0 9.43/s
 ```
 
-Format: `elapsed/remaining` in seconds
+- `elapsed/remaining` — seconds (from `--progressWithTimes` / `progress.withTimes`)
+- `N/s` — items per second (from `--progressWithRate` / `progress.withRate`)
 
 ### Progress Throttling
 

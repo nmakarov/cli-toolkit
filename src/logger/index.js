@@ -41,7 +41,8 @@ const LEVEL_COLORS = {
     silly: chalk.gray,
     request: chalk.green,
     response: chalk.yellow,
-    progress: chalk.green,
+    // Magenta stands out from white info / green request lines.
+    progress: chalk.magentaBright,
     results: chalk.magenta
 };
 
@@ -77,7 +78,8 @@ export class Logger  {
     }
 
     /**
-     * Configure logger options. Accepts both LoggerOptions shape and flat param names (levels string, progressWithTimes, progressThrottleMs).
+     * Configure logger options. Accepts both LoggerOptions shape and flat param names
+     * (levels string, progressWithTimes, progressWithRate, progressThrottleMs).
      */
     configure(options) {
         if (options.mode !== undefined) {
@@ -97,10 +99,12 @@ export class Logger  {
         }
         if (options.progress !== undefined) {
             if (options.progress.withTimes !== undefined) this.options.progressTimes = options.progress.withTimes;
+            if (options.progress.withRate !== undefined) this.options.progressRate = options.progress.withRate;
             if (options.progress.throttleMs !== undefined) this.options.progressThrottle = options.progress.throttleMs;
         }
         const flat = options ;
         if (flat.progressWithTimes !== undefined) this.options.progressTimes = flat.progressWithTimes;
+        if (flat.progressWithRate !== undefined) this.options.progressRate = flat.progressWithRate;
         if (flat.progressThrottleMs !== undefined) this.options.progressThrottle = flat.progressThrottleMs;
     }
 
@@ -118,6 +122,7 @@ export class Logger  {
             timestamp: "boolean default false",
             levels: "string",
             progressWithTimes: "boolean default false",
+            progressWithRate: "boolean default false",
             progressThrottleMs: "number",
         };
         const discovered = context.params.getAllForModule("logger", paramDefs);
@@ -137,6 +142,7 @@ export class Logger  {
             timestamp: false,
             levels: DEFAULT_LEVELS,
             progressTimes: false,
+            progressRate: false,
             progressThrottle: undefined,
         };
     }
@@ -219,15 +225,24 @@ export class Logger  {
         if (!this.startTimes[prefix ?? ""]) {
             this.startTimes[prefix ?? ""] = Date.now();
         }
-        if (this.options.progressTimes) {
+        const wantTimes = this.options.progressTimes;
+        const wantRate = this.options.progressRate;
+        if (wantTimes || wantRate) {
             const elapsedSeconds = (Date.now() - this.startTimes[prefix ?? ""]) / 1000;
-            let remaining = -1;
-            if (count > 1) {
-                const rate = elapsedSeconds / (count - 1);
-                remaining = (total - count) * rate;
+            // Intervals completed = count - 1 (same basis as ETA).
+            const intervals = count > 1 ? count - 1 : 0;
+            const itemsPerSec = intervals > 0 && elapsedSeconds > 0 ? intervals / elapsedSeconds : -1;
+            if (wantTimes) {
+                let remaining = -1;
+                if (itemsPerSec > 0) {
+                    remaining = (total - count) / itemsPerSec;
+                }
+                payload.elapsed = this.round(elapsedSeconds, 2);
+                payload.remaining = remaining >= 0 ? this.round(remaining, 2) : remaining;
             }
-            payload.elapsed = this.round(elapsedSeconds, 2);
-            payload.remaining = remaining >= 0 ? this.round(remaining, 2) : remaining;
+            if (wantRate) {
+                payload.rate = itemsPerSec >= 0 ? this.round(itemsPerSec, 2) : itemsPerSec;
+            }
         }
 
         if (count >= total) {
@@ -307,9 +322,12 @@ export class Logger  {
         }
 
         if (struct.level === "progress") {
+            const formatter = LEVEL_COLORS[struct.level];
             if (struct.elapsed !== undefined && struct.remaining !== undefined) {
-                const formatter = LEVEL_COLORS[struct.level];
                 parts.push(formatter(`${struct.elapsed}/${struct.remaining}`));
+            }
+            if (struct.rate !== undefined) {
+                parts.push(formatter(struct.rate >= 0 ? `${struct.rate}/s` : "-/s"));
             }
         }
 

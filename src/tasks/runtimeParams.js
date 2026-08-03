@@ -14,6 +14,7 @@ export const LOGGER_RUNTIME_KEYS = [
     "route",
     "prefix",
     "progressWithTimes",
+    "progressWithRate",
     "progressThrottleMs",
 ];
 
@@ -191,6 +192,7 @@ export function coerceRuntimeValue(key, value) {
         case "showLevel":
         case "timestamp":
         case "progressWithTimes":
+        case "progressWithRate":
             if (typeof value === "boolean") return value;
             if (value === "true" || value === "1") return true;
             if (value === "false" || value === "0") return false;
