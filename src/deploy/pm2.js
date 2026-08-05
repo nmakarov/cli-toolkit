@@ -17,6 +17,30 @@ export function isPidAlive(pid) {
 }
 
 /**
+ * Parse `pm2 jlist` stdout. When the daemon was not running, pm2 prints
+ * "[PM2] Spawning PM2 daemon…" on stdout before the JSON array.
+ *
+ * @param {string} stdout
+ * @returns {unknown[]}
+ */
+export function parsePm2Jlist(stdout) {
+    const raw = String(stdout ?? "");
+    // Drop "[PM2] Spawning…" banners (stdout when the daemon was not running).
+    const text = raw
+        .split("\n")
+        .filter((line) => !line.startsWith("[PM2]"))
+        .join("\n")
+        .trim();
+    if (!text) return [];
+    try {
+        const parsed = JSON.parse(text);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+        throw new Error(`pm2 jlist: invalid JSON (${err?.message ?? err})`);
+    }
+}
+
+/**
  * Parse `pm2 jlist` and return the process entry for `appName`, or null.
  *
  * @param {string} appName
@@ -25,14 +49,15 @@ export function isPidAlive(pid) {
  */
 export async function getPm2Process(appName, options = {}) {
     const { logger } = options;
+    // Warm the daemon so spawn banners do not race the next jlist (best-effort).
+    await runCapture("bash", ["-lc", "pm2 ping >/dev/null 2>&1 || true"], { logger }).catch(() => {});
     const { stdout } = await runCapture("bash", ["-lc", "pm2 jlist"], { logger });
     let list;
     try {
-        list = JSON.parse(stdout || "[]");
+        list = parsePm2Jlist(stdout);
     } catch (err) {
         throw new Error(`pm2 jlist: invalid JSON (${err?.message ?? err})`);
     }
-    if (!Array.isArray(list)) return null;
     return list.find((p) => p?.name === appName) ?? null;
 }
 

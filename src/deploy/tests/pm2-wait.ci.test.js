@@ -1,5 +1,24 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { isFreshOnline, isPidAlive } from "../pm2.js";
+import { isFreshOnline, isPidAlive, parsePm2Jlist } from "../pm2.js";
+
+describe("parsePm2Jlist", () => {
+    it("parses a bare JSON array", () => {
+        expect(parsePm2Jlist('[{"name":"app"}]')).toEqual([{ name: "app" }]);
+    });
+
+    it("strips PM2 daemon spawn banners before the JSON", () => {
+        const stdout =
+            "[PM2] Spawning PM2 daemon with pm2_home=/home/ubuntu/.pm2\n" +
+            "[PM2] PM2 Successfully daemonized\n" +
+            '[{"name":"photo-care-runner"}]';
+        expect(parsePm2Jlist(stdout)).toEqual([{ name: "photo-care-runner" }]);
+    });
+
+    it("returns [] for empty stdout", () => {
+        expect(parsePm2Jlist("")).toEqual([]);
+        expect(parsePm2Jlist("[]")).toEqual([]);
+    });
+});
 
 describe("pm2 reload wait helpers", () => {
     afterEach(() => {

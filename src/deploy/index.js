@@ -21,6 +21,7 @@ export {
     stopPm2,
     startPm2,
     getPm2Process,
+    parsePm2Jlist,
     waitPm2,
     isPidAlive,
     isFreshOnline,
