@@ -182,9 +182,30 @@ describe("Logger CI", () => {
         vi.advanceTimersByTime(2000);
         expect(logger.progress("work", { prefix: "job", count: 5, total: 10 })).toBe(true);
         const line = consoleInfo.mock.calls.at(-1)[0];
-        // 4 intervals in 2s → 2/s
+        // 4 items since first sample in 2s → 2/s
         expect(line).toMatch(/\b2(\.0+)?\/s\b/);
         expect(line).toContain("/"); // elapsed/remaining still present
+    });
+
+    it("rates batched progress from the first sample count (not count-1)", () => {
+        vi.useFakeTimers();
+        const context = createTestContext();
+        const logger = new Logger(context, {
+            showLevel: true,
+            progress: { withTimes: true, withRate: true, throttleMs: 0 },
+            route: "console",
+        });
+
+        // Loader-style: first report already at 500.
+        expect(logger.progress("Loading records", { prefix: "Progress", count: 500, total: 5000 })).toBe(true);
+        expect(consoleInfo.mock.calls.at(-1)[0]).toContain("-/s");
+
+        vi.advanceTimersByTime(10000);
+        expect(logger.progress("Loading records", { prefix: "Progress", count: 1000, total: 5000 })).toBe(true);
+        const line = consoleInfo.mock.calls.at(-1)[0];
+        // 500 items in 10s → 50/s (old formula used 999/10 ≈ 99.9/s)
+        expect(line).toMatch(/\b50(\.0+)?\/s\b/);
+        expect(line).not.toMatch(/\b99/);
     });
 
     it("handles request/response inspection", () => {

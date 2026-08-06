@@ -63,6 +63,8 @@ export class Logger  {
     options;
     transport;
     startTimes = {};
+    /** Count at the first progress sample for each prefix (rate baseline). */
+    startCounts = {};
     lastProgressTimes = {};
 
     constructor(context, options = {}) {
@@ -222,16 +224,20 @@ export class Logger  {
             prefix
         };
 
-        if (!this.startTimes[prefix ?? ""]) {
-            this.startTimes[prefix ?? ""] = Date.now();
+        const key = prefix ?? "";
+        // First sample for this prefix: establish baseline only (no rate yet).
+        // Rate/ETA use items completed since that sample, so batched reporters
+        // (e.g. every 500 records) don't inflate early /s from a late start clock.
+        if (this.startTimes[key] === undefined) {
+            this.startTimes[key] = Date.now();
+            this.startCounts[key] = count;
         }
         const wantTimes = this.options.progressTimes;
         const wantRate = this.options.progressRate;
         if (wantTimes || wantRate) {
-            const elapsedSeconds = (Date.now() - this.startTimes[prefix ?? ""]) / 1000;
-            // Intervals completed = count - 1 (same basis as ETA).
-            const intervals = count > 1 ? count - 1 : 0;
-            const itemsPerSec = intervals > 0 && elapsedSeconds > 0 ? intervals / elapsedSeconds : -1;
+            const elapsedSeconds = (Date.now() - this.startTimes[key]) / 1000;
+            const done = count - (this.startCounts[key] ?? count);
+            const itemsPerSec = done > 0 && elapsedSeconds > 0 ? done / elapsedSeconds : -1;
             if (wantTimes) {
                 let remaining = -1;
                 if (itemsPerSec > 0) {
@@ -246,8 +252,9 @@ export class Logger  {
         }
 
         if (count >= total) {
-            delete this.startTimes[prefix ?? ""];
-            delete this.lastProgressTimes[prefix ?? ""];
+            delete this.startTimes[key];
+            delete this.startCounts[key];
+            delete this.lastProgressTimes[key];
         }
 
         if (this.shouldOutputProgress(prefix ?? "", count, total)) {

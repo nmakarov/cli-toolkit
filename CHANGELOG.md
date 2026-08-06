@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Logger.progress rate/ETA**: rate is now `(count - countAtFirstSample) / elapsed`
+  instead of `(count - 1) / elapsed`. Batched reporters (e.g. loader every N
+  records) no longer show inflated early `/s` because the clock started on the
+  first print while the numerator still assumed progress from item 1. First
+  sample still shows `-/s`; from the second sample onward the rate matches
+  steady throughput.
+
 ### Added
 - **Params.reportResolved(key, value, source?, module?)**: components that
   resolve values on their own (e.g. by merging their config files, the way
