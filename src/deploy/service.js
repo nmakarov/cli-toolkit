@@ -22,6 +22,7 @@
  *     appName=name, script, args="", port,
  *     stopAllowance=60,   // seconds → injected as --stopAllowance=N on the process
  *     killTimeout=65000,  // ms; pm2 kill_timeout (default: stopAllowance*1000+5000)
+ *     killRetryTime=10000, // ms; pm2 kill_retry_time (default 10s; pm2's own default is 100ms)
  *   }
  *   nginx: { siteName=name, fqdn }   (omit nginx entirely to skip the nginx step)
  */

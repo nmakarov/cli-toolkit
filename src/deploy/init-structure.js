@@ -30,6 +30,15 @@ function resolveKillTimeoutMs(pm2) {
     return 65_000;
 }
 
+/** How often pm2 re-sends SIGINT / logs "failed to kill - retrying in …" (ms). */
+const DEFAULT_KILL_RETRY_TIME_MS = 10_000;
+
+function resolveKillRetryTimeMs(pm2) {
+    const explicit = Number(pm2?.killRetryTime);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.floor(explicit);
+    return DEFAULT_KILL_RETRY_TIME_MS;
+}
+
 /** Append `--stopAllowance=<sec>` to pm2 args when manifest sets pm2.stopAllowance. */
 function resolvePm2Args(pm2) {
     const base = String(pm2?.args ?? "").trim();
@@ -57,6 +66,7 @@ function buildEcosystemConfig(service, paths) {
     const outLog = join(paths.logs, `${pm2.appName}.out.log`);
     const errLog = join(paths.logs, `${pm2.appName}.err.log`);
     const killTimeoutMs = resolveKillTimeoutMs(pm2);
+    const killRetryTimeMs = resolveKillRetryTimeMs(pm2);
     const args = resolvePm2Args(pm2);
     const ensureEnv = paths.ensureEnv;
 
@@ -83,6 +93,9 @@ module.exports = {
             max_memory_restart: "1500M",
             // Grace window after SIGINT/SIGTERM before SIGKILL (ms). Align with --stopAllowance.
             kill_timeout: ${killTimeoutMs},
+            // How often pm2 re-checks / logs "failed to kill - retrying in …"
+            // while waiting for graceful exit (pm2 default 100ms → noisy logs).
+            kill_retry_time: ${killRetryTimeMs},
             out_file: "${outLog}",
             error_file: "${errLog}",
             merge_logs: true,
