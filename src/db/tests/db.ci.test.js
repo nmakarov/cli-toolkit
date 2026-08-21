@@ -213,6 +213,9 @@ describe("Db CI", () => {
             });
 
             await expect(db.connect()).rejects.toThrow(ParamError);
+            // Half-open pool must be destroyed so exit/reconnect cannot hang on it.
+            expect(mockKnexInstance.destroy).toHaveBeenCalled();
+            expect(db.isConnectedToDb()).toBe(false);
         });
     });
 
@@ -252,7 +255,67 @@ describe("Db CI", () => {
             });
 
             await db.connect();
-            await expect(db.disconnect()).rejects.toThrow();
+            // Destroy failures must not block process exit / cleanup.
+            await expect(db.disconnect()).resolves.toBeUndefined();
+            expect(db.isConnectedToDb()).toBe(false);
+            expect(db._closed).toBe(true);
+        });
+
+        it("should not hang when knex.destroy never settles", async () => {
+            vi.useFakeTimers();
+            mockKnexInstance.destroy.mockImplementation(() => new Promise(() => {}));
+
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            const done = db.disconnect();
+            await vi.advanceTimersByTimeAsync(3_500);
+            await done;
+
+            expect(db.isConnectedToDb()).toBe(false);
+            expect(db._closed).toBe(true);
+            vi.useRealTimers();
+        });
+
+        it("should stop reconnect attempts after disconnect", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            const knexCallsAfterConnect = mockKnex.mock.calls.length;
+            await db.disconnect();
+
+            await db.reconnectAfterConnectionError({ code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND" });
+            expect(mockKnex.mock.calls.length).toBe(knexCallsAfterConnect);
+            expect(mockLogger.warn).not.toHaveBeenCalledWith(
+                expect.stringContaining("Connection lost"),
+            );
+        });
+
+        it("disconnect returns quickly while reconnect is hung in testConnection", async () => {
+            db = new Db({
+                connectionString: "postgresql://user:pass@localhost:5432/testdb",
+                logger: mockLogger,
+                testConnection: false,
+            });
+
+            await db.connect();
+            db.config.testConnection = true;
+            mockKnexInstance.raw.mockReturnValue(new Promise(() => {}));
+            void db.reconnect();
+
+            const t0 = Date.now();
+            await db.disconnect();
+            expect(Date.now() - t0).toBeLessThan(500);
+            expect(db._closed).toBe(true);
+            expect(db.isConnectedToDb()).toBe(false);
         });
     });
 
@@ -479,6 +542,9 @@ describe("Db CI", () => {
         it("should detect terminated / reset connection errors", () => {
             expect(
                 db.isConnectionError(new Error("Connection terminated unexpectedly"))
+            ).toBe(true);
+            expect(
+                db.isConnectionError(new Error("Connection ended unexpectedly"))
             ).toBe(true);
             expect(db.isConnectionError({ code: "ECONNRESET", message: "read ECONNRESET" })).toBe(
                 true

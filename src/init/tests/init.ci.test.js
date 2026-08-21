@@ -297,6 +297,21 @@ describe("Init CI Tests", () => {
         exitSpy.mockRestore();
     });
 
+    it("exits after cleanup when flow calls requestExit", async () => {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {});
+        let cleanupRan = false;
+        const flow = async (context) => {
+            context.registerCleanup(() => {
+                cleanupRan = true;
+            });
+            context.requestExit(0);
+        };
+        await init(flow, { silent: true });
+        expect(cleanupRan).toBe(true);
+        expect(exitSpy).toHaveBeenCalledWith(0);
+        exitSpy.mockRestore();
+    });
+
     it("--stopAfter=init prints params and exits", async () => {
         const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) );
         const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});

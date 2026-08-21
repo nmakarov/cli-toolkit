@@ -95,6 +95,8 @@ function setup(opts = {}) {
         // a quick "show me the figured params and quit" that skips the flow's
         // actual work. Like --stopAfter=init, this is a hard exit(0) (registered
         // cleanups are skipped); call it once components/params are resolved.
+        _requestExitCode: null,
+        requestExit: null,
         showUsedParamsIfNeeded: () => {
             const mode = params.getShowUsedParamsMode?.();
             if (mode !== "top" && mode !== "stop") return;
@@ -104,6 +106,12 @@ function setup(opts = {}) {
                 process.exit(0);
             }
         },
+    };
+
+    // Interactive CLIs (tasksmm) call this before returning so leftover
+    // knex/DNS handles cannot keep the process alive after cleanup.
+    context.requestExit = (code = 0) => {
+        context._requestExitCode = code;
     };
 
     logger.debug("[setup] completed successfully");
@@ -165,9 +173,25 @@ export async function init(flow, opts = {}) {
         if (cleanupRan) return;
         cleanupRan = true;
         const fns = [...ctx.cleanupFunctions].reverse();
+        const budgetMs = 5_000;
+        const started = Date.now();
         for (const fn of fns) {
+            const left = budgetMs - (Date.now() - started);
+            if (left <= 0) {
+                ctx.logger.warn("[cleanup] budget exhausted — skipping remaining cleanup");
+                break;
+            }
             try {
-                await fn(ctx);
+                await Promise.race([
+                    Promise.resolve(fn(ctx)),
+                    new Promise((_, reject) => {
+                        const t = setTimeout(
+                            () => reject(new Error(`cleanup timed out after ${left}ms`)),
+                            left,
+                        );
+                        t.unref?.();
+                    }),
+                ]);
             } catch (error) {
                 ctx.logger.warn("[cleanup] error in cleanup function:", error);
             }
@@ -314,6 +338,8 @@ export async function init(flow, opts = {}) {
             process.exit(process.exitCode);
         } else if (stop || kill) {
             process.exit(0);
+        } else if (context._requestExitCode != null) {
+            process.exit(context._requestExitCode);
         }
     }
 }

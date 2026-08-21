@@ -208,6 +208,35 @@ describe("Logger CI", () => {
         expect(line).not.toMatch(/\b99/);
     });
 
+    it("keeps rate when count overshoots a stale total, and clamps remaining", () => {
+        vi.useFakeTimers();
+        const context = createTestContext();
+        const logger = new Logger(context, {
+            showLevel: true,
+            progress: { withTimes: true, withRate: true, throttleMs: 0 },
+            route: "console",
+        });
+
+        expect(logger.progress("work", { prefix: "job", count: 100, total: 200 })).toBe(true);
+        vi.advanceTimersByTime(10000);
+        expect(logger.progress("work", { prefix: "job", count: 200, total: 200 })).toBe(true);
+        // Exact completion clears baseline — start a fresh overrun scenario.
+        expect(logger.progress("work", { prefix: "fetch", count: 100, total: 150 })).toBe(true);
+        vi.advanceTimersByTime(10000);
+        expect(logger.progress("work", { prefix: "fetch", count: 160, total: 150 })).toBe(true);
+        const overrun = consoleInfo.mock.calls.at(-1)[0];
+        expect(overrun).toContain("160/160");
+        expect(overrun).toMatch(/\b0(\.0+)?\b/); // remaining clamped
+        expect(overrun).toMatch(/\b6(\.0+)?\/s\b/); // 60 items / 10s
+
+        vi.advanceTimersByTime(10000);
+        expect(logger.progress("work", { prefix: "fetch", count: 180, total: 150 })).toBe(true);
+        const stillTracking = consoleInfo.mock.calls.at(-1)[0];
+        // Baseline kept across overrun (80 items / 20s → 4/s), not reset to -/s
+        expect(stillTracking).toMatch(/\b4(\.0+)?\/s\b/);
+        expect(stillTracking).not.toContain("-/s");
+    });
+
     it("handles request/response inspection", () => {
         const context = createTestContext();
         const logger = new Logger(context, { showLevel: true, route: "console" });

@@ -214,13 +214,16 @@ export class Logger  {
      */
     progress(message, opts) {
         const { prefix, count, total } = opts;
-        const paddedTotal = String(total).length;
+        // If count briefly overshoots a stale total, display without negative ETA;
+        // callers should raise `total` when the feed revises @odata.count.
+        const displayTotal = Math.max(Number(total) || 0, Number(count) || 0);
+        const paddedTotal = String(displayTotal).length;
         const paddedCount = String(count).padStart(paddedTotal, " ");
         const payload = {
             level: "progress",
             message,
             count: paddedCount,
-            total,
+            total: displayTotal,
             prefix
         };
 
@@ -241,7 +244,7 @@ export class Logger  {
             if (wantTimes) {
                 let remaining = -1;
                 if (itemsPerSec > 0) {
-                    remaining = (total - count) / itemsPerSec;
+                    remaining = Math.max(0, (displayTotal - count) / itemsPerSec);
                 }
                 payload.elapsed = this.round(elapsedSeconds, 2);
                 payload.remaining = remaining >= 0 ? this.round(remaining, 2) : remaining;
@@ -251,13 +254,16 @@ export class Logger  {
             }
         }
 
-        if (count >= total) {
+        // Clear rate baseline on exact completion so the next job with the same
+        // prefix re-baselines. Do not clear on overrun (count > total) — that
+        // would zero the rate until total is corrected.
+        if (count === total) {
             delete this.startTimes[key];
             delete this.startCounts[key];
             delete this.lastProgressTimes[key];
         }
 
-        if (this.shouldOutputProgress(prefix ?? "", count, total)) {
+        if (this.shouldOutputProgress(prefix ?? "", count, displayTotal)) {
             this.out(payload);
             if (this.options.progressThrottle && prefix) {
                 this.lastProgressTimes[prefix] = Date.now();

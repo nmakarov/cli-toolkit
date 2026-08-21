@@ -45,7 +45,7 @@ const CONNECTION_ERROR_CODES = new Set([
 // Note: "Timeout acquiring a connection" is pool contention (all slots busy),
 // not a dead socket — reconnecting destroys healthy clients and makes it worse.
 const CONNECTION_ERROR_MESSAGE_RE =
-    /connection (terminated|ended|closed|destroyed|reset|refused|not open)|Connection terminated unexpectedly|Client has encountered a connection error|server closed the connection|Cannot use a pool after calling end|This socket has been ended|connect ECONNRESET/i;
+    /connection (terminated|ended|closed|destroyed|reset|refused|not open)|Connection (terminated|ended) unexpectedly|Client has encountered a connection error|server closed the connection|Cannot use a pool after calling end|This socket has been ended|connect ECONNRESET/i;
 
 export class Db {
     static async init(context, options = {}) {
@@ -361,6 +361,14 @@ export class Db {
         this.isConnected = false;
         this.queriesLog = [];
         this._reconnectPromise = null;
+        /** Set by disconnect(); blocks reconnect and connect so exit does not hang. */
+        this._closed = false;
+        /** Every knex client we created — reconnect can leave extras that disconnect must kill. */
+        this._liveKnex = new Set();
+        /** After a failed reconnect, skip further attempts until this timestamp. */
+        this._reconnectCooldownUntil = 0;
+        /** Shorter acquire timeout used only while reconnecting. */
+        this._reconnectAcquireTimeoutMs = null;
 
         this.config = {
             testConnection: true,
@@ -457,6 +465,9 @@ export class Db {
     }
 
     async connect() {
+        if (this._closed) {
+            throw new ParamError("Db: Connection closed");
+        }
         if (this.isConnected && this.knexInstance) {
             this.logger.warn?.("[Db] Already connected");
             return;
@@ -475,13 +486,28 @@ export class Db {
                 family: 4,
             };
 
+            const acquireTimeout = this._reconnectAcquireTimeoutMs
+                ?? this.config.acquireConnectionTimeout;
             this.knexInstance = knex({
                 client,
                 connection: connectionConfig,
                 pool: this.config.pool,
-                acquireConnectionTimeout: this.config.acquireConnectionTimeout,
+                acquireConnectionTimeout: acquireTimeout,
                 ...(this.config.ssl && { ssl: this.config.ssl }),
             });
+            this._liveKnex.add(this.knexInstance);
+            this.knexInstance.on?.("error", (err) => {
+                if (this._closed) return;
+                this.logger.warn?.(
+                    `[Db] Connection error (${this.getErrorMessage(err)})`
+                );
+            });
+
+            if (this._closed) {
+                await this._destroyKnex(this.knexInstance, "connect aborted (closed)");
+                this.knexInstance = null;
+                throw new ParamError("Db: Connection closed");
+            }
 
             if (this.config.profile) {
                 this.attachProfiler();
@@ -491,9 +517,23 @@ export class Db {
                 await this.testConnection();
             }
 
+            if (this._closed) {
+                await this._destroyKnex(this.knexInstance, "connect aborted (closed)");
+                this.knexInstance = null;
+                throw new ParamError("Db: Connection closed");
+            }
+
             this.isConnected = true;
             this.logger.debug?.(formatDbConnectMessage(this.config.name, this.config.connectionString));
         } catch (error) {
+            // Always tear down a half-open pool (e.g. testConnection ENOTFOUND),
+            // otherwise the next reconnect/disconnect waits on a dead knex forever.
+            const failed = this.knexInstance;
+            this.knexInstance = null;
+            this.isConnected = false;
+            if (failed) {
+                await this._destroyKnex(failed, "connect failed");
+            }
             if (error instanceof ParamError) {
                 throw error;
             }
@@ -502,21 +542,47 @@ export class Db {
         }
     }
 
-    async disconnect() {
-        if (!this.knexInstance) {
-            return;
-        }
-
+    /**
+     * Destroy a knex pool without hanging exit on stuck TCP sockets (ETIMEDOUT).
+     * @param {import("knex").Knex | null | undefined} knexInst
+     * @param {string} [reason]
+     * @param {number} [timeoutMs]
+     */
+    async _destroyKnex(knexInst, reason = "destroy", timeoutMs = 3_000) {
+        if (!knexInst || typeof knexInst.destroy !== "function") return;
+        this._liveKnex.delete(knexInst);
         try {
-            await this.knexInstance.destroy();
-            this.knexInstance = null;
-            this.isConnected = false;
-            this.queriesLog = [];
-            this.logger.debug?.(formatDbDisconnectMessage(this.config.name, this.config.connectionString));
+            await Promise.race([
+                knexInst.destroy(),
+                new Promise((_, reject) => {
+                    const t = setTimeout(
+                        () => reject(new Error(`Db: ${reason} timed out after ${timeoutMs}ms`)),
+                        timeoutMs,
+                    );
+                    t.unref?.();
+                }),
+            ]);
         } catch (error) {
-            const errorMsg = this.getErrorMessage(error);
-            this.logger.error?.(`[Db] Error disconnecting: ${errorMsg}`);
-            throw error;
+            this.logger.debug?.(
+                `[Db] ${reason}: ${this.getErrorMessage(error)}`
+            );
+        }
+    }
+
+    async disconnect() {
+        this._closed = true;
+        this.isConnected = false;
+        this.knexInstance = null;
+        this.queriesLog = [];
+
+        // Do not await an in-flight reconnect — connect() may be stuck in
+        // testConnection / DNS for acquireConnectionTimeout (often 60s).
+        // Tear down every knex we created, including ones spawned mid-reconnect.
+        const all = [...this._liveKnex];
+        this._liveKnex.clear();
+        await Promise.all(all.map((inst) => this._destroyKnex(inst, "disconnect")));
+        if (all.length > 0) {
+            this.logger.debug?.(formatDbDisconnectMessage(this.config.name, this.config.connectionString));
         }
     }
 
@@ -544,30 +610,44 @@ export class Db {
 
     /**
      * Destroy the current knex pool and open a new one. Concurrent callers share one attempt.
+     * No-ops once disconnect() has closed the handle.
      */
     async reconnect() {
+        if (this._closed) {
+            return;
+        }
+        if (this._reconnectCooldownUntil && Date.now() < this._reconnectCooldownUntil) {
+            return;
+        }
         if (this._reconnectPromise) {
             await this._reconnectPromise;
             return;
         }
 
         this._reconnectPromise = (async () => {
+            if (this._closed) return;
+
             const old = this.knexInstance;
             this.isConnected = false;
             this.knexInstance = null;
             this.queriesLog = [];
 
             if (old) {
-                try {
-                    await old.destroy();
-                } catch (error) {
-                    this.logger.debug?.(
-                        `[Db] destroy during reconnect: ${this.getErrorMessage(error)}`
-                    );
-                }
+                await this._destroyKnex(old, "destroy during reconnect");
             }
 
-            await this.connect();
+            if (this._closed) return;
+            // Don't inherit the caller's 60s acquire timeout while the host is down.
+            this._reconnectAcquireTimeoutMs = 3_000;
+            try {
+                await this.connect();
+                this._reconnectCooldownUntil = 0;
+            } catch (error) {
+                this._reconnectCooldownUntil = Date.now() + 5_000;
+                throw error;
+            } finally {
+                this._reconnectAcquireTimeoutMs = null;
+            }
         })();
 
         try {
@@ -578,10 +658,20 @@ export class Db {
     }
 
     async reconnectAfterConnectionError(error) {
+        if (this._closed) {
+            return;
+        }
+        if (this._reconnectCooldownUntil && Date.now() < this._reconnectCooldownUntil) {
+            return;
+        }
         this.logger.warn?.(
             `[Db] Connection lost (${this.getErrorMessage(error)}) — reconnecting…`
         );
-        await this.reconnect();
+        try {
+            await this.reconnect();
+        } catch {
+            // connect() already logged the test failure; caller retries or throws.
+        }
     }
 
     /**
@@ -595,10 +685,13 @@ export class Db {
                 return await fn();
             } catch (error) {
                 lastError = error;
-                if (!this.isConnectionError(error) || attempt >= retries) {
+                if (this._closed || !this.isConnectionError(error) || attempt >= retries) {
                     throw error;
                 }
                 await this.reconnectAfterConnectionError(error);
+                if (this._closed) {
+                    throw error;
+                }
             }
         }
         throw lastError;
@@ -625,10 +718,13 @@ export class Db {
                 try {
                     return await protoThen.call(builder);
                 } catch (error) {
-                    if (!inst.isConnectionError(error)) {
+                    if (inst._closed || !inst.isConnectionError(error)) {
                         throw error;
                     }
                     await inst.reconnectAfterConnectionError(error);
+                    if (inst._closed || !inst.knexInstance) {
+                        throw error;
+                    }
 
                     if (typeof builder.clone === "function") {
                         const retry = builder.clone();
