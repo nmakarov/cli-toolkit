@@ -28,6 +28,12 @@ export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, Scre
 export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-elements.js";
 export { ScrollableText, wrapTextLines, scrollbarGlyphs } from "./scrollable-text.js";
 export {
+    clampScroll,
+    isScrolledToBottom,
+    nextScrollAfterUserMove,
+    nextScrollAfterContentChange,
+} from "./follow-scroll.js";
+export {
     PAGE_SCROLL_KEY_BINDINGS,
     BAR_THUMB,
     BAR_TRACK,

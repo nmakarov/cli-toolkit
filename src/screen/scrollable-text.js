@@ -18,6 +18,7 @@ import {
     PAGE_SCROLL_KEY_BINDINGS,
     scrollbarGlyphs,
 } from "./scrollbar.js";
+import { nextScrollAfterContentChange, nextScrollAfterUserMove } from "./follow-scroll.js";
 
 export { scrollbarGlyphs } from "./scrollbar.js";
 
@@ -69,6 +70,7 @@ const SCROLL_KEYS = [
  *   showStatus?: boolean,
  *   bindKeys?: boolean,
  *   header?: unknown,
+ *   followBottom?: boolean,
  * }} props
  */
 export function ScrollableText({
@@ -81,8 +83,10 @@ export function ScrollableText({
     showStatus = true,
     bindKeys = true,
     header = null,
+    followBottom = false,
 }) {
     const [scrollTop, setScrollTop] = useState(0);
+    const [following, setFollowing] = useState(() => !!followBottom);
     const [, bump] = useState(0);
 
     const termRows = process.stdout.rows || 24;
@@ -109,49 +113,52 @@ export function ScrollableText({
     const visible = allLines.slice(clamped, clamped + viewportRows);
     const bar = needsBar ? scrollbarGlyphs(viewportRows, allLines.length, clamped) : null;
 
-    useEffect(() => {
-        setScrollTop((s) => Math.min(s, maxScroll));
-    }, [maxScroll]);
-
     const maxScrollRef = useRef(maxScroll);
     const pageSizeRef = useRef(viewportRows);
+    const scrollTopRef = useRef(scrollTop);
+    const followingRef = useRef(following);
     maxScrollRef.current = maxScroll;
     pageSizeRef.current = viewportRows;
+    scrollTopRef.current = scrollTop;
+    followingRef.current = following;
+
+    useEffect(() => {
+        const next = nextScrollAfterContentChange({
+            following: followBottom && followingRef.current,
+            scrollTop: scrollTopRef.current,
+            maxScroll,
+        });
+        if (next.scrollTop !== scrollTopRef.current) setScrollTop(next.scrollTop);
+        if (followBottom && next.following !== followingRef.current) setFollowing(next.following);
+    }, [maxScroll, followBottom]);
+
+    const applyUserScroll = (delta) => {
+        const next = nextScrollAfterUserMove(scrollTopRef.current, maxScrollRef.current, delta);
+        setScrollTop(next.scrollTop);
+        if (followBottom) setFollowing(next.following);
+        bump((n) => n + 1);
+        ctx?.update?.();
+    };
 
     useEffect(() => {
         if (!ctx || !bindKeys) return undefined;
 
         ctx.setKeyBinding(SCROLL_KEYS);
 
-        ctx.setAction("scrollUp", () => {
-            setScrollTop((s) => Math.max(0, s - 1));
-            bump((n) => n + 1);
-            ctx.update?.();
-        });
-        ctx.setAction("scrollDown", () => {
-            setScrollTop((s) => Math.min(maxScrollRef.current, s + 1));
-            bump((n) => n + 1);
-            ctx.update?.();
-        });
-        ctx.setAction("pageUp", () => {
-            setScrollTop((s) => Math.max(0, s - pageSizeRef.current));
-            bump((n) => n + 1);
-            ctx.update?.();
-        });
-        ctx.setAction("pageDown", () => {
-            setScrollTop((s) => Math.min(maxScrollRef.current, s + pageSizeRef.current));
-            bump((n) => n + 1);
-            ctx.update?.();
-        });
+        ctx.setAction("scrollUp", () => applyUserScroll(-1));
+        ctx.setAction("scrollDown", () => applyUserScroll(1));
+        ctx.setAction("pageUp", () => applyUserScroll(-pageSizeRef.current));
+        ctx.setAction("pageDown", () => applyUserScroll(pageSizeRef.current));
 
         return undefined;
-    }, [ctx, bindKeys]);
+    }, [ctx, bindKeys, followBottom]);
 
     const status =
         allLines.length === 0
             ? "empty"
             : `lines ${clamped + 1}-${Math.min(clamped + visible.length, allLines.length)} of ${allLines.length}` +
-              (needsBar ? " · ⌥↑/↓ or PgUp/Dn page" : "");
+              (needsBar ? " · ⌥↑/↓ or PgUp/Dn page" : "") +
+              (followBottom && following ? " · follow" : followBottom ? " · follow off" : "");
 
     // Single Text per row (not a row Box): avoids yoga width surprises; ASCII bar is 1 cell.
     const rowNodes = visible.map((line, i) => {
