@@ -19,40 +19,12 @@ import {
     scrollbarGlyphs,
 } from "./scrollbar.js";
 import { nextScrollAfterContentChange, nextScrollAfterUserMove } from "./follow-scroll.js";
+import { padEndVisible, wrapTextLines } from "./visible-text.js";
 
 export { scrollbarGlyphs } from "./scrollbar.js";
+export { wrapTextLines } from "./visible-text.js";
 
 const h = createElement;
-
-/**
- * Hard-wrap text to `cols` (keeps empty lines).
- * @param {string} text
- * @param {number} cols
- * @returns {string[]}
- */
-export function wrapTextLines(text, cols) {
-    const w = Math.max(1, Math.floor(Number(cols) || 1));
-    const out = [];
-    for (const raw of String(text ?? "").split("\n")) {
-        if (raw.length === 0) {
-            out.push("");
-            continue;
-        }
-        let rest = raw;
-        while (rest.length > w) {
-            out.push(rest.slice(0, w));
-            rest = rest.slice(w);
-        }
-        if (rest.length > 0) out.push(rest);
-    }
-    return out;
-}
-
-function padEndVisible(s, w) {
-    const t = String(s ?? "");
-    if (t.length >= w) return t.slice(0, w);
-    return t + " ".repeat(w - t.length);
-}
 
 const SCROLL_KEYS = [
     { key: "upArrow", caption: "scroll", action: "scrollUp", order: 0 },
@@ -160,31 +132,34 @@ export function ScrollableText({
               (needsBar ? " · ⌥↑/↓ or PgUp/Dn page" : "") +
               (followBottom && following ? " · follow" : followBottom ? " · follow off" : "");
 
-    // Single Text per row (not a row Box): avoids yoga width surprises; ASCII bar is 1 cell.
+    // Fixed-width row: text pane + 1-col bar so the track is always a straight
+    // right edge (ANSI / wrap must not move the glyph).
     const rowNodes = visible.map((line, i) => {
-        const body = padEndVisible(line, textWidth);
         const glyph = bar ? bar[i] ?? BAR_TRACK : showScrollbar ? " " : "";
         const isThumb = glyph === BAR_THUMB;
         return h(
-            Text,
-            { key: `L${clamped + i}` },
-            body,
-            glyph
-                ? h(Text, { color: isThumb ? "cyan" : "gray" }, glyph)
+            Box,
+            { key: `L${clamped + i}`, flexDirection: "row", width: contentCols, flexShrink: 0 },
+            h(
+                Box,
+                { width: textWidth, flexShrink: 0 },
+                h(Text, { wrap: "truncate" }, padEndVisible(line, textWidth)),
+            ),
+            showScrollbar
+                ? h(Box, { width: 1, flexShrink: 0 }, h(Text, { color: isThumb ? "cyan" : "gray" }, glyph))
                 : null,
         );
     });
 
-    // Pad short final page so the scrollbar track stays full height.
     if (bar && visible.length < viewportRows) {
         for (let i = visible.length; i < viewportRows; i++) {
             const glyph = bar[i] ?? BAR_TRACK;
             rowNodes.push(
                 h(
-                    Text,
-                    { key: `pad${i}` },
-                    padEndVisible("", textWidth),
-                    h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph),
+                    Box,
+                    { key: `pad${i}`, flexDirection: "row", width: contentCols, flexShrink: 0 },
+                    h(Box, { width: textWidth, flexShrink: 0 }, h(Text, {}, padEndVisible("", textWidth))),
+                    h(Box, { width: 1, flexShrink: 0 }, h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph)),
                 ),
             );
         }
