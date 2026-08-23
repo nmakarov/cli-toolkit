@@ -361,14 +361,18 @@ describe("Screen CI", () => {
         ] , "long");
 
         expect(items[0]).toEqual(custom);
-        expect(items[1]).toBe("b to stop");
+        expect(collectText(items[1]).join("")).toBe("b to stop");
+        const stopKey = findNode(items[1], (node) => node.props?.bold === true);
+        expect(stopKey?.children?.[0] ?? stopKey?.props?.children).toBe("b");
+        expect(stopKey?.props).toMatchObject({ bold: true, color: "white", dimColor: false });
 
         const shortItems = formatKeyBindings([
             { key: "x", caption: "skip", action: "skip" },
             { key: "y", caption: "skip", action: "skip" }
         ] , "short");
 
-        expect(shortItems).toEqual(["x/y"]);
+        expect(shortItems.map((item) => collectText(item).join(""))).toEqual(["x/y"]);
+        expect(shortItems[0].props).toMatchObject({ bold: true, color: "white", dimColor: false });
         expect(formatKeys(["escape", "leftArrow", "unknown"])).toBe("esc/←/unknown");
     });
 

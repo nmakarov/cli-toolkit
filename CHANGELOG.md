@@ -13,6 +13,10 @@ All notable changes to this project will be documented in this file.
   steady throughput.
 
 ### Added
+- **Screen footer hotkeys**: `formatKeyBindings` / `showScreen` render key
+  labels (`esc/←`, `enter`, `r`, `↑/↓`, …) in bold bright white so they
+  stand out from the dim "to …" captions. Scripts only define bindings;
+  highlighting is automatic.
 - **Params.reportResolved(key, value, source?, module?)**: components that
   resolve values on their own (e.g. by merging their config files, the way
   blueprints do) can report what they actually discovered, so the

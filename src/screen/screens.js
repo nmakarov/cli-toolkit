@@ -146,28 +146,37 @@ export function formatKeyBindings(bindings, mode = "long") {
 
     const items = [];
 
-    groups.forEach(group => {
+    groups.forEach((group, groupIndex) => {
         // Check if any binding in this group has a component/custom caption
         const bindingWithCustom = resolvedBindings.find(b =>
-            group.keys.includes(b.key) && typeof b.resolvedCaption !== "string"
+            group.keys.includes(formatBindingKey(b)) && typeof b.resolvedCaption !== "string"
         );
 
         if (bindingWithCustom && bindingWithCustom.resolvedCaption) {
             // Use the full custom display (component or complex structure)
             items.push(bindingWithCustom.resolvedCaption );
         } else {
-            // Standard format with string caption
-            const keyStr = formatKeys(group.keys);
-
-            if (mode === "long") {
-                items.push(`${keyStr} to ${group.caption}`);
-            } else {
-                items.push(keyStr);
-            }
+            items.push(formatFooterHotkey(formatKeys(group.keys), group.caption, mode, `kb-${groupIndex}`));
         }
     });
 
     return items;
+}
+
+/** Key labels in the footer: bright white so they stand out from dim captions. */
+export const FOOTER_HOTKEY_STYLE = { bold: true, color: "white", dimColor: false };
+
+/**
+ * One footer binding: highlighted keys, dim "to …" caption.
+ * @param {string} keyStr
+ * @param {string} [caption]
+ * @param {"long"|"short"} [mode]
+ * @param {string} [reactKey]
+ */
+export function formatFooterHotkey(keyStr, caption = "", mode = "long", reactKey = "hotkey") {
+    const keyNode = h(Text, { key: `${reactKey}-key`, ...FOOTER_HOTKEY_STYLE }, keyStr);
+    if (mode !== "long" || !caption) return keyNode;
+    return h(Text, { key: reactKey, dimColor: true, color: "white" }, keyNode, ` to ${caption}`);
 }
 
 /**

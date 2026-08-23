@@ -19,7 +19,9 @@ export {
     showMultiColumnListWithPreviewScreen,
     // Backward compatibility aliases
     showMenuScreen,
-    showWordGridScreen
+    showWordGridScreen,
+    formatFooterHotkey,
+    FOOTER_HOTKEY_STYLE,
 } from "./screens.js";
 
 // Reusable components
