@@ -12,7 +12,15 @@ function textOf(node) {
 }
 
 function findStyled(node, pred) {
-    if (!node || typeof node !== "object") return null;
+    if (node == null || typeof node === "boolean") return null;
+    if (Array.isArray(node)) {
+        for (const kid of node) {
+            const found = findStyled(kid, pred);
+            if (found) return found;
+        }
+        return null;
+    }
+    if (typeof node !== "object") return null;
     if (pred(node)) return node;
     const kids = Array.isArray(node.props?.children)
         ? node.props.children
@@ -38,8 +46,31 @@ describe("Screen", () => {
             "esc to go back",
             "enter to select"
         ]);
-        const escKey = findStyled(items[0], (n) => n.props?.children === "esc");
-        expect(escKey?.props).toMatchObject(FOOTER_HOTKEY_STYLE);
+        for (const label of ["esc", "enter"]) {
+            const keyNode = findStyled(items, (n) => n.props?.children === label);
+            expect(keyNode?.props).toMatchObject(FOOTER_HOTKEY_STYLE);
+        }
+    });
+
+    it("highlights every key in a grouped binding", () => {
+        const items = formatKeyBindings(
+            [
+                { key: "escape", caption: "go back", action: "back", order: 1 },
+                { key: "leftArrow", caption: "go back", action: "back", order: 1 },
+                { key: "return", caption: "inspect", action: "inspect", order: 2 },
+                { key: "r", caption: "refresh", action: "refresh", order: 3 },
+            ],
+            "long",
+        );
+        expect(items.map(textOf)).toEqual([
+            "esc/← to go back",
+            "enter to inspect",
+            "r to refresh",
+        ]);
+        for (const label of ["esc", "←", "enter", "r"]) {
+            const keyNode = findStyled(items, (n) => n.props?.children === label);
+            expect(keyNode?.props, label).toMatchObject(FOOTER_HOTKEY_STYLE);
+        }
     });
 
     it("supports short mode output", () => {
@@ -50,7 +81,10 @@ describe("Screen", () => {
 
         const items = formatKeyBindings(bindings, "short");
         expect(items.map(textOf)).toEqual(["↑/↓"]);
-        expect(items[0].props).toMatchObject(FOOTER_HOTKEY_STYLE);
+        for (const label of ["↑", "↓"]) {
+            const keyNode = findStyled(items[0], (n) => n.props?.children === label);
+            expect(keyNode?.props).toMatchObject(FOOTER_HOTKEY_STYLE);
+        }
     });
 });
 

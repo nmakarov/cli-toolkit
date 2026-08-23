@@ -13,10 +13,14 @@ All notable changes to this project will be documented in this file.
   steady throughput.
 
 ### Added
-- **Screen footer hotkeys**: `formatKeyBindings` / `showScreen` render key
-  labels (`esc/←`, `enter`, `r`, `↑/↓`, …) in bold bright white so they
-  stand out from the dim "to …" captions. Scripts only define bindings;
-  highlighting is automatic.
+- **Screen footer hotkeys**: `formatKeyBindings` / `showScreen` render each
+  key label (`esc`, `←`, `enter`, `r`, `↑`, `↓`, …) as its own bold bright
+  white span so they stand out from the dim "to …" captions. Scripts only
+  define bindings; highlighting is automatic.
+- **Esc goes back**: Ink's `useInput` always sets `meta: true` on Escape
+  (Escape is the terminal meta prefix). `bindingMatchesInput` no longer
+  treats that as Option+Esc, so the default `esc` + `←` "go back" bindings
+  both fire.
 - **Params.reportResolved(key, value, source?, module?)**: components that
   resolve values on their own (e.g. by merging their config files, the way
   blueprints do) can report what they actually discovered, so the

@@ -3,7 +3,7 @@
  */
 
 import { useState, createElement as h } from "react";
-import { render, useInput, Text } from "ink";
+import { render, useInput, Box, Text } from "ink";
 import { ScreenContainer, ScreenRow, ScreenTitle, ScreenDivider, ScreenFooter } from "./components.js";
 import { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
 import {
@@ -174,9 +174,18 @@ export const FOOTER_HOTKEY_STYLE = { bold: true, color: "white", dimColor: false
  * @param {string} [reactKey]
  */
 export function formatFooterHotkey(keyStr, caption = "", mode = "long", reactKey = "hotkey") {
-    const keyNode = h(Text, { key: `${reactKey}-key`, ...FOOTER_HOTKEY_STYLE }, keyStr);
-    if (mode !== "long" || !caption) return keyNode;
-    return h(Text, { key: reactKey, dimColor: true, color: "white" }, keyNode, ` to ${caption}`);
+    const parts = String(keyStr).split("/");
+    const nodes = [];
+    parts.forEach((part, i) => {
+        if (i > 0) {
+            nodes.push(h(Text, { key: `${reactKey}-sep${i}`, dimColor: true, color: "white" }, "/"));
+        }
+        nodes.push(h(Text, { key: `${reactKey}-k${i}`, ...FOOTER_HOTKEY_STYLE }, part));
+    });
+    if (mode === "long" && caption) {
+        nodes.push(h(Text, { key: `${reactKey}-cap`, dimColor: true, color: "white" }, ` to ${caption}`));
+    }
+    return h(Box, { key: reactKey, flexDirection: "row" }, ...nodes);
 }
 
 /**

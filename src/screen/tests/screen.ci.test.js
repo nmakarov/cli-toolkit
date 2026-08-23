@@ -372,7 +372,8 @@ describe("Screen CI", () => {
         ] , "short");
 
         expect(shortItems.map((item) => collectText(item).join(""))).toEqual(["x/y"]);
-        expect(shortItems[0].props).toMatchObject({ bold: true, color: "white", dimColor: false });
+        const shortKeys = findNode(shortItems[0], (node) => node.props?.bold === true && (node.children?.[0] === "x" || node.props?.children === "x"));
+        expect(shortKeys?.props).toMatchObject({ bold: true, color: "white", dimColor: false });
         expect(formatKeys(["escape", "leftArrow", "unknown"])).toBe("esc/←/unknown");
     });
 

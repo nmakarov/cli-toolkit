@@ -44,9 +44,10 @@ export function bindingMatchesInput(binding, input, key) {
         return !pressed;
     };
 
-    // shift is often used with letters; for arrows we still treat omitted as "any"
-    // only for shift — meta/ctrl are the page-jump modifiers we care about.
-    if (!modOk(binding.meta, key?.meta)) return false;
+    // Ink's useInput sets `meta: true` whenever `name === "escape"` (Escape is
+    // the terminal meta prefix). Treat that as a lone Esc, not Option+key.
+    const inkEscapeMeta = binding.key === "escape" && key?.escape;
+    if (!inkEscapeMeta && !modOk(binding.meta, key?.meta)) return false;
     if (!modOk(binding.ctrl, key?.ctrl)) return false;
     if (binding.shift !== undefined && !!key?.shift !== !!binding.shift) return false;
 
