@@ -4,6 +4,7 @@
 
 import { useState, createElement as h } from "react";
 import { render, useInput, Box, Text } from "ink";
+import chalk from "chalk";
 import { ScreenContainer, ScreenRow, ScreenTitle, ScreenDivider, ScreenFooter } from "./components.js";
 import { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
 import {
@@ -156,36 +157,42 @@ export function formatKeyBindings(bindings, mode = "long") {
             // Use the full custom display (component or complex structure)
             items.push(bindingWithCustom.resolvedCaption );
         } else {
-            items.push(formatFooterHotkey(formatKeys(group.keys), group.caption, mode, `kb-${groupIndex}`));
+            items.push(formatFooterHotkey(formatKeys(group.keys), group.caption, mode));
         }
     });
 
     return items;
 }
 
-/** Key labels in the footer: bright white so they stand out from dim captions. */
+/** @deprecated Ink props — footer keys are chalk-styled strings so dim/bold do not share SGR 22. */
 export const FOOTER_HOTKEY_STYLE = { bold: true, color: "white", dimColor: false };
+
+/** Bold default-fg key; `reset` clears a prior dim so later keys stay bright. */
+export function styleFooterHotkey(label) {
+    return chalk.reset.bold(String(label));
+}
+
+/** Dim caption / separator; `reset` clears bold from the preceding key. */
+export function styleFooterMuted(text) {
+    return chalk.reset.dim(String(text));
+}
 
 /**
  * One footer binding: highlighted keys, dim "to …" caption.
+ * Returns a chalk string (not Ink nodes) so every key is independently bright.
  * @param {string} keyStr
  * @param {string} [caption]
  * @param {"long"|"short"} [mode]
- * @param {string} [reactKey]
  */
-export function formatFooterHotkey(keyStr, caption = "", mode = "long", reactKey = "hotkey") {
-    const parts = String(keyStr).split("/");
-    const nodes = [];
-    parts.forEach((part, i) => {
-        if (i > 0) {
-            nodes.push(h(Text, { key: `${reactKey}-sep${i}`, dimColor: true, color: "white" }, "/"));
-        }
-        nodes.push(h(Text, { key: `${reactKey}-k${i}`, ...FOOTER_HOTKEY_STYLE }, part));
-    });
+export function formatFooterHotkey(keyStr, caption = "", mode = "long") {
+    const keys = String(keyStr)
+        .split("/")
+        .map((part) => styleFooterHotkey(part))
+        .join(styleFooterMuted("/"));
     if (mode === "long" && caption) {
-        nodes.push(h(Text, { key: `${reactKey}-cap`, dimColor: true, color: "white" }, ` to ${caption}`));
+        return keys + styleFooterMuted(` to ${caption}`);
     }
-    return h(Box, { key: reactKey, flexDirection: "row" }, ...nodes);
+    return keys;
 }
 
 /**
@@ -412,21 +419,16 @@ export async function showScreen(config) {
                 const bindingsLine = [];
                 bindingItems.forEach((item, idx) => {
                     if (idx > 0) {
-                        bindingsLine.push(", ");
+                        bindingsLine.push(styleFooterMuted(", "));
                     }
                     bindingsLine.push(item);
                 });
 
-                // If all items are strings, join them; otherwise create a Box
                 const allStrings = bindingItems.every(item => typeof item === "string");
                 if (allStrings) {
                     footerLines.push(bindingsLine.join(""));
                 } else {
-                    // Mixed strings and components - wrap all strings in Text components
-                    const wrappedBindingsLine = bindingsLine.map(item => 
-                        typeof item === "string" ? h(Text, {}, item) : item
-                    );
-                    footerLines.push(wrappedBindingsLine);
+                    footerLines.push(bindingsLine);
                 }
             }
 

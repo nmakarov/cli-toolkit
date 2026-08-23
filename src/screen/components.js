@@ -2,8 +2,9 @@
  * Core screen layout components
  */
 
-import { createElement as h } from "react";
+import React, { createElement as h } from "react";
 import { Box, Text } from "ink";
+import { stripAnsi } from "./visible-text.js";
 
 /**
  * Get screen width for borders
@@ -131,20 +132,24 @@ export function ScreenFooter({ lines, textStyle }) {
                 const nested = flattenAndWrap(item, `${keyPrefix}-${index}`);
                 result.push(...nested);
             } else if (typeof item === "string") {
-                // Wrap strings in Text components
+                // Pre-styled (chalk) strings must not get dim/color again — that
+                // reapplies intensity and leaves only the first key looking bright.
+                const preStyled = stripAnsi(item) !== item;
                 result.push(
-                    h(Text, { key: `${keyPrefix}-${keyIndex++}`, ...finalTextStyle }, item)
+                    h(Text, {
+                        key: `${keyPrefix}-${keyIndex++}`,
+                        ...(preStyled ? {} : finalTextStyle),
+                    }, item)
                 );
-            } else {
-                // JSX elements - add key if missing
-                const element = item ;
-                if (element.key === null || element.key === undefined) {
-                    result.push(
-                        h(Text, { key: `${keyPrefix}-${keyIndex++}`, ...finalTextStyle }, element)
-                    );
-                } else {
-                    result.push(element);
-                }
+            } else if (React.isValidElement(item)) {
+                // Never wrap elements in dim Text (Ink then styles only the first child).
+                result.push(
+                    item.key == null
+                        ? React.cloneElement(item, { key: `${keyPrefix}-${keyIndex++}` })
+                        : item
+                );
+            } else if (item != null) {
+                result.push(item);
             }
         });
 

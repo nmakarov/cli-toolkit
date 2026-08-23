@@ -22,6 +22,8 @@ export {
     showWordGridScreen,
     formatFooterHotkey,
     FOOTER_HOTKEY_STYLE,
+    styleFooterHotkey,
+    styleFooterMuted,
 } from "./screens.js";
 
 // Reusable components

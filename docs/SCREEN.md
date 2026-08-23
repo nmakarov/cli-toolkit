@@ -155,7 +155,7 @@ const result = await showScreen({
         ctx.setAction("cancel", () => ctx.close(null));
         
         // Set key bindings — footer shows "s to save, c to cancel"
-        // with the hotkeys in bright white (automatic; no extra markup)
+        // with each hotkey bold (automatic; no extra markup)
         ctx.setKeyBinding([
             { key: "s", caption: "save", action: "save", order: 1 },
             { key: "c", caption: "cancel", action: "cancel", order: 2 }

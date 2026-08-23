@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
+import { stripAnsi } from "../visible-text.js";
 
 describe("Screen CI", () => {
     let screens;
@@ -64,6 +65,13 @@ describe("Screen CI", () => {
             mock.useRef = (initial) => ({ current: initial });
 
             mock.isValidElement = (value) => typeof value === "object" && value !== null && "type" in value;
+
+            mock.cloneElement = (element, props = {}) => ({
+                type: element.type,
+                props: { ...element.props, ...props },
+                children: element.children,
+                key: props.key ?? element.key,
+            });
 
             mock.default = mock;
 
@@ -304,17 +312,19 @@ describe("Screen CI", () => {
             lines: [
                 "Line one",
                 ["Nested"],
-                customElement
+                customElement,
+                "\u001b[1mesc\u001b[22m to go back"
             ],
             textStyle: { color: "green", dimColor: false }
         }));
 
         const footerTexts = footer.children[0].children;
-        expect(footerTexts).toHaveLength(3);
+        expect(footerTexts).toHaveLength(4);
         expect(footerTexts[0].props.color).toBe("green");
         expect(footerTexts[1].children[0]).toBe("Nested");
-        expect(footerTexts[2].type).toBe("Text");
-        expect(footerTexts[2].children[0].type).toBe("span");
+        expect(footerTexts[2].type).toBe("span");
+        expect(footerTexts[3].props.dimColor).toBeUndefined();
+        expect(footerTexts[3].props.color).toBeUndefined();
 
         (process.stdout ).columns = originalColumns;
     });
@@ -361,19 +371,17 @@ describe("Screen CI", () => {
         ] , "long");
 
         expect(items[0]).toEqual(custom);
-        expect(collectText(items[1]).join("")).toBe("b to stop");
-        const stopKey = findNode(items[1], (node) => node.props?.bold === true);
-        expect(stopKey?.children?.[0] ?? stopKey?.props?.children).toBe("b");
-        expect(stopKey?.props).toMatchObject({ bold: true, color: "white", dimColor: false });
+        expect(stripAnsi(items[1])).toBe("b to stop");
+        expect(items[1]).toContain(screens.styleFooterHotkey("b"));
 
         const shortItems = formatKeyBindings([
             { key: "x", caption: "skip", action: "skip" },
             { key: "y", caption: "skip", action: "skip" }
         ] , "short");
 
-        expect(shortItems.map((item) => collectText(item).join(""))).toEqual(["x/y"]);
-        const shortKeys = findNode(shortItems[0], (node) => node.props?.bold === true && (node.children?.[0] === "x" || node.props?.children === "x"));
-        expect(shortKeys?.props).toMatchObject({ bold: true, color: "white", dimColor: false });
+        expect(shortItems.map((item) => stripAnsi(item))).toEqual(["x/y"]);
+        expect(shortItems[0]).toContain(screens.styleFooterHotkey("x"));
+        expect(shortItems[0]).toContain(screens.styleFooterHotkey("y"));
         expect(formatKeys(["escape", "leftArrow", "unknown"])).toBe("esc/←/unknown");
     });
 

@@ -1,37 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { formatKeyBindings, FOOTER_HOTKEY_STYLE } from "../screens.js";
+import {
+    formatKeyBindings,
+    styleFooterHotkey,
+} from "../screens.js";
+import { stripAnsi } from "../visible-text.js";
 
-function textOf(node) {
+function visibleOf(node) {
     if (node == null || typeof node === "boolean") return "";
-    if (typeof node === "string" || typeof node === "number") return String(node);
-    if (Array.isArray(node)) return node.map(textOf).join("");
+    if (typeof node === "string" || typeof node === "number") return stripAnsi(node);
+    if (Array.isArray(node)) return node.map(visibleOf).join("");
     if (typeof node === "object" && node.props?.children !== undefined) {
-        return textOf(node.props.children);
+        return visibleOf(node.props.children);
     }
     return "";
-}
-
-function findStyled(node, pred) {
-    if (node == null || typeof node === "boolean") return null;
-    if (Array.isArray(node)) {
-        for (const kid of node) {
-            const found = findStyled(kid, pred);
-            if (found) return found;
-        }
-        return null;
-    }
-    if (typeof node !== "object") return null;
-    if (pred(node)) return node;
-    const kids = Array.isArray(node.props?.children)
-        ? node.props.children
-        : node.props?.children != null
-          ? [node.props.children]
-          : [];
-    for (const kid of kids) {
-        const found = findStyled(kid, pred);
-        if (found) return found;
-    }
-    return null;
 }
 
 describe("Screen", () => {
@@ -42,14 +23,12 @@ describe("Screen", () => {
         ] ;
 
         const items = formatKeyBindings(bindings, "long");
-        expect(items.map(textOf)).toEqual([
+        expect(items.map(visibleOf)).toEqual([
             "esc to go back",
             "enter to select"
         ]);
-        for (const label of ["esc", "enter"]) {
-            const keyNode = findStyled(items, (n) => n.props?.children === label);
-            expect(keyNode?.props).toMatchObject(FOOTER_HOTKEY_STYLE);
-        }
+        expect(items[0]).toContain(styleFooterHotkey("esc"));
+        expect(items[1]).toContain(styleFooterHotkey("enter"));
     });
 
     it("highlights every key in a grouped binding", () => {
@@ -62,14 +41,16 @@ describe("Screen", () => {
             ],
             "long",
         );
-        expect(items.map(textOf)).toEqual([
+        expect(items.map(visibleOf)).toEqual([
             "esc/← to go back",
             "enter to inspect",
             "r to refresh",
         ]);
         for (const label of ["esc", "←", "enter", "r"]) {
-            const keyNode = findStyled(items, (n) => n.props?.children === label);
-            expect(keyNode?.props, label).toMatchObject(FOOTER_HOTKEY_STYLE);
+            expect(
+                items.some((item) => typeof item === "string" && item.includes(styleFooterHotkey(label))),
+                label,
+            ).toBe(true);
         }
     });
 
@@ -80,12 +61,8 @@ describe("Screen", () => {
         ] ;
 
         const items = formatKeyBindings(bindings, "short");
-        expect(items.map(textOf)).toEqual(["↑/↓"]);
-        for (const label of ["↑", "↓"]) {
-            const keyNode = findStyled(items[0], (n) => n.props?.children === label);
-            expect(keyNode?.props).toMatchObject(FOOTER_HOTKEY_STYLE);
-        }
+        expect(items.map(visibleOf)).toEqual(["↑/↓"]);
+        expect(items[0]).toContain(styleFooterHotkey("↑"));
+        expect(items[0]).toContain(styleFooterHotkey("↓"));
     });
 });
-
-
