@@ -13,11 +13,13 @@ All notable changes to this project will be documented in this file.
   steady throughput.
 
 ### Added
-- **Screen footer hotkeys**: `formatKeyBindings` / `showScreen` render each
-  key label (`esc`, `←`, `enter`, `r`, `↑`, `↓`, …) as a chalk `reset`+`bold`
-  span so they stay bright after dim captions. (Ink `dimColor` + `bold` share
-  SGR 22, which left only the first key highlighted.) Scripts only define
-  bindings; highlighting is automatic.
+- **Screen footer hotkeys**: `ScreenFooter` takes a `hotkeys` array of
+  `{ hotkey, caption }` (optional `kind: "toggle"`, `value`). It styles each
+  key as its own bold `Text` and captions as gray — no string parsing, no
+  `dimColor` (dim + bold share SGR 22 and left only the first key bright).
+  `showScreen` fills this from key bindings automatically; `ctx.setSmartFooter()`
+  rebuilds from bindings or accepts an explicit array. Extra status lines still
+  use `setFooter` / `addFooter`. List sort uses `kind: "toggle"`.
 - **Esc goes back**: Ink's `useInput` always sets `meta: true` on Escape
   (Escape is the terminal meta prefix). `bindingMatchesInput` no longer
   treats that as Option+Esc, so the default `esc` + `←` "go back" bindings

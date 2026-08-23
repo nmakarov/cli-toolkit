@@ -154,15 +154,18 @@ const result = await showScreen({
         ctx.setAction("save", () => ctx.close("saved"));
         ctx.setAction("cancel", () => ctx.close(null));
         
-        // Set key bindings — footer shows "s to save, c to cancel"
-        // with each hotkey bold (automatic; no extra markup)
+        // Key bindings become footer hotkeys automatically:
+        // bold `s` / `c`, gray "to save" / "to cancel"
         ctx.setKeyBinding([
             { key: "s", caption: "save", action: "save", order: 1 },
             { key: "c", caption: "cancel", action: "cancel", order: 2 }
         ]);
+        // Optional: rebuild from bindings, or pass explicit items
+        // ctx.setSmartFooter();
+        // ctx.setSmartFooter([{ hotkey: "s", caption: "save" }]);
         
-        // Set footer
-        ctx.setFooter("s to save, c to cancel");
+        // Extra status lines only — not the hotkey row
+        ctx.setFooter("unsaved changes");
         
         // Return UI
         return h(Box, { flexDirection: "column" },
@@ -223,6 +226,21 @@ const selected = await showMultiColumnListWithPreviewScreen({
 });
 ```
 
+## Footer hotkeys
+
+`setKeyBinding` is enough — `showScreen` turns bindings into `{ hotkey, caption }` items and `ScreenFooter` styles each key (bold) and caption (gray). Same caption groups keys (`esc` + `←` → `esc/←`).
+
+```typescript
+ctx.setKeyBinding([
+    { key: "s", caption: "save", action: "save", order: 1 },
+    { key: "s", caption: "sort", action: "toggleSort", order: 5, kind: "toggle", value: "ASC" },
+]);
+ctx.setSmartFooter(); // optional rebuild from current bindings
+ctx.setFooter("unsaved changes"); // extra status line, not the hotkey row
+```
+
+`kind: "toggle"` plus `value` appends a badge after the caption (list sort uses this).
+
 ## UI Components
 
 ### Layout Components
@@ -244,8 +262,12 @@ h(ScreenContainer, {},
     h(ScreenBody, {},
         h(Text, {}, "Content")
     ),
-    h(ScreenFooter, { 
-        lines: ["esc to exit", "enter to select"] 
+    h(ScreenFooter, {
+        hotkeys: [
+            { hotkey: "esc", caption: "exit" },
+            { hotkey: "enter", caption: "select" },
+        ],
+        lines: ["optional status line"],
     })
 );
 ```
@@ -379,7 +401,12 @@ onRender: (ctx) => {
     ctx.updateKeyBinding("s", { enabled: false });
     ctx.removeKeyBinding("s");
     
-    // Footer
+    // Footer — hotkey row comes from bindings (or setSmartFooter)
+    ctx.setSmartFooter(); // rebuild from current key bindings
+    ctx.setSmartFooter([
+        { hotkey: ["esc", "←"], caption: "go back" },
+        { hotkey: "s", caption: "sort", kind: "toggle", value: "ASC" },
+    ]);
     ctx.addFooter("Additional info");
     ctx.setFooter(["New footer"]);
     ctx.clearFooter();

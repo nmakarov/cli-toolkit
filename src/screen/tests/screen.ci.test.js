@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
-import { stripAnsi } from "../visible-text.js";
 
 describe("Screen CI", () => {
     let screens;
@@ -163,6 +162,7 @@ describe("Screen CI", () => {
             addFooter: vi.fn(),
             clearFooter: vi.fn(),
             setFooter: vi.fn(),
+            setSmartFooter: vi.fn(),
             update: vi.fn(),
             goBack: vi.fn(),
             close: vi.fn(),
@@ -326,6 +326,25 @@ describe("Screen CI", () => {
         expect(footerTexts[3].props.dimColor).toBeUndefined();
         expect(footerTexts[3].props.color).toBeUndefined();
 
+        const smartFooter = evaluateNode(ScreenFooter({
+            hotkeys: [
+                { hotkey: ["esc", "←"], caption: "go back" },
+                { hotkey: "enter", caption: "select" },
+            ],
+        }));
+        const smartTexts = findNode(smartFooter, (node) => node.type === "Box" && node.props?.flexDirection === "row");
+        const boldKeys = [];
+        const collectBold = (node) => {
+            if (!node) return;
+            if (Array.isArray(node)) { node.forEach(collectBold); return; }
+            if (node.props?.bold && typeof (node.children?.[0] ?? node.props?.children) === "string") {
+                boldKeys.push(node.children?.[0] ?? node.props.children);
+            }
+            if (node.children) collectBold(node.children);
+        };
+        collectBold(smartTexts);
+        expect(boldKeys).toEqual(["esc", "←", "enter"]);
+
         (process.stdout ).columns = originalColumns;
     });
 
@@ -362,26 +381,23 @@ describe("Screen CI", () => {
     });
 
     it("formats key bindings with strings, custom components, and short mode", () => {
-        const { formatKeyBindings, formatKeys } = screens;
+        const { bindingsToFooterHotkeys, formatKeys } = screens;
         const custom = ReactMock.createElement("span", { key: "c" }, "Custom");
 
-        const items = formatKeyBindings([
+        const items = bindingsToFooterHotkeys([
             { key: "b", caption: "stop", action: "stop", order: 2 },
             { key: "a", caption: () => custom, action: "custom", order: 1 }
         ] , "long");
 
-        expect(items[0]).toEqual(custom);
-        expect(stripAnsi(items[1])).toBe("b to stop");
-        expect(items[1]).toContain(screens.styleFooterHotkey("b"));
+        expect(items[0].node).toEqual(custom);
+        expect(items[1]).toEqual({ hotkey: ["b"], caption: "stop", order: 2 });
 
-        const shortItems = formatKeyBindings([
+        const shortItems = bindingsToFooterHotkeys([
             { key: "x", caption: "skip", action: "skip" },
             { key: "y", caption: "skip", action: "skip" }
         ] , "short");
 
-        expect(shortItems.map((item) => stripAnsi(item))).toEqual(["x/y"]);
-        expect(shortItems[0]).toContain(screens.styleFooterHotkey("x"));
-        expect(shortItems[0]).toContain(screens.styleFooterHotkey("y"));
+        expect(shortItems).toEqual([{ hotkey: ["x", "y"], caption: "", order: 999 }]);
         expect(formatKeys(["escape", "leftArrow", "unknown"])).toBe("esc/←/unknown");
     });
 
@@ -402,6 +418,8 @@ describe("Screen CI", () => {
                 ctx.removeKeyBinding("temp");
                 ctx.addFooter("line");
                 ctx.setFooter(["line2"]);
+                ctx.setSmartFooter();
+                ctx.setSmartFooter([{ hotkey: "x", caption: "extra" }]);
                 ctx.clearFooter();
                 return ReactMock.createElement("div", {});
             }

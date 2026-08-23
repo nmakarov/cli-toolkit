@@ -5,7 +5,7 @@
 import { useState, createElement as h } from "react";
 import { render, useInput, Box, Text } from "ink";
 import chalk from "chalk";
-import { ScreenContainer, ScreenRow, ScreenTitle, ScreenDivider, ScreenFooter } from "./components.js";
+import { ScreenContainer, ScreenRow, ScreenTitle, ScreenDivider, ScreenFooter, normalizeFooterHotkey } from "./components.js";
 import { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
 import {
     bindingIdentity,
@@ -113,59 +113,72 @@ export function groupKeyBindings(bindings) {
             };
         }
         groups[caption].keys.push(formatBindingKey(binding));
+        if (binding.kind) groups[caption].kind = binding.kind;
+        if (binding.value !== undefined) groups[caption].value = binding.value;
+        if (binding.valueStyle) groups[caption].valueStyle = binding.valueStyle;
     });
 
     return Object.values(groups);
 }
 
 /**
- * Format key bindings for footer (returns array of strings/components)
+ * Turn key bindings into `{ hotkey, caption }` items for ScreenFooter.
+ * Does not style anything — ScreenFooter paints each hotkey.
+ *
+ * @param {object[]} bindings
+ * @param {"long"|"short"} [mode]
  */
-export function formatKeyBindings(bindings, mode = "long") {
-    // Resolve function captions
-    const resolvedBindings = bindings.map(binding => {
-        let resolvedCaption = binding.caption;
+export function bindingsToFooterHotkeys(bindings, mode = "long") {
+    const customItems = [];
+    const stringBindings = [];
 
-        // If caption is a function, call it
-        if (typeof binding.caption === "function") {
-            resolvedCaption = binding.caption();
+    (bindings || []).forEach((binding) => {
+        if (binding.enabled === false) return;
+        let caption = binding.caption;
+        if (typeof caption === "function") {
+            caption = caption();
         }
-
-        return {
-            ...binding,
-            resolvedCaption
-        };
+        if (caption != null && typeof caption !== "string") {
+            customItems.push({
+                hotkey: [formatBindingKey(binding)],
+                caption: "",
+                node: caption,
+                order: binding.order || 999,
+                kind: binding.kind,
+                value: binding.value,
+                valueStyle: binding.valueStyle,
+            });
+            return;
+        }
+        stringBindings.push({ ...binding, caption: caption || "" });
     });
 
-    const groups = groupKeyBindings(resolvedBindings.map(b => ({
-        ...b,
-        caption: typeof b.resolvedCaption === "string" ? b.resolvedCaption : ""
-    })));
-
-    // Sort by order
+    const groups = groupKeyBindings(stringBindings);
     groups.sort((a, b) => a.order - b.order);
 
-    const items = [];
-
-    groups.forEach((group, groupIndex) => {
-        // Check if any binding in this group has a component/custom caption
-        const bindingWithCustom = resolvedBindings.find(b =>
-            group.keys.includes(formatBindingKey(b)) && typeof b.resolvedCaption !== "string"
-        );
-
-        if (bindingWithCustom && bindingWithCustom.resolvedCaption) {
-            // Use the full custom display (component or complex structure)
-            items.push(bindingWithCustom.resolvedCaption );
-        } else {
-            items.push(formatFooterHotkey(formatKeys(group.keys), group.caption, mode));
-        }
+    const items = groups.map((group) => {
+        const item = {
+            hotkey: group.keys,
+            caption: mode === "short" ? "" : group.caption,
+            order: group.order,
+        };
+        if (group.kind) item.kind = group.kind;
+        if (group.value !== undefined) item.value = group.value;
+        if (group.valueStyle) item.valueStyle = group.valueStyle;
+        return item;
     });
 
+    customItems.forEach((item) => items.push(item));
+    items.sort((a, b) => (a.order || 999) - (b.order || 999));
     return items;
 }
 
-/** @deprecated Ink props — footer keys are chalk-styled strings so dim/bold do not share SGR 22. */
-export const FOOTER_HOTKEY_STYLE = { bold: true, color: "white", dimColor: false };
+/** @deprecated Use bindingsToFooterHotkeys — returns structured footer items. */
+export function formatKeyBindings(bindings, mode = "long") {
+    return bindingsToFooterHotkeys(bindings, mode);
+}
+
+export { FOOTER_HOTKEY_STYLE, FOOTER_MUTED_STYLE, normalizeFooterHotkey } from "./components.js";
 
 /** Bold default-fg key; `reset` clears a prior dim so later keys stay bright. */
 export function styleFooterHotkey(label) {
@@ -233,6 +246,7 @@ export async function showScreen(config) {
         const keyBindings = [];
         const actions = {};
         const customFooterItems = [];
+        let smartFooterHotkeys = null;
         let renderResult = null;
         let initialized = false;
 
@@ -352,6 +366,20 @@ export async function showScreen(config) {
                     customFooterItems.push(...itemsArray);
                 },
 
+                /**
+                 * Structured hotkey footer. With no args, rebuild from current
+                 * key bindings. With an array, use those `{ hotkey, caption }`
+                 * items (and optional `kind: "toggle", value`) instead.
+                 */
+                setSmartFooter: (items) => {
+                    if (items == null) {
+                        smartFooterHotkeys = null;
+                    } else {
+                        const arr = Array.isArray(items) ? items : [items];
+                        smartFooterHotkeys = arr.map(normalizeFooterHotkey).filter(Boolean);
+                    }
+                },
+
                 update: () => {
                     setUpdateCounter(c => c + 1);
                 },
@@ -408,38 +436,8 @@ export async function showScreen(config) {
                 }
             });
 
-            // Build footer
-            const footerLines = [];
-
-            // Add key bindings (returns array of strings/components)
-            const bindingItems = formatKeyBindings(keyBindings, "long");
-
-            if (bindingItems.length > 0) {
-                // Build a single line with all binding items separated by ", "
-                const bindingsLine = [];
-                bindingItems.forEach((item, idx) => {
-                    if (idx > 0) {
-                        bindingsLine.push(styleFooterMuted(", "));
-                    }
-                    bindingsLine.push(item);
-                });
-
-                const allStrings = bindingItems.every(item => typeof item === "string");
-                if (allStrings) {
-                    footerLines.push(bindingsLine.join(""));
-                } else {
-                    footerLines.push(bindingsLine);
-                }
-            }
-
-            // Add custom footer items
-            customFooterItems.forEach(item => {
-                if (typeof item === "string") {
-                    footerLines.push(item);
-                } else {
-                    footerLines.push(item);
-                }
-            });
+            const footerHotkeys = smartFooterHotkeys
+                ?? bindingsToFooterHotkeys(keyBindings, "long");
 
             return h(ScreenContainer, {},
                 h(ScreenTitle, { text: title }),
@@ -448,7 +446,10 @@ export async function showScreen(config) {
                 renderResult,
                 h(ScreenRow, {}, h(Text, {}, " ")),
                 h(ScreenDivider),
-                h(ScreenFooter, { lines: footerLines })
+                h(ScreenFooter, {
+                    hotkeys: footerHotkeys,
+                    lines: customFooterItems,
+                })
             );
         };
 

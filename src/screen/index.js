@@ -21,14 +21,17 @@ export {
     showMenuScreen,
     showWordGridScreen,
     formatFooterHotkey,
+    formatKeyBindings,
+    bindingsToFooterHotkeys,
     FOOTER_HOTKEY_STYLE,
+    FOOTER_MUTED_STYLE,
     styleFooterHotkey,
     styleFooterMuted,
 } from "./screens.js";
 
 // Reusable components
 export { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
-export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, ScreenDivider } from "./components.js";
+export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, ScreenDivider, normalizeFooterHotkey } from "./components.js";
 export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-elements.js";
 export { ScrollableText, wrapTextLines, scrollbarGlyphs } from "./scrollable-text.js";
 export { stripAnsi, visibleWidth, padEndVisible, sliceVisible } from "./visible-text.js";

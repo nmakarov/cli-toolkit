@@ -456,28 +456,16 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
             };
             const highlightStyle = { ...defaultHighlightStyle, ...sortHighlightStyle };
 
-            // Create caption that includes sort status
-            const sortCaption = () => {
-                if (sortOrder === "none") {
-                    return h(Text, {}, "s to toggle sort");
-                } else {
-                    const sortLabel = sortOrder === "asc" ? "ASC" : "DESC";
-                    return h(Text, {}, 
-                        "s to toggle ",
-                        h(Text, { color: "white", bold: true }, "sort"),
-                        " ",
-                        h(Text, highlightStyle, ` ${sortLabel} `)
-                    );
-                }
-            };
-
             ctx.setKeyBinding([
                 ...navBindings,
                 {
                     key: "s",
-                    caption: sortCaption,
+                    caption: "toggle sort",
                     action: "toggleSort",
                     order: 5,
+                    kind: "toggle",
+                    value: sortOrder === "none" ? undefined : sortOrder === "asc" ? "ASC" : "DESC",
+                    valueStyle: highlightStyle,
                 },
             ]);
 
