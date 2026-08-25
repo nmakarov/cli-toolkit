@@ -1,4 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { mkdtempSync, readdirSync, writeFileSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import {
     deleteHistoryOlderThan,
     effectiveRetentionDays,
@@ -8,8 +11,9 @@ import {
     retentionCutoffIso,
     seedTaskRetentionRuntime,
 } from "../taskRetention.js";
-import { planIpcLogPrune } from "../taskLogs.js";
+import { planIpcLogPrune, pruneIpcLogsOlderThan } from "../taskLogs.js";
 import { coerceRuntimeValue } from "../runtimeParams.js";
+import { FileDatabase } from "../../filedatabase/index.js";
 
 describe("retention policy", () => {
     it("keeps the configured window when disk is healthy", () => {
@@ -83,6 +87,79 @@ describe("planIpcLogPrune", () => {
         );
         expect(plan.deleteAll).toBe(true);
         expect(plan.kept).toEqual([]);
+    });
+
+    it("treats unreadable versions as empty so they are deleted", () => {
+        const plan = planIpcLogPrune(
+            [
+                { version: "corrupt", records: [] },
+                { version: "live", records: [{ ts: "2026-08-20T00:00:00.000Z" }] },
+            ],
+            cutoff,
+        );
+        expect(plan.deleteVersions).toEqual(["corrupt"]);
+        expect(plan.kept.map((r) => r.ts)).toEqual(["2026-08-20T00:00:00.000Z"]);
+        expect(plan.deleteAll).toBe(false);
+    });
+});
+
+describe("pruneIpcLogsOlderThan", () => {
+    const tmpDirs = [];
+    afterEach(() => {
+        for (const dir of tmpDirs.splice(0)) {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("skips a truncated chunk and keeps pruning other versions", async () => {
+        const tmpDir = mkdtempSync(join(tmpdir(), "ipc-prune-"));
+        tmpDirs.push(tmpDir);
+        const params = {
+            tasksLogsBasePath: tmpDir,
+            tasksLogsNamespace: "tasks-logs",
+        };
+        const logger = { warn: vi.fn(), info: vi.fn() };
+        const fd = new FileDatabase({
+            basePath: tmpDir,
+            namespace: "tasks-logs",
+            tableName: "runner",
+            versioned: true,
+            useMetadata: true,
+            maxVersions: 30,
+            pageSize: 2000,
+            logger,
+        });
+        await fd.write([{ ts: "2026-08-01T00:00:00.000Z", msg: "old" }], { forceNewVersion: true });
+        const [staleVersion] = await fd.getVersions();
+        await fd.write([{ ts: "2026-08-20T00:00:00.000Z", msg: "live" }], { forceNewVersion: true });
+
+        const staleDir = join(tmpDir, "tasks-logs", "runner", staleVersion);
+        const chunk = readdirSync(staleDir).find((name) => name.endsWith(".json") && name !== "metadata.json");
+        expect(chunk).toBeTruthy();
+        writeFileSync(join(staleDir, chunk), '[{"ts":"2026-08-01T00:00:00.000Z"', "utf8");
+
+        const ctx = {
+            logger,
+            params: { get: (key) => params[key] },
+        };
+        const out = await pruneIpcLogsOlderThan(ctx, "2026-08-17T00:00:00.000Z");
+        expect(out.tables).toBe(1);
+        expect(out.details[0].error).toBeUndefined();
+        expect(logger.warn).toHaveBeenCalled();
+        expect(String(logger.warn.mock.calls[0][0])).toMatch(/unreadable IPC log runner/);
+
+        const remaining = (await fd.getVersions()).filter((v) => {
+            try {
+                readdirSync(join(tmpDir, "tasks-logs", "runner", v));
+                return true;
+            } catch {
+                return false;
+            }
+        });
+        expect(remaining).not.toContain(staleVersion);
+        expect(remaining.length).toBeGreaterThanOrEqual(1);
+        const kept = await fd.read({ version: remaining[remaining.length - 1] });
+        expect(kept.some((r) => r.msg === "live")).toBe(true);
     });
 });
 

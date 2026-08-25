@@ -439,6 +439,18 @@ async function removeVersionDir(tableDir, version) {
     await fs.rm(path.join(tableDir, version), { recursive: true, force: true });
 }
 
+async function readIpcLogVersion(fd, version, logger, tableName) {
+    try {
+        const raw = await fd.read({ version });
+        return { version, records: Array.isArray(raw) ? raw : [] };
+    } catch (err) {
+        logger?.warn?.(
+            `[tasks-retention] skipping unreadable IPC log ${tableName}/${version}: ${err?.message ?? err}`,
+        );
+        return { version, records: [] };
+    }
+}
+
 async function compactIpcLogTable(context, tableName, cutoff) {
     const holder = context;
     const basePath = holder.params?.get?.("tasksLogsBasePath") || "./data";
@@ -458,8 +470,7 @@ async function compactIpcLogTable(context, tableName, cutoff) {
 
     const loaded = [];
     for (const version of versions) {
-        const raw = await fd.read({ version });
-        loaded.push({ version, records: Array.isArray(raw) ? raw : [] });
+        loaded.push(await readIpcLogVersion(fd, version, holder.logger, tableName));
     }
     const plan = planIpcLogPrune(loaded, cutoff);
     const tableDir = resolveIpcFileLogsDir(context, { tableName, basePath, namespace });
@@ -513,12 +524,19 @@ export async function pruneIpcLogsOlderThan(context, cutoff, opts = {}) {
     let dropped = 0;
     for (const tableName of tables) {
         if (isStop()) break;
-        const out = await enqueueOnLogQueue(context, tableName, () =>
-            compactIpcLogTable(context, tableName, cutoff),
-        );
-        invalidateIpcLogWriter(context, tableName);
-        details.push(out);
-        dropped += Number(out?.dropped) || 0;
+        try {
+            const out = await enqueueOnLogQueue(context, tableName, () =>
+                compactIpcLogTable(context, tableName, cutoff),
+            );
+            invalidateIpcLogWriter(context, tableName);
+            details.push(out);
+            dropped += Number(out?.dropped) || 0;
+        } catch (err) {
+            context?.logger?.warn?.(
+                `[tasks-retention] prune table ${tableName} failed: ${err?.message ?? err}`,
+            );
+            details.push({ table: tableName, dropped: 0, error: err?.message ?? String(err) });
+        }
     }
     return { tables: details.length, dropped, details };
 }

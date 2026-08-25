@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **Task retention prune**: a truncated FileDatabase chunk (`Unexpected end
+  of JSON input`) aborted the whole pass. Unreadable versions are skipped
+  (and deleted as empty) so other tables / history still prune.
 - **Task retention prune**: `readDiskUsage` was re-exported but never bound
   locally (`export { getDiskUsage as readDiskUsage }` does not create a
   local name). Prune now calls `getDiskUsage` so disk-aware cutoff works.
