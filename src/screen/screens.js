@@ -412,6 +412,16 @@ export async function showScreen(config) {
                     return;
                 }
 
+                // Paste is a multi-char string; Ink leaves only shift/meta/ctrl
+                // on `key`. Do not treat that as a hotkey (`s`, `r`, …).
+                const keyFlags = Object.entries(key || {})
+                    .filter(([, v]) => v === true)
+                    .map(([k]) => k);
+                const pasteLike = keyFlags.every((k) => k === "shift" || k === "meta" || k === "ctrl");
+                if (typeof input === "string" && input.length > 1 && pasteLike) {
+                    return;
+                }
+
                 // Find matching key binding
                 let matchedBinding = null;
 

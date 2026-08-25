@@ -16,6 +16,15 @@ All notable changes to this project will be documented in this file.
   full-frame erase). Cursor math matches Ink’s trailing newline so the
   layout does not walk off the screen. Viewport slot keys / no
   `ctx.update()` on scroll still apply.
+- **Text input paste**: Ink delivers a paste as one multi-character `input`.
+  `nextTextInputValue()` accepts that (and strips bracketed-paste markers)
+  so fields are not limited to `input.length === 1`. `showScreen` ignores
+  multi-character pastes as hotkeys (named keys still match via `key.*`).
+- **Screen taller than the terminal**: a logs (or any) pane that overflowed
+  `stdout.rows` made Ink `clearTerminal` on every render — header lines
+  flickered and the title scrolled off under `marginTop`. Viewport height
+  is now `getScreenBodyRows()` (chrome + extras + one slack row);
+  `ScreenContainer` is height-capped so the frame always fits.
 - **Logger `--mode=json`**: write one JSON line (`JSON.stringify`) so a parent can
   parse child stdout / IPC and re-apply time + level.
 

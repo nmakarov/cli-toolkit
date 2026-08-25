@@ -4,6 +4,7 @@
 
 import React, { createElement as h } from "react";
 import { Box, Text } from "ink";
+import { getScreenFrameBoxHeight } from "./screen-layout.js";
 import { stripAnsi } from "./visible-text.js";
 
 /**
@@ -53,6 +54,7 @@ export function getScreenWidth(maxWidth = null) {
  */
 export function ScreenContainer({ children }) {
     const width = getScreenWidth();
+    const height = getScreenFrameBoxHeight();
 
     return h(Box, {
         flexDirection: "column",
@@ -60,23 +62,25 @@ export function ScreenContainer({ children }) {
         borderStyle: "single",
         borderColor: "cyan",
         paddingX: 1,
-        width: width  // Use the calculated width directly
+        width,
+        height,
+        overflow: "hidden",
     }, children);
 }
 
 /**
  * Screen row - just a wrapper for spacing, borders handled by container
  */
-export function ScreenRow({ children }) {
-    return h(Box, { flexDirection: "column" }, children);
+export function ScreenRow({ children, ...boxProps }) {
+    return h(Box, { flexDirection: "column", ...boxProps }, children);
 }
 
 /**
  * Screen Title - first line inside container (left-aligned, breadcrumb-style)
  */
 export function ScreenTitle({ text }) {
-    return h(ScreenRow, {},
-        h(Text, { bold: true, color: "cyan" }, text)
+    return h(ScreenRow, { flexShrink: 0 },
+        h(Text, { bold: true, color: "cyan", wrap: "truncate" }, text)
     );
 }
 

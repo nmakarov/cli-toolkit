@@ -111,9 +111,11 @@ const screen = require('@nmakarov/cli-toolkit/screen');
 - 🖥️ **Interactive Screens** - Full-screen terminal UIs with navigation
 - 📋 **List Components** - Scrollable, sortable lists with page keys + scrollbar when overflowing
 - 📜 **ScrollableText** - Long text with line/page scroll and a proportional scrollbar.
-  Viewport rows use stable slot keys. `showScreen` paints through a
-  flicker-free stdout (in-place line diffs) so ↑/↓ does not blank the frame
-  the way Ink’s default log-update does.
+  Viewport rows use stable slot keys. Height comes from `getScreenBodyRows()`
+  so the frame stays shorter than the terminal (Ink otherwise `clearTerminal`s
+  every paint). `showScreen` paints through a flicker-free stdout (in-place
+  line diffs) so ↑/↓ does not blank the frame the way Ink’s default
+  log-update does.
 - 🎯 **Multi-column Grids** - Word grids and column-based layouts
 - 🔍 **Preview Panes** - Show details for selected items
 - ⌨️ **Keyboard Navigation** - Arrow keys, shortcuts, custom bindings (optional `meta`/`ctrl`)

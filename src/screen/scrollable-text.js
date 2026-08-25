@@ -12,6 +12,7 @@
 import { useState, useEffect, useMemo, useRef, createElement } from "react";
 import { Box, Text } from "ink";
 import { getScreenWidth } from "./components.js";
+import { getScreenBodyRows } from "./screen-layout.js";
 import {
     BAR_THUMB,
     BAR_TRACK,
@@ -43,6 +44,7 @@ const SCROLL_KEYS = [
  *   bindKeys?: boolean,
  *   header?: unknown,
  *   followBottom?: boolean,
+ *   reserveRows?: number,
  * }} props
  */
 export function ScrollableText({
@@ -56,14 +58,15 @@ export function ScrollableText({
     bindKeys = true,
     header = null,
     followBottom = false,
+    reserveRows = 0,
 }) {
     const [scrollTop, setScrollTop] = useState(0);
     const [following, setFollowing] = useState(() => !!followBottom);
 
-    const termRows = process.stdout.rows || 24;
+    const extraRows = (header == null ? 0 : 1) + (showStatus ? 1 : 0) + (Number(reserveRows) || 0);
     const viewportRows = Math.max(
         4,
-        maxHeight != null ? Math.floor(maxHeight) : Math.max(8, termRows - 8),
+        maxHeight != null ? Math.floor(maxHeight) : getScreenBodyRows({ extraRows }),
     );
 
     // Match ScreenContainer inner width: container is term-4, minus border+paddingX → term-8

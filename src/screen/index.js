@@ -32,6 +32,11 @@ export {
 // Reusable components
 export { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComponent } from "./list-components.js";
 export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, ScreenDivider, normalizeFooterHotkey } from "./components.js";
+export {
+    getScreenBodyRows,
+    getScreenChromeRows,
+    getScreenFrameBoxHeight,
+} from "./screen-layout.js";
 export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-elements.js";
 export { ScrollableText, wrapTextLines, scrollbarGlyphs } from "./scrollable-text.js";
 export { createFlickerFreeStdout } from "./flicker-free-stdout.js";
@@ -52,6 +57,7 @@ export {
     bindingMatchesInput,
     formatBindingKey,
 } from "./key-bindings.js";
+export { nextTextInputValue, sanitizeTextInput } from "./text-input.js";
 
 // Utilities
 export { buildBreadcrumb, buildDetailBreadcrumb } from "./utils.js";
