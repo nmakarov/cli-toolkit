@@ -145,7 +145,7 @@ export class HttpClient {
      */
     static init(context, options = {}) {
         const defs = {
-            timeout: "number default 30000",
+            timeout: "number default 120000",
             retryCount: "number default 3",
             retryDelay: "number default 1000",
             maxRetryDelay: "number default 30000",

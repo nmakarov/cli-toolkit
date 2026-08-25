@@ -46,17 +46,75 @@ const LEVEL_COLORS = {
     results: chalk.magenta
 };
 
+function paint(level, text, { color = true, bold = false } = {}) {
+    if (!color || text == null || text === "") return text == null ? "" : String(text);
+    const formatter = LEVEL_COLORS[level] ?? chalk.white;
+    return bold ? formatter.bold(text) : formatter(text);
+}
 
+function inspectChunks(chunks, color = true) {
+    return (chunks ?? [])
+        .map((chunk) => util.inspect(chunk, { colors: color, depth: null }))
+        .join(" ");
+}
 
+/**
+ * Format a log struct for a terminal. Used by Logger and by UIs (tasksmm)
+ * that persist structs and render them later.
+ *
+ * @param {{ level?: string, message?: string, prefix?: string, count?: unknown, total?: unknown,
+ *           elapsed?: number, remaining?: number, rate?: number, chunks?: unknown[], results?: unknown }} struct
+ * @param {{ timestamp?: boolean, showLevel?: boolean, color?: boolean, now?: Date|string|number }} [options]
+ */
+export function formatLog(struct = {}, options = {}) {
+    const level = String(struct.level || "info").toLowerCase();
+    const color = options.color !== false;
+    const parts = [];
+    const now = options.now != null ? new Date(options.now) : new Date();
 
+    if (options.timestamp) {
+        const d = Number.isNaN(now.getTime()) ? new Date() : now;
+        parts.push(d.toISOString());
+    }
 
+    if (options.showLevel) {
+        parts.push(level.toUpperCase().padEnd(MAX_LEVEL_LENGTH));
+    }
 
+    if (level === "progress") {
+        if (struct.prefix) {
+            parts.push(paint(level, struct.prefix, { color, bold: true }));
+        }
+        if (struct.count !== undefined && struct.total !== undefined) {
+            parts.push(paint(level, `${struct.count}/${struct.total}`, { color }));
+        }
+    } else if (struct.prefix) {
+        parts.push(color ? chalk.cyan(`[${struct.prefix}]`) : `[${struct.prefix}]`);
+    }
 
+    if (struct.message) {
+        parts.push(paint(level, struct.message, { color, bold: true }));
+    }
 
+    if (level === "progress") {
+        if (struct.elapsed !== undefined && struct.remaining !== undefined) {
+            parts.push(paint(level, `${struct.elapsed}/${struct.remaining}`, { color }));
+        }
+        if (struct.rate !== undefined) {
+            parts.push(paint(level, Number(struct.rate) >= 0 ? `${struct.rate}/s` : "-/s", { color }));
+        }
+    }
 
+    if (struct.chunks && struct.chunks.length) {
+        parts.push(inspectChunks(struct.chunks, color));
+    }
 
+    if (struct.results) {
+        parts.push(paint(level, JSON.stringify(struct.results, null, 4), { color }));
+    }
 
-
+    return parts.join(" ");
+}
 
 export class Logger  {
     context; // Partial context during initialization
@@ -300,66 +358,22 @@ export class Logger  {
         }
 
         const output = this.options.mode === "json"
-            ? struct
+            ? JSON.stringify(struct)
             : this.formatLog(struct);
 
         this.transport.write(output);
     }
 
     formatLog(struct) {
-        const parts = [];
-        const now = new Date();
-
-        if (this.options.timestamp) {
-            parts.push(now.toISOString());
-        }
-
-        if (this.options.showLevel) {
-            parts.push(struct.level.toUpperCase().padEnd(MAX_LEVEL_LENGTH));
-        }
-
-        if (struct.level === "progress") {
-            if (struct.prefix) {
-                parts.push(LEVEL_COLORS[struct.level].bold(struct.prefix));
-            }
-            if (struct.count !== undefined && struct.total !== undefined) {
-                parts.push(LEVEL_COLORS[struct.level](`${struct.count}/${struct.total}`));
-            }
-        } else if (struct.prefix) {
-            parts.push(chalk.cyan(`[${struct.prefix}]`));
-        }
-
-        if (struct.message) {
-            const formatter = LEVEL_COLORS[struct.level] ?? chalk.white;
-            parts.push(formatter.bold(struct.message));
-        }
-
-        if (struct.level === "progress") {
-            const formatter = LEVEL_COLORS[struct.level];
-            if (struct.elapsed !== undefined && struct.remaining !== undefined) {
-                parts.push(formatter(`${struct.elapsed}/${struct.remaining}`));
-            }
-            if (struct.rate !== undefined) {
-                parts.push(formatter(struct.rate >= 0 ? `${struct.rate}/s` : "-/s"));
-            }
-        }
-
-        if (struct.chunks && struct.chunks.length) {
-            parts.push(this.inspectChunks(struct.chunks));
-        }
-
-        if (struct.results) {
-            const formatter = LEVEL_COLORS[struct.level] ?? chalk.white;
-            parts.push(formatter(JSON.stringify(struct.results, null, 4)));
-        }
-
-        return parts.join(" ");
+        return formatLog(struct, {
+            timestamp: this.options.timestamp,
+            showLevel: this.options.showLevel,
+            color: true,
+        });
     }
 
     inspectChunks(chunks) {
-        return chunks
-            .map(chunk => util.inspect(chunk, { colors: true, depth: null }))
-            .join(" ");
+        return inspectChunks(chunks, true);
     }
 
     shouldUseIpcRoute() {

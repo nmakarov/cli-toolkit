@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **formatLog(struct, options)** — shared terminal formatter (timestamp / level / chalk).
+  Logger uses it; UIs can color persisted log objects.
+- **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
+
+### Fixed
+- **Logger `--mode=json`**: write one JSON line (`JSON.stringify`) so a parent can
+  parse child stdout / IPC and re-apply time + level.
+
+### Added
 - **Task history + IPC log retention**: runners prune `*_history` and FileDatabase
   IPC logs on the same cutoff (default **7 days**). Automatic pass after handlers
   / idle ticks (interval default 1h). Disk-aware: if free space on the logs

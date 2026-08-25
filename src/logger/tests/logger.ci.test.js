@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Logger } from "../index.js";
+import { Logger, formatLog } from "../index.js";
 import { ConsoleFallbackLogger } from "../fallback.js";
 
 // Create a minimal context for testing
@@ -72,7 +72,8 @@ describe("Logger CI", () => {
         logger.notice("json-test", { data: 42 });
 
         expect(consoleInfo).toHaveBeenCalledTimes(1);
-        const payload = consoleInfo.mock.calls[0][0];
+        const raw = consoleInfo.mock.calls[0][0];
+        const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
         expect(payload).toMatchObject({
             level: "notice",
             message: "json-test"
@@ -260,7 +261,22 @@ describe("Logger CI", () => {
         const logger = new Logger(context, { mode: "text", route: "console" });
         logger.setMode("json");
         logger.info("json-switch");
-        expect(consoleInfo.mock.calls[0][0]).toMatchObject({ level: "info", message: "json-switch" });
+        const raw = consoleInfo.mock.calls[0][0];
+        const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
+        expect(payload).toMatchObject({ level: "info", message: "json-switch" });
+    });
+
+    it("formatLog colors a stored struct without a second timestamp when asked", () => {
+        const line = formatLog(
+            { level: "warn", message: "[HttpClient] GET failed (timeout)" },
+            { timestamp: false, showLevel: true, color: false, now: "2026-08-25T15:58:28.000Z" },
+        );
+        expect(line).toMatch(/^WARN\s+\[HttpClient\] GET failed \(timeout\)$/);
+        const withTs = formatLog(
+            { level: "info", message: "hello" },
+            { timestamp: true, showLevel: true, color: false, now: "2026-08-25T15:58:28.000Z" },
+        );
+        expect(withTs.startsWith("2026-08-25T15:58:28.000Z INFO")).toBe(true);
     });
 });
 
