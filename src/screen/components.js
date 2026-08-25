@@ -54,7 +54,7 @@ export function getScreenWidth(maxWidth = null) {
  */
 export function ScreenContainer({ children }) {
     const width = getScreenWidth();
-    const height = getScreenFrameBoxHeight();
+    const maxHeight = getScreenFrameBoxHeight();
 
     return h(Box, {
         flexDirection: "column",
@@ -63,7 +63,7 @@ export function ScreenContainer({ children }) {
         borderColor: "cyan",
         paddingX: 1,
         width,
-        height,
+        maxHeight,
         overflow: "hidden",
     }, children);
 }

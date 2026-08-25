@@ -112,18 +112,21 @@ export function ipcFileLogsTableNameForSourceResource(source, resource) {
  * @param {string|null} [options.afterTs] ISO timestamp watermark; keeps rows with `ts > afterTs`.
  * @param {string|null} [options.fromTs]  Inclusive lower bound (`ts >= fromTs`).
  * @param {string|null} [options.toTs]    Inclusive upper bound (`ts <= toTs`).
+ * @param {string|null} [options.taskId]  Keep only rows stamped with this task id.
  * @returns {Promise<{ records: object[], latestTs: string|null }>}
  */
-export function filterIpcLogRecords(records, { afterTs, fromTs, toTs } = {}) {
+export function filterIpcLogRecords(records, { afterTs, fromTs, toTs, taskId } = {}) {
     const after = afterTs && String(afterTs).trim() ? String(afterTs).trim() : "";
     const from = fromTs && String(fromTs).trim() ? String(fromTs).trim() : "";
     const to = toTs && String(toTs).trim() ? String(toTs).trim() : "";
+    const id = taskId != null && String(taskId).trim() ? String(taskId).trim() : "";
     return (Array.isArray(records) ? records : []).filter((r) => {
         if (!r || typeof r.ts !== "string") return false;
         const ts = String(r.ts);
         if (after && !(ts > after)) return false;
         if (from && ts < from) return false;
         if (to && ts > to) return false;
+        if (id && String(r.taskId ?? "") !== id) return false;
         return true;
     });
 }
@@ -184,6 +187,7 @@ export async function readTaskIpcLogsSnapshot(context, options) {
         afterTs: options.afterTs,
         fromTs,
         toTs,
+        taskId: options.taskId,
     });
     filtered.sort((a, b) => String(a?.ts ?? "").localeCompare(String(b?.ts ?? "")));
 

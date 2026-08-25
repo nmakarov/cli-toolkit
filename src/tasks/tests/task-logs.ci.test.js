@@ -21,4 +21,13 @@ describe("filterIpcLogRecords", () => {
             }).map((r) => r.payload),
         ).toEqual(["start", "mid", "end"]);
     });
+
+    it("keeps only records stamped with taskId", () => {
+        const mixed = [
+            { ts: "2026-08-24T18:00:00.000Z", taskId: "a", payload: "mine" },
+            { ts: "2026-08-24T18:01:00.000Z", taskId: "b", payload: "other" },
+            { ts: "2026-08-24T18:02:00.000Z", payload: "unstamped" },
+        ];
+        expect(filterIpcLogRecords(mixed, { taskId: "a" }).map((r) => r.payload)).toEqual(["mine"]);
+    });
 });

@@ -10,6 +10,12 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **getLogs / IPC snapshot**: optional `taskId` keeps only rows stamped for
+  that task so a live tail is not mixed with other runs on the same
+  `source/resource` table.
+- **Screen height**: `ScreenContainer` uses `maxHeight` (terminal cap) instead
+  of a fixed `height`, so short screens shrink to content again. Logs still
+  fill the leftover rows via their own viewport.
 - **Task retention prune**: a truncated FileDatabase chunk (`Unexpected end
   of JSON input`) aborted the whole pass. Unreadable versions are skipped
   (and deleted as empty) so other tables / history still prune.

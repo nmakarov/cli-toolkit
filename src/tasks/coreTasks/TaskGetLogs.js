@@ -13,6 +13,7 @@ import { readTaskIpcLogsSnapshot } from "../taskLogs.js";
  *   - `afterTs`  — ISO timestamp watermark; keeps only rows with `ts > afterTs`
  *   - `fromTs`   — inclusive lower bound (`ts >= fromTs`); scans older versions
  *   - `toTs`     — inclusive upper bound (`ts <= toTs`)
+ *   - `taskId`   — keep only rows stamped with this task id
  */
 export class TaskGetLogs extends AbstractTask {
     /**
@@ -28,6 +29,7 @@ export class TaskGetLogs extends AbstractTask {
             afterTs: "string",
             fromTs: "string",
             toTs: "string",
+            taskId: "string",
         }, overrides);
         const source = typeof merged.source === "string" ? merged.source.trim() : "";
         const resource = typeof merged.resource === "string" ? merged.resource.trim() : "";
@@ -46,6 +48,9 @@ export class TaskGetLogs extends AbstractTask {
         if (typeof merged.toTs === "string" && merged.toTs.trim()) {
             out.toTs = merged.toTs.trim();
         }
+        if (typeof merged.taskId === "string" && merged.taskId.trim()) {
+            out.taskId = merged.taskId.trim();
+        }
         return out;
     }
 
@@ -61,6 +66,7 @@ export class TaskGetLogs extends AbstractTask {
         const afterTs = p.afterTs != null && String(p.afterTs).trim() ? String(p.afterTs).trim() : null;
         const fromTs = p.fromTs != null && String(p.fromTs).trim() ? String(p.fromTs).trim() : null;
         const toTs = p.toTs != null && String(p.toTs).trim() ? String(p.toTs).trim() : null;
+        const taskId = p.taskId != null && String(p.taskId).trim() ? String(p.taskId).trim() : null;
 
         if (!source || !resource) {
             return {
@@ -77,6 +83,7 @@ export class TaskGetLogs extends AbstractTask {
                 afterTs,
                 fromTs,
                 toTs,
+                taskId,
             });
             return {
                 success: true,

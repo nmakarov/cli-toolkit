@@ -295,7 +295,8 @@ describe("Screen CI", () => {
         expect(container.props.width).toBe(46);
         expect(container.props.borderStyle).toBe("single");
         expect(container.props.overflow).toBe("hidden");
-        expect(container.props.height).toBeGreaterThan(0);
+        expect(container.props.height).toBeUndefined();
+        expect(container.props.maxHeight).toBeGreaterThan(0);
 
         const title = evaluateNode(ScreenTitle({ text: "Title" }));
         expect(title.children[0].children[0]).toBe("Title");

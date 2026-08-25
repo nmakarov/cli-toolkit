@@ -41,7 +41,7 @@ export function getScreenBodyRows({
 }
 
 /**
- * ScreenContainer Box height (margin is outside). margin + this <= termRows - slack.
+ * ScreenContainer Box maxHeight (margin is outside). margin + this <= termRows - slack.
  */
 export function getScreenFrameBoxHeight({ termRows = process.stdout.rows || 24 } = {}) {
     const rows = Number(termRows) || 24;
