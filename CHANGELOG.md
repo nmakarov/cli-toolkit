@@ -11,9 +11,11 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - **Screen scroll flicker**: Ink’s log-update erases the whole frame then
-  reprints (that flash is the flicker). `showScreen` now writes through
-  `createFlickerFreeStdout`: in-place line diffs + CSI 2026 atomic frames.
-  Viewport slot keys / no `ctx.update()` on scroll still apply.
+  reprints (that flash is the flicker). `showScreen` writes through
+  `createFlickerFreeStdout`: in-place line diffs only (no CSI 2026; no
+  full-frame erase). Cursor math matches Ink’s trailing newline so the
+  layout does not walk off the screen. Viewport slot keys / no
+  `ctx.update()` on scroll still apply.
 - **Logger `--mode=json`**: write one JSON line (`JSON.stringify`) so a parent can
   parse child stdout / IPC and re-apply time + level.
 
