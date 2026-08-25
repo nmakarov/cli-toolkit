@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **Task retention prune**: `readDiskUsage` was re-exported but never bound
+  locally (`export { getDiskUsage as readDiskUsage }` does not create a
+  local name). Prune now calls `getDiskUsage` so disk-aware cutoff works.
 - **Screen scroll flicker**: Ink’s log-update erases the whole frame then
   reprints (that flash is the flicker). `showScreen` writes through
   `createFlickerFreeStdout`: in-place line diffs only (no CSI 2026; no

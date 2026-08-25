@@ -182,6 +182,17 @@ describe("pruneTaskRetention", () => {
         expect(ctx.deleted).toEqual(["old"]);
     });
 
+    it("uses getDiskUsage when readDisk is not injected", async () => {
+        const ctx = makeContext();
+        const out = await pruneTaskRetention(ctx, {
+            now: new Date("2026-08-24T12:00:00.000Z"),
+            pruneLogs: async () => ({ tables: 0, dropped: 0, details: [] }),
+        });
+        expect(out.skipped).toBe(false);
+        expect(out.error).toBeUndefined();
+        expect(out.cutoff).toMatch(/^2026-08-/);
+    });
+
     it("maybePrune skips when inside the interval", async () => {
         const ctx = makeContext();
         seedTaskRetentionRuntime(ctx);
