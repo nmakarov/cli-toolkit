@@ -86,6 +86,7 @@ function tasksTableSpec(tableNameForIndex) {
                 name: `${tableNameForIndex}_claim_idx`,
             },
             { columns: ["service_group", "name"], name: `${tableNameForIndex}_group_name_idx` },
+            { columns: ["completed_at"], name: `${tableNameForIndex}_completed_at_idx` },
         ],
     };
 }

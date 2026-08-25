@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Task history + IPC log retention**: runners prune `*_history` and FileDatabase
+  IPC logs on the same cutoff (default **7 days**). Automatic pass after handlers
+  / idle ticks (interval default 1h). Disk-aware: if free space on the logs
+  volume drops below `tasksRetentionMinFreeRatio` (default 10%), the window
+  shrinks toward `tasksRetentionMinHours` (default 6). Config via CLI/env
+  (`--tasksRetentionDays`, …) or `setRuntimeParam` / tasksmm Change param(s).
+  Enqueue `pruneTaskRetention` to run immediately. `maxVersions` stays a
+  process-restart backstop only.
+- **getLogs time window**: `fromTs` / `toTs` (inclusive) filter IPC snapshots before
+  the tail slice, and scan older FileDatabase versions so a completed run is not
+  lost behind later lines. `afterTs` still means incremental `ts > afterTs`.
+
 ### Fixed
 - **Logger.progress rate/ETA**: rate is now `(count - countAtFirstSample) / elapsed`
   instead of `(count - 1) / elapsed`. Batched reporters (e.g. loader every N

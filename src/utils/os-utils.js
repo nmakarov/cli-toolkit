@@ -46,3 +46,33 @@ export function getFreeDiskSpace(targetPath) {
     }
 }
 
+/**
+ * Free / total bytes for the volume that holds `targetPath` (Node `fs.statfs`).
+ * Returns null when the call is unavailable or fails.
+ *
+ * @param {string} targetPath
+ * @returns {Promise<{ free: number, total: number, freeRatio: number } | null>}
+ */
+export async function getDiskUsage(targetPath) {
+    const fsPromises = await import("node:fs/promises");
+    try {
+        let pathToCheck = targetPath;
+        if (!fs.existsSync(pathToCheck)) {
+            const parentDir = path.dirname(pathToCheck);
+            pathToCheck = fs.existsSync(parentDir)
+                ? parentDir
+                : process.platform === "win32"
+                  ? "C:\\"
+                  : "/";
+        }
+        if (typeof fsPromises.statfs !== "function") return null;
+        const stats = await fsPromises.statfs(pathToCheck);
+        const total = Number(stats.bsize) * Number(stats.blocks);
+        const free = Number(stats.bsize) * Number(stats.bavail);
+        if (!Number.isFinite(total) || total <= 0) return null;
+        return { free, total, freeRatio: free / total };
+    } catch {
+        return null;
+    }
+}
+

@@ -11,6 +11,8 @@ import { readTaskIpcLogsSnapshot } from "../taskLogs.js";
  *   - `resource` (required) — resource slug, e.g. `"properties"`
  *   - `tail`     — max records to return (clamped 1..10000; default 100)
  *   - `afterTs`  — ISO timestamp watermark; keeps only rows with `ts > afterTs`
+ *   - `fromTs`   — inclusive lower bound (`ts >= fromTs`); scans older versions
+ *   - `toTs`     — inclusive upper bound (`ts <= toTs`)
  */
 export class TaskGetLogs extends AbstractTask {
     /**
@@ -24,6 +26,8 @@ export class TaskGetLogs extends AbstractTask {
             resource: "string",
             tail: "number default 100",
             afterTs: "string",
+            fromTs: "string",
+            toTs: "string",
         }, overrides);
         const source = typeof merged.source === "string" ? merged.source.trim() : "";
         const resource = typeof merged.resource === "string" ? merged.resource.trim() : "";
@@ -35,6 +39,12 @@ export class TaskGetLogs extends AbstractTask {
         const out = { source, resource, tail };
         if (typeof merged.afterTs === "string" && merged.afterTs.trim()) {
             out.afterTs = merged.afterTs.trim();
+        }
+        if (typeof merged.fromTs === "string" && merged.fromTs.trim()) {
+            out.fromTs = merged.fromTs.trim();
+        }
+        if (typeof merged.toTs === "string" && merged.toTs.trim()) {
+            out.toTs = merged.toTs.trim();
         }
         return out;
     }
@@ -49,6 +59,8 @@ export class TaskGetLogs extends AbstractTask {
         const resource = String(p.resource ?? "").trim();
         const tail = Math.max(1, Math.min(10_000, Number(p.tail) > 0 ? Number(p.tail) : 100));
         const afterTs = p.afterTs != null && String(p.afterTs).trim() ? String(p.afterTs).trim() : null;
+        const fromTs = p.fromTs != null && String(p.fromTs).trim() ? String(p.fromTs).trim() : null;
+        const toTs = p.toTs != null && String(p.toTs).trim() ? String(p.toTs).trim() : null;
 
         if (!source || !resource) {
             return {
@@ -63,6 +75,8 @@ export class TaskGetLogs extends AbstractTask {
                 resource,
                 tail,
                 afterTs,
+                fromTs,
+                toTs,
             });
             return {
                 success: true,

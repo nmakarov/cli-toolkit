@@ -260,6 +260,14 @@ Options:
 - `--dummyPhotosMaxParallel` max concurrent `dummyPhotos` tasks (default `5`)
 - `--tasksLogsEnabled` enable IPC task-log persistence (default `true`)
 - `--tasksLogsBasePath`, `--tasksLogsNamespace`, `--tasksLogsTable`, `--tasksLogsMaxVersions`
+- `--tasksRetentionEnabled` (default `true`) — prune `*_history` and IPC logs together
+- `--tasksRetentionDays` (default `7`) — keep this many days (`0` disables time prune)
+- `--tasksRetentionIntervalMs` (default `3600000`) — how often the runner checks
+- `--tasksRetentionMinFreeRatio` (default `0.1`) — shrink the window if the logs volume is below this free ratio
+- `--tasksRetentionMinHours` (default `6`) — floor when disk is low
+
+Hot-update the same keys with `setRuntimeParam` (or tasksmm **Change param(s)**).
+Enqueue `pruneTaskRetention` on a runner to run one pass immediately.
 
 ## Examples
 

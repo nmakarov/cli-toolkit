@@ -9,6 +9,7 @@ import { TaskPauseRunner, TaskUnpauseRunner } from "./coreTasks/TaskPauseRunner.
 import { TaskPauseTask, TaskResumeTask } from "./coreTasks/TaskPauseTask.js";
 import { TaskGetLogs } from "./coreTasks/TaskGetLogs.js";
 import { TaskSetRuntimeParam } from "./coreTasks/TaskSetRuntimeParam.js";
+import { TaskPruneTaskRetention } from "./coreTasks/TaskPruneTaskRetention.js";
 
 /**
  * Name → task class map. Runners look up the class by `task.name` when claiming
@@ -53,7 +54,8 @@ export class TasksRegistry {
             .add("resumeTask", TaskResumeTask)
             .add("getLogs", TaskGetLogs)
             .add("setRuntimeParam", TaskSetRuntimeParam)
-            .add("setRunnerParam", TaskSetRuntimeParam);
+            .add("setRunnerParam", TaskSetRuntimeParam)
+            .add("pruneTaskRetention", TaskPruneTaskRetention);
     }
 
     /**

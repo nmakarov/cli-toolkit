@@ -19,6 +19,11 @@ const defs = {
     tasksLogsTable: "string default runner",
     tasksErrorLogsTable: "string default runner-errors",
     tasksLogsMaxVersions: "number default 20",
+    tasksRetentionEnabled: "boolean default true",
+    tasksRetentionDays: "number default 7",
+    tasksRetentionIntervalMs: "number default 3600000",
+    tasksRetentionMinFreeRatio: "number default 0.1",
+    tasksRetentionMinHours: "number default 6",
     maxParallel: "number default 8",
     pollMs: "number default 500",
     /** Service group for `{table}_services_registry` (discovery / max instances). Empty + role=all disables. */

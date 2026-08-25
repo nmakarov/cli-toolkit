@@ -56,6 +56,36 @@ export const DEFAULT_RUNTIME_PARAM_SPECS = [
         label: "Scan limit",
         description: "Max idle rows scanned per claim attempt",
     },
+    {
+        key: "tasksRetentionEnabled",
+        type: "boolean",
+        label: "Retention enabled",
+        description: "Prune tasks_history + IPC logs together",
+    },
+    {
+        key: "tasksRetentionDays",
+        type: "number",
+        label: "Retention days",
+        description: "Keep history and IPC logs this many days (0 = off)",
+    },
+    {
+        key: "tasksRetentionIntervalMs",
+        type: "number",
+        label: "Retention interval ms",
+        description: "How often the runner checks for stale history/logs",
+    },
+    {
+        key: "tasksRetentionMinFreeRatio",
+        type: "number",
+        label: "Min free disk ratio",
+        description: "If free/total on the logs volume is below this, prune earlier",
+    },
+    {
+        key: "tasksRetentionMinHours",
+        type: "number",
+        label: "Min retention hours",
+        description: "Floor when disk is low (never prune newer than this)",
+    },
 ];
 
 /**
@@ -131,6 +161,7 @@ const CONTROL_LANE_TASK_NAMES = [
     "resumeTask",
     "setRuntimeParam",
     "setRunnerParam",
+    "pruneTaskRetention",
 ];
 
 /**
@@ -188,6 +219,28 @@ export function coerceRuntimeValue(key, value) {
             return asPositiveInt(value, key, { min: 0 });
         case "scanLimit":
             return asPositiveInt(value, key, { min: 1 });
+        case "tasksRetentionDays":
+            return asPositiveInt(value, key, { min: 0 });
+        case "tasksRetentionIntervalMs":
+            return asPositiveInt(value, key, { min: 10_000 });
+        case "tasksRetentionMinHours":
+            return asPositiveInt(value, key, { min: 1 });
+        case "tasksRetentionMinFreeRatio": {
+            const n = Number(value);
+            if (!Number.isFinite(n) || n <= 0 || n >= 1) {
+                throw new ParamError(
+                    `setRuntimeParam: ${key} must be a number between 0 and 1 (got ${JSON.stringify(value)})`,
+                );
+            }
+            return n;
+        }
+        case "tasksRetentionEnabled":
+            if (typeof value === "boolean") return value;
+            if (value === "true" || value === "1") return true;
+            if (value === "false" || value === "0") return false;
+            throw new ParamError(
+                `setRuntimeParam: ${key} must be boolean (got ${JSON.stringify(value)})`,
+            );
         case "silent":
         case "showLevel":
         case "timestamp":

@@ -22,6 +22,7 @@ export const SERVICE_TASK_NAMES = [
     "getLogs",
     "setRuntimeParam",
     "setRunnerParam",
+    "pruneTaskRetention",
 ];
 
 /**

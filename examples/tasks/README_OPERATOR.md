@@ -158,6 +158,15 @@ Task log storage:
 - `--tasksLogsTable=runner`
 - `--tasksLogsMaxVersions=20`
 
+History + IPC log retention (same cutoff; default 7 days):
+
+- `--tasksRetentionEnabled=true|false`
+- `--tasksRetentionDays=7` (`0` disables time prune)
+- `--tasksRetentionIntervalMs=3600000`
+- `--tasksRetentionMinFreeRatio=0.1` (prune earlier if the logs volume is below this free ratio)
+- `--tasksRetentionMinHours=6`
+- Hot-update the same keys with `setRuntimeParam`; enqueue `pruneTaskRetention` to run immediately.
+
 ## Troubleshooting
 
 - **No tasks processed**

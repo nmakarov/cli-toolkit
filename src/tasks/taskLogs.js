@@ -1,5 +1,7 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { FileDatabase } from "../filedatabase/index.js";
+import { isTimestampFolder } from "../utils/date-utils.js";
 
 /**
  * Gets or lazily builds the default IPC-logs FileDatabase state, cached on
@@ -108,14 +110,42 @@ export function ipcFileLogsTableNameForSourceResource(source, resource) {
  * @param {string} options.resource
  * @param {number} [options.tail=100]     Max records returned after filtering (clamped 1..10000).
  * @param {string|null} [options.afterTs] ISO timestamp watermark; keeps rows with `ts > afterTs`.
+ * @param {string|null} [options.fromTs]  Inclusive lower bound (`ts >= fromTs`).
+ * @param {string|null} [options.toTs]    Inclusive upper bound (`ts <= toTs`).
  * @returns {Promise<{ records: object[], latestTs: string|null }>}
  */
+export function filterIpcLogRecords(records, { afterTs, fromTs, toTs } = {}) {
+    const after = afterTs && String(afterTs).trim() ? String(afterTs).trim() : "";
+    const from = fromTs && String(fromTs).trim() ? String(fromTs).trim() : "";
+    const to = toTs && String(toTs).trim() ? String(toTs).trim() : "";
+    return (Array.isArray(records) ? records : []).filter((r) => {
+        if (!r || typeof r.ts !== "string") return false;
+        const ts = String(r.ts);
+        if (after && !(ts > after)) return false;
+        if (from && ts < from) return false;
+        if (to && ts > to) return false;
+        return true;
+    });
+}
+
+function latestIpcRecordTs(records) {
+    let latestTs = null;
+    for (const r of records ?? []) {
+        const ts = typeof r?.ts === "string" ? String(r.ts) : null;
+        if (ts && (!latestTs || ts > latestTs)) latestTs = ts;
+    }
+    return latestTs;
+}
+
 export async function readTaskIpcLogsSnapshot(context, options) {
     const holder = context;
     const basePath = holder.params?.get?.("tasksLogsBasePath") ?? "./data";
     const namespace = holder.params?.get?.("tasksLogsNamespace") ?? "tasks-logs";
     const tableName = ipcFileLogsTableNameForSourceResource(options.source, options.resource);
     const tail = Math.max(1, Math.min(10_000, Number(options.tail) > 0 ? Number(options.tail) : 100));
+    const fromTs = options.fromTs && String(options.fromTs).trim() ? String(options.fromTs).trim() : "";
+    const toTs = options.toTs && String(options.toTs).trim() ? String(options.toTs).trim() : "";
+    const wantsWindow = !!(fromTs || toTs);
 
     const fd = new FileDatabase({
         basePath,
@@ -132,26 +162,37 @@ export async function readTaskIpcLogsSnapshot(context, options) {
     if (versions.length === 0) {
         return { records: [], latestTs: null };
     }
-    const latest = versions[versions.length - 1];
-    const raw = await fd.read({ version: latest });
-    const arr = Array.isArray(raw) ? raw : [];
 
-    let filtered = arr;
-    if (options.afterTs && String(options.afterTs).trim()) {
-        const cut = String(options.afterTs).trim();
-        filtered = arr.filter((r) => r && typeof r.ts === "string" && String(r.ts) > cut);
+    const versionsToRead = wantsWindow ? [...versions].reverse() : [versions[versions.length - 1]];
+    const collected = [];
+    for (const version of versionsToRead) {
+        const raw = await fd.read({ version });
+        const arr = Array.isArray(raw) ? raw : [];
+        collected.push(...arr);
+        if (!wantsWindow) break;
+        if (fromTs) {
+            let minTs = null;
+            for (const r of arr) {
+                const ts = typeof r?.ts === "string" ? r.ts : null;
+                if (ts && (!minTs || ts < minTs)) minTs = ts;
+            }
+            if (minTs && minTs <= fromTs) break;
+        }
     }
+
+    const filtered = filterIpcLogRecords(collected, {
+        afterTs: options.afterTs,
+        fromTs,
+        toTs,
+    });
+    filtered.sort((a, b) => String(a?.ts ?? "").localeCompare(String(b?.ts ?? "")));
 
     /** Watermark for incremental fetches: max `ts` among all matching rows, not only the returned tail. */
-    let latestTs = null;
-    for (const r of filtered) {
-        const ts = typeof r?.ts === "string" ? String(r.ts) : null;
-        if (ts && (!latestTs || ts > latestTs)) latestTs = ts;
-    }
+    const latestTs = latestIpcRecordTs(filtered);
 
     const incremental = !!(options.afterTs && String(options.afterTs).trim());
     /** Incremental polls may return many lines between ticks — cap at 10k so we do not drop rows then advance `latestTs` past them. */
-    const maxReturn = incremental ? 10_000 : tail;
+    const maxReturn = incremental || wantsWindow ? 10_000 : tail;
     const sliced = filtered.length > maxReturn ? filtered.slice(-maxReturn) : filtered;
 
     return { records: sliced, latestTs };
@@ -333,4 +374,151 @@ export async function flushTaskIpcLogs(context) {
         }
     }
     await Promise.all(promises);
+}
+
+export function tasksLogsRoot(context) {
+    const holder = context ?? {};
+    const basePath = holder.params?.get?.("tasksLogsBasePath") || "./data";
+    const namespace = holder.params?.get?.("tasksLogsNamespace") || "tasks-logs";
+    return path.resolve(basePath, namespace);
+}
+
+/**
+ * Decide what to drop / rewrite for one IPC table.
+ * @param {{ version: string, records: object[] }[]} versions
+ * @param {string} cutoff ISO
+ */
+export function planIpcLogPrune(versions, cutoff) {
+    const cut = String(cutoff);
+    const kept = [];
+    const deleteVersions = [];
+    let dropped = 0;
+    let needsRewrite = false;
+    for (const { version, records } of versions ?? []) {
+        const arr = Array.isArray(records) ? records : [];
+        const live = arr.filter((r) => typeof r?.ts === "string" && r.ts >= cut);
+        dropped += arr.length - live.length;
+        kept.push(...live);
+        if (live.length === 0) deleteVersions.push(version);
+        else if (live.length < arr.length) needsRewrite = true;
+    }
+    return {
+        kept,
+        dropped,
+        deleteVersions,
+        rewrite: needsRewrite,
+        deleteAll: kept.length === 0 && (versions?.length ?? 0) > 0,
+    };
+}
+
+async function listIpcLogTableNames(root) {
+    const tables = [];
+    const walk = async (dir, prefix) => {
+        let entries;
+        try {
+            entries = await fs.readdir(dir, { withFileTypes: true });
+        } catch {
+            return;
+        }
+        const versionDirs = entries.filter((e) => e.isDirectory() && isTimestampFolder(e.name));
+        if (versionDirs.length && prefix) {
+            tables.push(prefix);
+            return;
+        }
+        for (const e of entries) {
+            if (!e.isDirectory() || isTimestampFolder(e.name)) continue;
+            const next = prefix ? `${prefix}/${e.name}` : e.name;
+            await walk(path.join(dir, e.name), next);
+        }
+    };
+    await walk(root, "");
+    return tables;
+}
+
+async function removeVersionDir(tableDir, version) {
+    await fs.rm(path.join(tableDir, version), { recursive: true, force: true });
+}
+
+async function compactIpcLogTable(context, tableName, cutoff) {
+    const holder = context;
+    const basePath = holder.params?.get?.("tasksLogsBasePath") || "./data";
+    const namespace = holder.params?.get?.("tasksLogsNamespace") || "tasks-logs";
+    const fd = new FileDatabase({
+        basePath,
+        namespace,
+        tableName,
+        versioned: true,
+        useMetadata: true,
+        maxVersions: 30,
+        pageSize: 2000,
+        logger: holder.logger,
+    });
+    const versions = await fd.getVersions();
+    if (versions.length === 0) return { table: tableName, dropped: 0, deletedVersions: 0 };
+
+    const loaded = [];
+    for (const version of versions) {
+        const raw = await fd.read({ version });
+        loaded.push({ version, records: Array.isArray(raw) ? raw : [] });
+    }
+    const plan = planIpcLogPrune(loaded, cutoff);
+    const tableDir = resolveIpcFileLogsDir(context, { tableName, basePath, namespace });
+
+    if (plan.deleteAll) {
+        for (const version of versions) await removeVersionDir(tableDir, version);
+        return { table: tableName, dropped: plan.dropped, deletedVersions: versions.length };
+    }
+
+    if (plan.rewrite) {
+        await fd.write(plan.kept, { forceNewVersion: true });
+        const keep = fd.currentVersion;
+        for (const version of await fd.getVersions()) {
+            if (version !== keep) await removeVersionDir(tableDir, version);
+        }
+        return { table: tableName, dropped: plan.dropped, deletedVersions: versions.length, rewritten: true };
+    }
+
+    for (const version of plan.deleteVersions) await removeVersionDir(tableDir, version);
+    return { table: tableName, dropped: plan.dropped, deletedVersions: plan.deleteVersions.length };
+}
+
+function invalidateIpcLogWriter(context, tableName) {
+    const holder = context;
+    holder.__tasksLogsTargetStates?.delete(ipcLogTargetKey({ tableName }));
+    const defaultTable = holder.params?.get?.("tasksLogsTable") || "runner";
+    if (tableName === defaultTable) holder.__tasksLogsState = undefined;
+}
+
+function enqueueOnLogQueue(context, tableName, work) {
+    const state = getLogsStateForTarget(context, { tableName });
+    if (!state) return work();
+    const done = state.queue.then(work, work);
+    state.queue = done.catch(() => {});
+    return done;
+}
+
+/**
+ * Drop IPC FileDatabase records older than `cutoff` (all tables under the logs namespace).
+ *
+ * @param {object} context
+ * @param {string} cutoff ISO
+ * @param {{ isStop?: () => boolean }} [opts]
+ * @returns {Promise<{ tables: number, dropped: number, details: object[] }>}
+ */
+export async function pruneIpcLogsOlderThan(context, cutoff, opts = {}) {
+    const isStop = typeof opts.isStop === "function" ? opts.isStop : () => false;
+    const root = tasksLogsRoot(context);
+    const tables = await listIpcLogTableNames(root);
+    const details = [];
+    let dropped = 0;
+    for (const tableName of tables) {
+        if (isStop()) break;
+        const out = await enqueueOnLogQueue(context, tableName, () =>
+            compactIpcLogTable(context, tableName, cutoff),
+        );
+        invalidateIpcLogWriter(context, tableName);
+        details.push(out);
+        dropped += Number(out?.dropped) || 0;
+    }
+    return { tables: details.length, dropped, details };
 }

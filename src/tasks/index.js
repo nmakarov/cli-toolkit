@@ -32,6 +32,7 @@ import {
     mergeRuntimeParamSpecs,
     runtimeValuesForSpecs,
 } from "./runtimeParams.js";
+import { maybePruneTaskRetention, seedTaskRetentionRuntime } from "./taskRetention.js";
 
 /** Sentinel value stored in the `progress` column when a task is paused due to error. */
 const LOCKED_BY_ERROR_MESSAGE = "locked by error";
@@ -61,11 +62,25 @@ export { unregisterServicesRegistry as unregisterRunnerHeartbeat } from "./servi
 export { listServicesRegistry as listAliveRunnerHeartbeats } from "./servicesRegistry.js";
 export {
     appendTaskIpcLog,
+    filterIpcLogRecords,
     flushTaskIpcLogs,
     ipcFileLogsTableNameForSourceResource,
     readTaskIpcLogsSnapshot,
     resolveIpcFileLogsDir,
+    pruneIpcLogsOlderThan,
+    planIpcLogPrune,
+    tasksLogsRoot,
 } from "./taskLogs.js";
+export {
+    maybePruneTaskRetention,
+    pruneTaskRetention,
+    seedTaskRetentionRuntime,
+    readRetentionConfig,
+    effectiveRetentionDays,
+    retentionCutoffIso,
+    deleteHistoryOlderThan,
+} from "./taskRetention.js";
+export { TaskPruneTaskRetention } from "./coreTasks/TaskPruneTaskRetention.js";
 export { runNodeTaskScript } from "./taskScriptRunner.js";
 export { AbstractTask } from "./AbstractTask.js";
 export { TasksRegistry } from "./TasksRegistry.js";
@@ -356,7 +371,17 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
 
     const stopRunnerRequested = !!(results && typeof results === "object" && results.stopRunner === true);
     const stopAllowanceMs = stopRunnerRequested ? Number(results.allowanceMs ?? 60_000) : 0;
+    scheduleTaskRetentionPass(context, historyTable);
     return { stopRunnerRequested, stopAllowanceMs };
+}
+
+function scheduleTaskRetentionPass(context, historyTable) {
+    void maybePruneTaskRetention(context, {
+        historyTable,
+        queueName: context.tasksQueueName,
+    }).catch((err) => {
+        context.logger?.warn?.(`[tasks-retention] ${err?.message ?? String(err)}`);
+    });
 }
 
 /** Fisher–Yates shuffle so concurrent workers don't all try the same candidate row first. */
@@ -550,6 +575,7 @@ export async function runTasksLoop(context, options) {
         claimJitterMs: options.claimJitterMs ?? 0,
         scanLimit: options.scanLimit ?? 100,
     });
+    seedTaskRetentionRuntime(context);
     if (typeof options.onRuntimeParam === "function") {
         context.tasksRuntimeOnParam = options.onRuntimeParam;
     }
@@ -701,6 +727,7 @@ export async function runTasksLoop(context, options) {
                 wakePromises.push(runningControlPromise);
             }
             if (wakePromises.length === 0) {
+                scheduleTaskRetentionPass(context, historyTable);
                 await sleepMs(pollMs);
             } else {
                 const safe = wakePromises.map((p) => p.catch(() => undefined));
