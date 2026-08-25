@@ -34,6 +34,7 @@ export { MultiColumnListComponent, MultiColumnListWithPreviewComponent, ListComp
 export { ScreenContainer, ScreenRow, ScreenTitle, ScreenBody, ScreenFooter, ScreenDivider, normalizeFooterHotkey } from "./components.js";
 export { ListItem, TextBlock, Divider, GridCell, InputField } from "./ui-elements.js";
 export { ScrollableText, wrapTextLines, scrollbarGlyphs } from "./scrollable-text.js";
+export { createFlickerFreeStdout } from "./flicker-free-stdout.js";
 export { stripAnsi, visibleWidth, padEndVisible, sliceVisible } from "./visible-text.js";
 export {
     clampScroll,

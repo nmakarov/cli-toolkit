@@ -10,10 +10,10 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
-- **Screen scroll flicker**: `ScrollableText` / lists keep stable viewport slot
-  keys and do not `ctx.update()` on each line scroll, so Ink patches text in
-  place instead of remounting the bordered frame. `showScreen` sets
-  `patchConsole: false`.
+- **Screen scroll flicker**: Ink’s log-update erases the whole frame then
+  reprints (that flash is the flicker). `showScreen` now writes through
+  `createFlickerFreeStdout`: in-place line diffs + CSI 2026 atomic frames.
+  Viewport slot keys / no `ctx.update()` on scroll still apply.
 - **Logger `--mode=json`**: write one JSON line (`JSON.stringify`) so a parent can
   parse child stdout / IPC and re-apply time + level.
 

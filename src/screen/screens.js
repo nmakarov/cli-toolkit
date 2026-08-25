@@ -12,6 +12,7 @@ import {
     bindingMatchesInput,
     formatBindingKey,
 } from "./key-bindings.js";
+import { createFlickerFreeStdout } from "./flicker-free-stdout.js";
 
 // Types
 
@@ -458,7 +459,10 @@ export async function showScreen(config) {
             setTimeout(() => resolve(result), 50);
         };
 
-        instance = render(h(Screen), { patchConsole: false });
+        instance = render(h(Screen), {
+            patchConsole: false,
+            stdout: createFlickerFreeStdout(process.stdout),
+        });
     });
 }
 
