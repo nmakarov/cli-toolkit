@@ -458,7 +458,7 @@ export async function showScreen(config) {
             setTimeout(() => resolve(result), 50);
         };
 
-        instance = render(h(Screen));
+        instance = render(h(Screen), { patchConsole: false });
     });
 }
 

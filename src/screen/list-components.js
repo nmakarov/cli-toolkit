@@ -513,12 +513,12 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
         return h(
             Box,
             { flexDirection: "row" },
-            h(Text, { key: `arrow-${actualIndex}`, color: "white" }, arrowPrefix),
-            h(Text, { key: `marker-${actualIndex}`, color: "white" }, selectionPrefix),
+            h(Text, { key: "arrow", color: "white" }, arrowPrefix),
+            h(Text, { key: "marker", color: "white" }, selectionPrefix),
             h(
                 Text,
                 {
-                    key: `name-${actualIndex}`,
+                    key: "name",
                     color: isSelected ? "black" : "white",
                     backgroundColor: isSelected ? "cyan" : undefined,
                     bold: isSelected,
@@ -558,19 +558,19 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
                 const row = h(
                     Box,
                     { flexDirection: "row" },
-                    h(Text, { key: `arrow-${actualIndex}`, color: "white" }, arrowPrefix),
-                    h(Text, { key: `marker-${actualIndex}`, color: "white" }, selectionPrefix),
+                    h(Text, { key: "arrow", color: "white" }, arrowPrefix),
+                    h(Text, { key: "marker", color: "white" }, selectionPrefix),
                     renderItem(clipped, isSelected, displayIndex),
                 );
 
                 return h(ScreenRow, {
-                    key: `item-${actualIndex}`,
+                    key: `slot-${displayIndex}`,
                     children: appendBar(row, displayIndex),
                 });
             }
 
             return h(ScreenRow, {
-                key: `item-${actualIndex}`,
+                key: `slot-${displayIndex}`,
                 children: appendBar(
                     itemRenderer(item, isSelected, displayIndex, actualIndex),
                     displayIndex,

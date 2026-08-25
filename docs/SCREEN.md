@@ -110,7 +110,8 @@ const screen = require('@nmakarov/cli-toolkit/screen');
 
 - 🖥️ **Interactive Screens** - Full-screen terminal UIs with navigation
 - 📋 **List Components** - Scrollable, sortable lists with page keys + scrollbar when overflowing
-- 📜 **ScrollableText** - Long text with line/page scroll and a proportional scrollbar
+- 📜 **ScrollableText** - Long text with line/page scroll and a proportional scrollbar.
+  Viewport rows use stable slot keys and do not remount the Screen on ↑/↓ (avoids flicker).
 - 🎯 **Multi-column Grids** - Word grids and column-based layouts
 - 🔍 **Preview Panes** - Show details for selected items
 - ⌨️ **Keyboard Navigation** - Arrow keys, shortcuts, custom bindings (optional `meta`/`ctrl`)

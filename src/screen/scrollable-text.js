@@ -59,7 +59,6 @@ export function ScrollableText({
 }) {
     const [scrollTop, setScrollTop] = useState(0);
     const [following, setFollowing] = useState(() => !!followBottom);
-    const [, bump] = useState(0);
 
     const termRows = process.stdout.rows || 24;
     const viewportRows = Math.max(
@@ -108,8 +107,8 @@ export function ScrollableText({
         const next = nextScrollAfterUserMove(scrollTopRef.current, maxScrollRef.current, delta);
         setScrollTop(next.scrollTop);
         if (followBottom) setFollowing(next.following);
-        bump((n) => n + 1);
-        ctx?.update?.();
+        // Do not ctx.update() — that remounts the bordered Screen and flashes.
+        // Slot keys stay `slot-i` so Ink patches line text in place (like less).
     };
 
     useEffect(() => {
@@ -132,42 +131,32 @@ export function ScrollableText({
               (needsBar ? " · ⌥↑/↓ or PgUp/Dn page" : "") +
               (followBottom && following ? " · follow" : followBottom ? " · follow off" : "");
 
-    // Fixed-width row: text pane + 1-col bar so the track is always a straight
-    // right edge (ANSI / wrap must not move the glyph).
-    const rowNodes = visible.map((line, i) => {
+    // Fixed-width rows + stable slot keys: scrolling updates text, does not remount.
+    // Always emit `viewportRows` slots so the pane height (and Screen border) stay put.
+    const rowNodes = [];
+    for (let i = 0; i < viewportRows; i++) {
+        const line = visible[i] ?? "";
         const glyph = bar ? bar[i] ?? BAR_TRACK : showScrollbar ? " " : "";
         const isThumb = glyph === BAR_THUMB;
-        return h(
-            Box,
-            { key: `L${clamped + i}`, flexDirection: "row", width: contentCols, flexShrink: 0 },
+        rowNodes.push(
             h(
                 Box,
-                { width: textWidth, flexShrink: 0 },
-                h(Text, { wrap: "truncate" }, padEndVisible(line, textWidth)),
-            ),
-            showScrollbar
-                ? h(Box, { width: 1, flexShrink: 0 }, h(Text, { color: isThumb ? "cyan" : "gray" }, glyph))
-                : null,
-        );
-    });
-
-    if (bar && visible.length < viewportRows) {
-        for (let i = visible.length; i < viewportRows; i++) {
-            const glyph = bar[i] ?? BAR_TRACK;
-            rowNodes.push(
+                { key: `slot-${i}`, flexDirection: "row", width: contentCols, flexShrink: 0 },
                 h(
                     Box,
-                    { key: `pad${i}`, flexDirection: "row", width: contentCols, flexShrink: 0 },
-                    h(Box, { width: textWidth, flexShrink: 0 }, h(Text, {}, padEndVisible("", textWidth))),
-                    h(Box, { width: 1, flexShrink: 0 }, h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph)),
+                    { width: textWidth, flexShrink: 0 },
+                    h(Text, { wrap: "truncate" }, padEndVisible(line, textWidth)),
                 ),
-            );
-        }
+                showScrollbar
+                    ? h(Box, { width: 1, flexShrink: 0 }, h(Text, { color: isThumb ? "cyan" : "gray" }, glyph))
+                    : null,
+            ),
+        );
     }
 
     return h(
         Box,
-        { flexDirection: "column" },
+        { flexDirection: "column", overflow: "hidden" },
         header == null
             ? null
             : typeof header === "string"
