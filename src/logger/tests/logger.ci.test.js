@@ -66,6 +66,15 @@ describe("Logger CI", () => {
         expect(secondCall[0]).toContain("failed");
     });
 
+    it("does not throw when a level method is called unbound", () => {
+        const context = createTestContext();
+        const logger = new Logger(context, { mode: "json", showLevel: false, route: "console" });
+        expect(() => logger.warn.call(undefined, "unbound")).not.toThrow();
+        expect(consoleInfo).not.toHaveBeenCalled();
+        logger.warn("bound");
+        expect(consoleInfo).toHaveBeenCalled();
+    });
+
     it("emits JSON mode payloads", () => {
         const context = createTestContext();
         const logger = new Logger(context, { mode: "json", showLevel: false, route: "console" });

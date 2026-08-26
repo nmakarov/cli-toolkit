@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **Logger level methods**: `warn`/`notice`/… no longer crash with
+  `Cannot read properties of undefined (reading 'out')` when extracted
+  and called unbound (`const log = logger.warn; log(msg)`).
 - **getLogs / IPC snapshot**: optional `taskId` keeps only rows stamped for
   that task so a live tail is not mixed with other runs on the same
   `source/resource` table.

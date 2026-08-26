@@ -226,35 +226,43 @@ export class Logger  {
     }
 
     debug(message, ...chunks) {
-        this.out({ level: "debug", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "debug", message, chunks });
     }
 
     info(message, ...chunks) {
-        this.out({ level: "info", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "info", message, chunks });
     }
 
     notice(message, ...chunks) {
-        this.out({ level: "notice", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "notice", message, chunks });
     }
 
     warn(message, ...chunks) {
-        this.out({ level: "warn", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "warn", message, chunks });
     }
 
     error(message, ...chunks) {
-        this.out({ level: "error", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "error", message, chunks });
     }
 
     logic(message, ...chunks) {
-        this.out({ level: "logic", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "logic", message, chunks });
     }
 
     silly(message, ...chunks) {
-        this.out({ level: "silly", message, chunks });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "silly", message, chunks });
     }
 
     results(results) {
-        this.out({ level: "results", message: "results", results });
+        const out = this?.out;
+        if (typeof out === "function") out.call(this, { level: "results", message: "results", results });
     }
 
     request(operation, ...chunks) {
