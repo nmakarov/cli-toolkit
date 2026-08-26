@@ -10,6 +10,11 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **Task retention prune**: flattening a large IPC table used
+  `push(...records)` and threw `Maximum call stack size exceeded` (seen on
+  `bright/intake`). Append is now a loop. Missing FileDatabase chunks
+  (`ENOENT` on `00000N.json`) are skipped and the version is rewritten or
+  deleted so hourly WARN spam stops.
 - **Logger level methods**: `warn`/`notice`/… no longer crash with
   `Cannot read properties of undefined (reading 'out')` when extracted
   and called unbound (`const log = logger.warn; log(msg)`).

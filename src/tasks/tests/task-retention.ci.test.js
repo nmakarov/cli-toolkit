@@ -89,6 +89,24 @@ describe("planIpcLogPrune", () => {
         expect(plan.kept).toEqual([]);
     });
 
+    it("flattens a large live version without overflowing the stack", () => {
+        const records = Array.from({ length: 120_000 }, (_, i) => ({
+            ts: `2026-08-20T00:00:${String(i % 60).padStart(2, "0")}.000Z`,
+        }));
+        const plan = planIpcLogPrune([{ version: "huge", records }], cutoff);
+        expect(plan.kept).toHaveLength(120_000);
+        expect(plan.rewrite).toBe(false);
+    });
+
+    it("rewrites a version that is missing a chunk", () => {
+        const plan = planIpcLogPrune(
+            [{ version: "gap", records: [{ ts: "2026-08-20T00:00:00.000Z" }], missingChunks: 1 }],
+            cutoff,
+        );
+        expect(plan.rewrite).toBe(true);
+        expect(plan.deleteVersions).toEqual([]);
+    });
+
     it("treats unreadable versions as empty so they are deleted", () => {
         const plan = planIpcLogPrune(
             [
@@ -160,6 +178,69 @@ describe("pruneIpcLogsOlderThan", () => {
         expect(remaining.length).toBeGreaterThanOrEqual(1);
         const kept = await fd.read({ version: remaining[remaining.length - 1] });
         expect(kept.some((r) => r.msg === "live")).toBe(true);
+    });
+
+    it("skips a missing chunk file and still prunes the table", async () => {
+        const tmpDir = mkdtempSync(join(tmpdir(), "ipc-prune-missing-"));
+        tmpDirs.push(tmpDir);
+        const params = {
+            tasksLogsBasePath: tmpDir,
+            tasksLogsNamespace: "tasks-logs",
+        };
+        const logger = { warn: vi.fn(), info: vi.fn() };
+        const fd = new FileDatabase({
+            basePath: tmpDir,
+            namespace: "tasks-logs",
+            tableName: "bright/intake",
+            versioned: true,
+            useMetadata: true,
+            maxVersions: 30,
+            pageSize: 10,
+            logger,
+        });
+        await fd.write(
+            Array.from({ length: 25 }, (_, i) => ({
+                ts: `2026-08-20T00:00:${String(i).padStart(2, "0")}.000Z`,
+                n: i,
+            })),
+            { forceNewVersion: true },
+        );
+        const [version] = await fd.getVersions();
+        const versionDir = join(tmpDir, "tasks-logs", "bright", "intake", version);
+        const chunk = readdirSync(versionDir).find((name) => name === "000002.json");
+        expect(chunk).toBeTruthy();
+        rmSync(join(versionDir, chunk));
+
+        const ctx = {
+            logger,
+            params: { get: (key) => params[key] },
+        };
+        const out = await pruneIpcLogsOlderThan(ctx, "2026-08-17T00:00:00.000Z");
+        expect(out.tables).toBe(1);
+        expect(out.details[0].error).toBeUndefined();
+        expect(logger.warn.mock.calls.map((c) => String(c[0])).join("\n")).not.toMatch(
+            /skipping unreadable IPC log/,
+        );
+
+        const fd2 = new FileDatabase({
+            basePath: tmpDir,
+            namespace: "tasks-logs",
+            tableName: "bright/intake",
+            versioned: true,
+            useMetadata: true,
+            pageSize: 10,
+            logger,
+        });
+        const remaining = await fd2.getVersions();
+        expect(remaining.length).toBeGreaterThanOrEqual(1);
+        const kept = await fd2.read({ version: remaining[remaining.length - 1] });
+        expect(fd2.lastReadMissingFiles ?? []).toEqual([]);
+        expect(kept.length).toBeGreaterThan(0);
+        const healedDir = join(tmpDir, "tasks-logs", "bright", "intake", remaining[remaining.length - 1]);
+        const onDisk = readdirSync(healedDir);
+        for (const file of fd2.getMetadata().files ?? []) {
+            expect(onDisk).toContain(file.fileName);
+        }
     });
 });
 

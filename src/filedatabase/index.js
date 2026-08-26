@@ -98,6 +98,7 @@ export class FileDatabase {
         this.useMetadata = config.useMetadata !== false; // Default true
         this.freeSpaceThreshold = config.freeSpaceThreshold || 100 * 1024 * 1024; // 100MB
         this.logger = config.logger || console;
+        this.lastReadMissingFiles = [];
 
         // Initialize metadata
         this.metadata = this.getDefaultMetadata();
@@ -1109,6 +1110,7 @@ export class FileDatabase {
         }
 
         const result = [];
+        this.lastReadMissingFiles = [];
         let recordsRead = 0;
         let currentFileIndex = 0;
         let currentFileOffset = 0;
@@ -1150,11 +1152,19 @@ export class FileDatabase {
                 const endIndex = Math.min(startIndex + (effectivePageSize - recordsRead), fileData.length);
                 const recordsFromThisFile = fileData.slice(startIndex, endIndex);
 
-                result.push(...recordsFromThisFile);
+                for (let r = 0; r < recordsFromThisFile.length; r++) {
+                    result.push(recordsFromThisFile[r]);
+                }
                 recordsRead += recordsFromThisFile.length;
 
                 cumulativeRecords += file.recordsCount;
             } catch (error) {
+                if (error?.code === "ENOENT") {
+                    if (!this.lastReadMissingFiles) this.lastReadMissingFiles = [];
+                    this.lastReadMissingFiles.push(file.fileName);
+                    cumulativeRecords += file.recordsCount;
+                    continue;
+                }
                 throw new FileDatabaseError(`Failed to read file ${file.fileName}: ${(error ).message}`);
             }
         }

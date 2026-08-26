@@ -89,6 +89,29 @@ describe("FileDatabase CI", () => {
         expect(readData[249]).toEqual({ id: 250, value: "Value 250" });
     });
 
+    it("skips a missing chunk listed in metadata and returns the rest", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "missing-chunk",
+            pageSize: 100,
+            logger: testLogger,
+        });
+        await store.write(Array.from({ length: 250 }, (_, i) => ({ id: i + 1 })));
+        const version = store.getCurrentVersion();
+        const versionDir = path.join(testBasePath, "test-namespace", "missing-chunk", version);
+        const mid = path.join(versionDir, "000002.json");
+        expect(fs.existsSync(mid)).toBe(true);
+        await fs.promises.unlink(mid);
+
+        const readData = await store.read();
+        expect(store.lastReadMissingFiles).toEqual(["000002.json"]);
+        expect(readData.map((r) => r.id)).toEqual([
+            ...Array.from({ length: 100 }, (_, i) => i + 1),
+            ...Array.from({ length: 50 }, (_, i) => i + 201),
+        ]);
+    });
+
     it("supports pagination when reading data", async () => {
         const store = new FileDatabase({
             basePath: testBasePath,

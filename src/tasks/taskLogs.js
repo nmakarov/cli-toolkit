@@ -171,7 +171,7 @@ export async function readTaskIpcLogsSnapshot(context, options) {
     for (const version of versionsToRead) {
         const raw = await fd.read({ version });
         const arr = Array.isArray(raw) ? raw : [];
-        collected.push(...arr);
+        appendItems(collected, arr);
         if (!wantsWindow) break;
         if (fromTs) {
             let minTs = null;
@@ -388,8 +388,19 @@ export function tasksLogsRoot(context) {
 }
 
 /**
+ * `arr.push(...items)` throws Maximum call stack size exceeded on large items.
+ * @param {unknown[]} target
+ * @param {unknown[]} items
+ */
+export function appendItems(target, items) {
+    if (!items?.length) return target;
+    for (let i = 0; i < items.length; i++) target.push(items[i]);
+    return target;
+}
+
+/**
  * Decide what to drop / rewrite for one IPC table.
- * @param {{ version: string, records: object[] }[]} versions
+ * @param {{ version: string, records: object[], missingChunks?: number }[]} versions
  * @param {string} cutoff ISO
  */
 export function planIpcLogPrune(versions, cutoff) {
@@ -398,13 +409,13 @@ export function planIpcLogPrune(versions, cutoff) {
     const deleteVersions = [];
     let dropped = 0;
     let needsRewrite = false;
-    for (const { version, records } of versions ?? []) {
+    for (const { version, records, missingChunks } of versions ?? []) {
         const arr = Array.isArray(records) ? records : [];
         const live = arr.filter((r) => typeof r?.ts === "string" && r.ts >= cut);
         dropped += arr.length - live.length;
-        kept.push(...live);
+        appendItems(kept, live);
         if (live.length === 0) deleteVersions.push(version);
-        else if (live.length < arr.length) needsRewrite = true;
+        else if (live.length < arr.length || Number(missingChunks) > 0) needsRewrite = true;
     }
     return {
         kept,
@@ -445,13 +456,15 @@ async function removeVersionDir(tableDir, version) {
 
 async function readIpcLogVersion(fd, version, logger, tableName) {
     try {
+        fd.lastReadMissingFiles = [];
         const raw = await fd.read({ version });
-        return { version, records: Array.isArray(raw) ? raw : [] };
+        const missingChunks = Array.isArray(fd.lastReadMissingFiles) ? fd.lastReadMissingFiles.length : 0;
+        return { version, records: Array.isArray(raw) ? raw : [], missingChunks };
     } catch (err) {
         logger?.warn?.(
             `[tasks-retention] skipping unreadable IPC log ${tableName}/${version}: ${err?.message ?? err}`,
         );
-        return { version, records: [] };
+        return { version, records: [], missingChunks: 0 };
     }
 }
 
