@@ -2,7 +2,7 @@ import { readlink } from "node:fs/promises";
 
 import { activateRelease } from "./activate.js";
 import { readReleaseBuildInfo } from "./build-info.js";
-import { appendDeployLog } from "./log.js";
+import { appendDeployLog, deployNotice } from "./log.js";
 import { listReleases } from "./release.js";
 import { reloadPm2 } from "./pm2.js";
 import { servicePaths } from "./paths.js";
@@ -34,17 +34,21 @@ export async function rollbackService(service, options = {}) {
 
     if (rollbackTarget.name === activeName) throw new Error(`Already on release ${activeName}`);
 
+    deployNotice(logger, `Rollback ${activeName} → ${rollbackTarget.name}`);
     logger.info(`rollback ${activeName} → ${rollbackTarget.name}`);
     const buildInfo = await readReleaseBuildInfo(service, rollbackTarget.path);
     if (buildInfo?.version) {
         logger.info(`rollback target: v${buildInfo.version} release=${buildInfo.release ?? rollbackTarget.name}`);
     }
+    deployNotice(logger, "Activate previous release");
     await activateRelease(rollbackTarget.path, paths, { dryRun, logger });
     const appName = service.pm2?.appName ?? null;
     const waitTimeoutMs = 65_000;
+    deployNotice(logger, "Reload pm2");
     await reloadPm2(paths, { dryRun, logger, appName, waitTimeoutMs });
 
     const summary = `rollback ${activeName} → ${rollbackTarget.name} dryRun=${dryRun}`;
+    deployNotice(logger, `Rollback complete (${rollbackTarget.name})`);
     if (!dryRun) await appendDeployLog(paths.deployLog, summary);
 
     return { from: activeName, to: rollbackTarget.name, path: rollbackTarget.path };

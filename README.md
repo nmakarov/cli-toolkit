@@ -72,8 +72,9 @@ found — or AWS rejects them — it prints exactly how to mint a read-only key,
 
 Manifest-driven release deploys to EC2: clone on the host, serve versioned
 releases out of `/apps/<service>/`, atomic `current` symlink switch, pm2 + nginx,
-and rollback. The engine is project-agnostic — projects only write a manifests
-module describing each app.
+and rollback. Each step logs a cyan `notice` header (what is about to happen)
+before the `info` detail. The engine is project-agnostic — projects only write
+a manifests module describing each app.
 
 ```js
 // deploy/services.js

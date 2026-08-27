@@ -9,7 +9,7 @@
 export { defineService, deriveRepoDirName } from "./service.js";
 export { servicePaths, releaseStamp, releaseDir } from "./paths.js";
 export { run, runShell, runCapture, npmEnv, npmInstallEnv } from "./run.js";
-export { appendDeployLog } from "./log.js";
+export { appendDeployLog, deployNotice } from "./log.js";
 export { cloneRepo, pullRepo } from "./git.js";
 export { createRelease, readCurrentRelease, listReleases } from "./release.js";
 export { activateRelease } from "./activate.js";

@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Deploy section headers**: `logger.notice` before each deploy / provision /
+  rollback / remote-SSH step so the upcoming work stands out from the
+  `info` detail lines (git, npm, pm2).
 - **formatLog(struct, options)** — shared terminal formatter (timestamp / level / chalk).
   Logger uses it; UIs can color persisted log objects.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.

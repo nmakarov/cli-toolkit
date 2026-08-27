@@ -1,7 +1,7 @@
 import { readlink } from "node:fs/promises";
 
 import { initServiceStructure } from "./init-structure.js";
-import { appendDeployLog } from "./log.js";
+import { appendDeployLog, deployNotice } from "./log.js";
 import { pullRepo } from "./git.js";
 import { createRelease } from "./release.js";
 import { installDeps } from "./deps.js";
@@ -52,17 +52,28 @@ export async function deployService(service, options = {}) {
     const killTimeoutMs = resolveKillTimeoutMs(service);
     const waitTimeoutMs = killTimeoutMs + 10_000;
 
+    deployNotice(logger, `Prepare ${service.name} directories`);
     await initServiceStructure(service, { dryRun, logger });
 
-    if (!skipPull) await pullRepo(service, { dryRun, logger });
+    if (!skipPull) {
+        deployNotice(logger, "Pull latest repository");
+        await pullRepo(service, { dryRun, logger });
+    }
 
+    deployNotice(logger, "Sync environment");
     await syncEnv(service, { dryRun, logger });
 
+    deployNotice(logger, "Create release");
     const { stamp, path: releasePath } = await createRelease(service, { dryRun, logger });
     await writeReleaseBuildInfo(service, releasePath, { stamp, dryRun, logger });
+
+    deployNotice(logger, "Install dependencies");
     await installDeps(service, releasePath, paths, { dryRun, logger });
 
-    if (!skipTests) await runReleaseTests(service, releasePath, paths, { dryRun, logger });
+    if (!skipTests) {
+        deployNotice(logger, "Run release tests");
+        await runReleaseTests(service, releasePath, paths, { dryRun, logger });
+    }
 
     let previousReleaseName = null;
     try {
@@ -74,24 +85,35 @@ export async function deployService(service, options = {}) {
 
     if (stopFirst) {
         logger.info(`deploy mode=stopFirst app=${appName} killTimeoutMs=${killTimeoutMs}`);
+        deployNotice(logger, `Stop ${appName}`);
         await stopPm2(appName, { dryRun, logger, waitTimeoutMs });
+        deployNotice(logger, "Activate release");
         await activateRelease(releasePath, paths, { dryRun, logger });
+        deployNotice(logger, "Prune old releases");
         await pruneReleases(service, paths, { dryRun, logger });
+        deployNotice(logger, "Start pm2");
         await startPm2(paths, { dryRun, logger, appName, waitTimeoutMs });
     } else {
         logger.info(
             `deploy mode=rolling app=${appName} killTimeoutMs=${killTimeoutMs}` +
                 (previousReleaseName ? ` previous=${previousReleaseName}` : "")
         );
+        deployNotice(logger, "Activate release");
         await activateRelease(releasePath, paths, { dryRun, logger });
         // Restart into new `current` before pruning the previous tree (still in use by the old process).
+        deployNotice(logger, "Reload pm2");
         await reloadPm2(paths, { dryRun, logger, appName, waitTimeoutMs });
+        deployNotice(logger, "Prune old releases");
         await pruneReleases(service, paths, { dryRun, logger });
     }
 
-    if (!skipNginx) await enableNginxUpstream(service, { dryRun, logger });
+    if (!skipNginx) {
+        deployNotice(logger, "Update nginx upstream");
+        await enableNginxUpstream(service, { dryRun, logger });
+    }
 
     const summary = `deploy complete stamp=${stamp} mode=${stopFirst ? "stopFirst" : "rolling"} dryRun=${dryRun}`;
+    deployNotice(logger, `Deploy complete (${stamp})`);
     logger.info(summary);
     if (!dryRun) await appendDeployLog(paths.deployLog, summary);
 

@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 
 import { scrubEnvContent } from "./sync-env.js";
 import { servicePaths } from "./paths.js";
+import { deployNotice } from "./log.js";
 
 /** Path (relative to the run dir on the server) of the toolkit deploy CLI. */
 export const REMOTE_CLI_REL = "node_modules/@nmakarov/cli-toolkit/scripts/deploy/cli.js";
@@ -70,6 +71,7 @@ export async function ensureDeployKeyOnRemote(host, deployKeyPath, options = {})
     if (!(await pathExists(localPath))) return false;
 
     const keyBase = basename(localPath);
+    deployNotice(logger, `Copy deploy key to ${host}`);
     logger.info(`copying deploy key ${localPath} → ${host}:~/.ssh/${keyBase}`);
     await sshRun(host, "mkdir -p ~/.ssh && chmod 700 ~/.ssh", { logger });
     await scp(localPath, `${host}:.ssh/${keyBase}`, { logger });
@@ -123,6 +125,7 @@ export async function ensureEnvOnRemote(host, service, options = {}) {
     const localPath = resolveLocalEnvPath(envFile);
     if (!(await pathExists(localPath))) return false;
 
+    deployNotice(logger, `Copy environment to ${host}`);
     logger.info(`copying .env ${localPath} → ${host}:${paths.repoEnv}`);
     await sshRun(host, `mkdir -p ${shellQuote(dirname(paths.repoEnv))}`, { logger });
 
@@ -167,11 +170,15 @@ export async function runRemoteCli(host, service, command, args = [], options = 
     const cli = shellQuote(REMOTE_CLI_REL);
 
     if (!skipPull) {
+        deployNotice(logger, `Prepare checkout and dependencies on ${host}`);
         await ensureRemoteRepo(host, service, { logger, deployKey, envFile });
     } else {
+        deployNotice(logger, `Install host CLI dependencies on ${host}`);
         await ensureRepoDependencies(host, service, { logger });
         await ensureEnvOnRemote(host, service, { logger, envFile });
     }
+
+    deployNotice(logger, `Run ${command} on ${host}`);
 
     const passthrough = [
         `--service=${service.name}`,

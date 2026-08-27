@@ -120,6 +120,7 @@ const flow = async (context) => {
     if (host) {
         const extra = remotePassthrough(flags);
         const opts = { logger, manifests, deployKey: service.deployKey, envFile: flags.envFile };
+        logger.notice(`Remote ${command} ${service.name} on ${host}`);
         logger.info(`remote ${command} service=${service.name} host=${host}`);
 
         switch (command) {
@@ -139,6 +140,7 @@ const flow = async (context) => {
     }
 
     // ── Local: run the step(s) on this machine (the host, or a dry run) ─────────
+    logger.notice(`Local ${command} ${service.name}`);
     logger.info(`local ${command} service=${service.name}`);
     switch (command) {
         case "bootstrap":

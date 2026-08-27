@@ -46,7 +46,7 @@ Available log levels (in order of severity):
 |-------|---------|-------|
 | `error` | Critical errors | Red (bold) |
 | `warn` | Warnings | Orange |
-| `notice` | Important notices | Cyan |
+| `notice` | Section headers / important notices (what is about to happen) | Cyan |
 | `info` | General information | White (bold) |
 | `logic` | Business logic flow | Gray |
 | `debug` | Debug information | Gray |
