@@ -357,7 +357,10 @@ export class FileDatabase {
                 const rawData = await fs.promises.readFile(metadataFile, "utf8");
                 return JSON.parse(rawData);
             } catch (e) {
-                throw new FileDatabaseError(`Failed to read metadata for version "${version}": ${(e ).message}`);
+                this.logger.warn?.(
+                    `[FileDatabase] Ignoring unreadable metadata for version "${version}": ${e.message}`,
+                );
+                return null;
             }
         }
         return null;
@@ -880,14 +883,16 @@ export class FileDatabase {
                     throw new FileDatabaseError("[FileDatabase] No versions found, cannot read");
                 }
 
-                if (version) {
-                    if (!versions.includes(version)) {
-                        throw new FileDatabaseError(`[FileDatabase] Version "${version}" not found`);
-                    }
-                    await this.setCurrentVersion(version);
-                } else {
-                    await this.setCurrentVersion(versions[versions.length - 1]);
+                const targetVersion = version || versions[versions.length - 1];
+                if (version && !versions.includes(version)) {
+                    throw new FileDatabaseError(`[FileDatabase] Version "${version}" not found`);
                 }
+                if (this.metadata.version !== targetVersion) {
+                    this.metadata = this.getDefaultMetadata();
+                    this.currentRecord = 0;
+                    this.hasReadFirstPage = false;
+                }
+                await this.setCurrentVersion(targetVersion);
 
                 if (!this.metadata.files.length) {
                     this.metadata = await this.figureMetadata(this.currentVersion);

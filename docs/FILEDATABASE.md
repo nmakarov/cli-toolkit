@@ -206,6 +206,11 @@ const db = new FileDatabase({
 const legacyData = await db.read();
 ```
 
+A truncated or otherwise unreadable `metadata.json` is ignored (warn) and
+metadata is rebuilt from the data files in that version folder. Callers that
+read several versions (IPC `getLogs`, retention prune) skip a version that
+is still unreadable instead of failing the whole table.
+
 ## Data Types
 
 FileDatabase supports multiple data formats:

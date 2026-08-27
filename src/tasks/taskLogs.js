@@ -169,8 +169,7 @@ export async function readTaskIpcLogsSnapshot(context, options) {
     const versionsToRead = wantsWindow ? [...versions].reverse() : [versions[versions.length - 1]];
     const collected = [];
     for (const version of versionsToRead) {
-        const raw = await fd.read({ version });
-        const arr = Array.isArray(raw) ? raw : [];
+        const { records: arr } = await readIpcLogVersion(fd, version, holder.logger, tableName);
         appendItems(collected, arr);
         if (!wantsWindow) break;
         if (fromTs) {
@@ -462,7 +461,7 @@ async function readIpcLogVersion(fd, version, logger, tableName) {
         return { version, records: Array.isArray(raw) ? raw : [], missingChunks };
     } catch (err) {
         logger?.warn?.(
-            `[tasks-retention] skipping unreadable IPC log ${tableName}/${version}: ${err?.message ?? err}`,
+            `[tasks-logs] skipping unreadable IPC log ${tableName}/${version}: ${err?.message ?? err}`,
         );
         return { version, records: [], missingChunks: 0 };
     }

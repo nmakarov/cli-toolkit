@@ -351,6 +351,39 @@ describe("FileDatabase CI", () => {
         expect(readData).toEqual(testData);
     });
 
+    it("reads a version whose metadata.json is truncated", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "truncated-metadata",
+            useMetadata: true,
+            logger: testLogger,
+        });
+
+        const testData = Array.from({ length: 8 }, (_, i) => ({ id: i + 1 }));
+        await store.write(testData);
+
+        const version = store.getCurrentVersion();
+        const metadataPath = path.join(
+            testBasePath,
+            "test-namespace",
+            "truncated-metadata",
+            version,
+            "metadata.json",
+        );
+        fs.writeFileSync(metadataPath, '{"version":"2026-08-27T21:35:09Z","files":[', "utf8");
+
+        const reader = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "truncated-metadata",
+            useMetadata: true,
+            logger: testLogger,
+        });
+        const readData = await reader.read({ version });
+        expect(readData).toEqual(testData);
+    });
+
     it("supports custom file synopsis function", async () => {
         const store = new FileDatabase({
             basePath: testBasePath,
