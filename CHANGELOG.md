@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **Deleted running task**: the runner now `requestStop`s an in-flight instance
+  when its queue row disappears (tasksmm `d` delete), so harvest/load can wind
+  down instead of continuing orphaned.
 - **Task retention prune**: flattening a large IPC table used
   `push(...records)` and threw `Maximum call stack size exceeded` (seen on
   `bright/intake`). Append is now a loop. Missing FileDatabase chunks

@@ -187,6 +187,40 @@ export async function enqueueStopTask(context, serviceGroup, queueName = "tasks"
  * @param {number} allowanceMs
  * @returns {Promise<void>}
  */
+/**
+ * If an operator deleted a queue row while the task is still running, ask that
+ * instance to stop. Delete is a different process (tasksmm) and cannot call
+ * requestStop itself.
+ *
+ * @param {object} context
+ * @param {string} tasksTable
+ * @param {Map<string, { requestStop?: Function }>} runningTaskInstances
+ */
+export async function signalStopForDeletedQueueRows(context, tasksTable, runningTaskInstances) {
+    if (!runningTaskInstances?.size) return;
+    const db = context?.db;
+    if (!db) return;
+    const ids = [...runningTaskInstances.keys()];
+    let alive;
+    try {
+        const rows = await db(tasksTable).whereIn("id", ids).select("id");
+        alive = new Set((Array.isArray(rows) ? rows : []).map((r) => r.id));
+    } catch {
+        return;
+    }
+    for (const [id, inst] of runningTaskInstances) {
+        if (alive.has(id)) continue;
+        context.logger?.warn?.(`[tasks] queue row ${id} deleted — requesting stop`);
+        if (typeof inst.requestStop === "function") {
+            try {
+                await inst.requestStop(0);
+            } catch (error) {
+                context.logger?.warn?.("[tasks] task requestStop failed:", error);
+            }
+        }
+    }
+}
+
 async function signalRunningTasksStop(context, runningTaskInstances, allowanceMs) {
     context.logger.warn?.(`[tasks] signaling ${runningTaskInstances.size} running task(s) to stop`);
     for (const [, taskInstance] of runningTaskInstances) {
@@ -645,6 +679,7 @@ export async function runTasksLoop(context, options) {
     try {
         while (!context.isStop() && !stopRequested && context.tasksRunnerStop !== true) {
             const { maxParallel, pollMs, claimJitterMs, scanLimit } = readLoopRuntime(context);
+            await signalStopForDeletedQueueRows(context, tasksTable, runningTaskInstances);
 
             // Control lane: stop / setRuntimeParam / extras even when workers are saturated.
             if (!runningControlPromise) {
