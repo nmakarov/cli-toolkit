@@ -15,8 +15,8 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - **FileDatabase / getLogs**: a truncated `metadata.json` (`Unexpected end of
   JSON input`) aborted the whole read. Readers now rebuild metadata from the
-  data files (and skip a version that is still unreadable) so tasksmm `l`
-  still shows the IPC tail.
+  data files, rewrite that file, and skip a version that is still unreadable
+  so tasksmm `l` still shows the IPC tail without a WARN on every poll.
 - **Deleted running task**: the runner now `requestStop`s an in-flight instance
   when its queue row disappears (tasksmm `d` delete), so harvest/load can wind
   down instead of continuing orphaned.

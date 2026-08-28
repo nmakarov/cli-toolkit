@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { FileDatabase, FileDatabaseError } from "../index.js";
 import { ParamError } from "../../errors.js";
 import { Logger } from "../../logger/index.js";
@@ -373,15 +373,32 @@ describe("FileDatabase CI", () => {
         );
         fs.writeFileSync(metadataPath, '{"version":"2026-08-27T21:35:09Z","files":[', "utf8");
 
+        const warn = vi.fn();
         const reader = new FileDatabase({
             basePath: testBasePath,
             namespace: "test-namespace",
             tableName: "truncated-metadata",
             useMetadata: true,
-            logger: testLogger,
+            logger: { warn, silly: () => {} },
         });
         const readData = await reader.read({ version });
         expect(readData).toEqual(testData);
+        expect(warn).not.toHaveBeenCalled();
+
+        const rewritten = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+        expect(rewritten.version).toBe(version);
+        expect(rewritten.totalRecords).toBe(8);
+
+        const secondWarn = vi.fn();
+        const second = new FileDatabase({
+            basePath: testBasePath,
+            namespace: "test-namespace",
+            tableName: "truncated-metadata",
+            useMetadata: true,
+            logger: { warn: secondWarn, silly: () => {} },
+        });
+        expect(await second.read({ version })).toEqual(testData);
+        expect(secondWarn).not.toHaveBeenCalled();
     });
 
     it("supports custom file synopsis function", async () => {

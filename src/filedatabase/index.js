@@ -348,22 +348,37 @@ export class FileDatabase {
     }
 
     /**
-     * Load metadata from JSON file
+     * Load metadata from JSON file. Distinguishes missing vs unreadable so
+     * callers can rewrite a truncated file once instead of warning on every read.
      */
     async loadMetadataJson(version) {
+        const loaded = await this.readMetadataJsonFile(version);
+        return loaded.metadata;
+    }
+
+    async readMetadataJsonFile(version) {
         const metadataFile = path.join(this.getDestinationPath(), version, "metadata.json");
-        if (fs.existsSync(metadataFile)) {
-            try {
-                const rawData = await fs.promises.readFile(metadataFile, "utf8");
-                return JSON.parse(rawData);
-            } catch (e) {
-                this.logger.warn?.(
-                    `[FileDatabase] Ignoring unreadable metadata for version "${version}": ${e.message}`,
-                );
-                return null;
-            }
+        if (!fs.existsSync(metadataFile)) {
+            return { metadata: null, unreadable: false };
         }
-        return null;
+        try {
+            const rawData = await fs.promises.readFile(metadataFile, "utf8");
+            return { metadata: JSON.parse(rawData), unreadable: false };
+        } catch {
+            return { metadata: null, unreadable: true };
+        }
+    }
+
+    async persistMetadataJson(version, metadata) {
+        if (!this.useMetadata || !metadata) {
+            return;
+        }
+        const metadataFile = path.join(this.getDestinationPath(), version, "metadata.json");
+        try {
+            await fs.promises.writeFile(metadataFile, JSON.stringify(metadata, null, 4), "utf8");
+        } catch (e) {
+            this.logger.silly?.(`[FileDatabase] Could not rewrite metadata for "${version}": ${e.message}`);
+        }
     }
 
     /**
@@ -508,21 +523,25 @@ export class FileDatabase {
      * Uses optimized building when no synopsis calculation is needed
      */
     async figureMetadata(version, useOptimized = true) {
+        let unreadable = false;
         if (this.useMetadata) {
-            const metadata = await this.loadMetadataJson(version);
-            if (metadata) {
-                return metadata;
+            const loaded = await this.readMetadataJsonFile(version);
+            if (loaded.metadata) {
+                return loaded.metadata;
             }
+            unreadable = loaded.unreadable;
         }
-        
+
         // Fallback: build from files
         // Use optimized version (only reads first+last) when no synopsis needed
-        if (useOptimized && !this.fileSynopsisFunction && !this.versionSynopsisFunction) {
-            return await this.buildMetadataOptimized(version);
+        const rebuilt = (useOptimized && !this.fileSynopsisFunction && !this.versionSynopsisFunction)
+            ? await this.buildMetadataOptimized(version)
+            : await this.figureMetadataFromVersionFiles(version);
+
+        if (unreadable) {
+            await this.persistMetadataJson(version, rebuilt);
         }
-        
-        // Use full version (reads all files) when synopsis calculation needed
-        return await this.figureMetadataFromVersionFiles(version);
+        return rebuilt;
     }
 
     /**
