@@ -38,6 +38,21 @@ import { applyClaimOrder, compareClaimCandidates } from "./claimOrder.js";
 /** Sentinel value stored in the `progress` column when a task is paused due to error. */
 const LOCKED_BY_ERROR_MESSAGE = "locked by error";
 
+/**
+ * Next `params` to persist on the queue row. Long-running tasks return
+ * `results.checkpointParams` so pause, hard stop, and the next scheduled
+ * tick resume from the same cursor (offset / pending unit) instead of
+ * starting the next window.
+ *
+ * @param {object|null|undefined} results
+ * @returns {object|null}
+ */
+export function checkpointParamsFromResults(results) {
+    if (!results || typeof results !== "object") return null;
+    const next = results.checkpointParams;
+    return next && typeof next === "object" && !Array.isArray(next) ? next : null;
+}
+
 export {
     enqueueTask,
     ensureTaskTables,
@@ -349,10 +364,7 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
     // Cooperative pause: keep the queue row as paused with optional checkpoint params.
     // Survives runner restart — resumeTask (or manual status→idle) continues later.
     if (taskPaused) {
-        const checkpointParams =
-            results.checkpointParams && typeof results.checkpointParams === "object"
-                ? results.checkpointParams
-                : row.params;
+        const checkpointParams = checkpointParamsFromResults(results) ?? row.params;
         const progressPayload =
             results.progress != null
                 ? results.progress
@@ -379,6 +391,7 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
             } catch (e) {
                 context.logger?.warn?.(`[tasks] nextTimeMatch after success for task ${row.id}: ${e?.message ?? String(e)}`);
             }
+            const checkpointParams = checkpointParamsFromResults(results);
             await db(tasksTable).where({ id: row.id }).update({
                 started_at: null,
                 completed_at: new Date(),
@@ -389,6 +402,7 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
                 status: "idle",
                 status_changed_at: db.fn.now(),
                 next_run_at: nextRunAt,
+                ...(checkpointParams ? { params: toJsonColumn(checkpointParams) } : {}),
                 // Claim overwrites these; clear so idle rows stay “any worker” (see claimNextRunnableTask).
                 service_name: null,
                 server_name: null,

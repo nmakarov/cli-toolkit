@@ -179,7 +179,25 @@ From `@nmakarov/cli-toolkit/tasks`:
 - **`ping`** — enqueue with no targeting for broadcast, or set `service_group` only, or set all four fields to hit one instance (same values as the registry row).
 - **`stop` / `stopRunner`** — must set `--serviceName` (optionally narrow with group/instance/server); `params.allowanceMs` controls graceful stop (default **60000** ms). Process SIGTERM/SIGINT uses `--stopAllowance` (**seconds**, default **60**) from init; both paths drain in-flight work then unregister.
 - **`pause` / `pauseRunner`** / **`unpause` / `unpauseRunner`** — must set `--serviceName`. Pause finishes in-flight worker tasks and stops new worker-lane claims; control-lane tasks (stop, pause, unpause, setRuntimeParam, pauseTask, resumeTask, …) still run. Sets `context.tasksRuntime.paused` and mirrors `metadata.paused` / `metadata.pausedAt` on services_registry (TUI status shows **paused**). Unpause clears the flag and resumes claiming.
-- **`pauseTask` / `resumeTask`** — pause or resume a **specific queue row** by `params.taskId`. Idle → `status=paused` immediately; running → stamp `progress.pauseRequested` and call `requestPause()` on the in-process instance when this runner owns it. Cooperative tasks return `{ taskPaused: true }` so the runner keeps the row as `paused` (with optional `checkpointParams`) instead of deleting it — survives restart/redeploy. `resumeTask` sets `paused` → `idle`. Control-lane.
+- **`pauseTask` / `resumeTask`** — pause or resume a **specific queue row** by `params.taskId`. Idle → `status=paused` immediately; running → stamp `progress.pauseRequested` and call `requestPause()` on the in-process instance when this runner owns it. Cooperative tasks return `{ taskPaused: true, checkpointParams }` so the runner keeps the row as `paused` with the resume cursor written onto `params` — survives restart/redeploy. `resumeTask` sets `paused` → `idle` and leaves those params in place. Control-lane.
+
+### Resume from a checkpoint (required for long-running tasks)
+
+Pause, hard stop, and the next scheduled tick must continue the **same** unit of
+work — not skip ahead to the next window.
+
+1. Persist a cursor in `results.checkpointParams` (offset, pending version,
+   unfinished action). Write it onto the queue row during the run if a crash
+   mid-unit would lose the harvest you just finished.
+2. On pause return `{ success: true, results: { taskPaused: true, checkpointParams } }`.
+   The runner copies `checkpointParams` onto the row.
+3. On hard stop of a **scheduled** task, return `checkpointParams` the same way.
+   Finalize now writes those params even when the row goes back to `idle`.
+4. On the next `run()`, read `params.checkpoint` / offset **first** and finish
+   that unit before planning new work. Clear the cursor when the unit completes.
+
+`checkpointParamsFromResults(results)` is the shared extractor. Future tasks
+must follow this pattern — see the mlsfarm `task-resume-checkpoint` Cursor rule.
 - **`setRuntimeParam` / `setRunnerParam`** — hot-update runner knobs without restart. Applies to `context.tasksRuntime` (loop re-reads `maxParallel`, `pollMs`, `claimJitterMs`, `scanLimit` every tick) and to the logger for `levels` / `silent` / etc. Targeting: `--serviceName=<one instance>` **or** `--serviceGroup=<group>` (broadcasts to every alive registry row). Examples:
   - `--paramKey=maxParallel --paramValue=16`
   - `--paramKey=levels --paramValue='+debug'`

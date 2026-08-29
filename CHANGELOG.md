@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Changed
+- **Scheduled finalize writes `checkpointParams`**: a successful scheduled
+  run that returns `results.checkpointParams` updates the queue row `params`
+  so the next tick resumes from that cursor (load offset, pending unit).
+  Pause already did this; hard stop of a scheduled task now does too.
 - **Task claim order**: pick the earliest due row (`next_run_at` or `past_due`)
   first; if none are due, pick the highest priority (lowest number). The
   candidate shuffle that used to randomize the scan window is gone so that

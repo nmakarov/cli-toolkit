@@ -74,9 +74,11 @@ export class AbstractTask {
 
     /**
      * Cooperative pause signal (from `pauseTask` control-lane task). Long-running
-     * tasks should finish the current unit of work, persist a checkpoint, and
-     * return `{ success: true, results: { taskPaused: true, … } }` so the runner
-     * keeps the row as `status=paused` instead of deleting it.
+     * tasks must persist the resume cursor in `results.checkpointParams` and
+     * return `{ success: true, results: { taskPaused: true, checkpointParams } }`
+     * so the runner keeps the row as `status=paused` and the next claim continues
+     * from that point (not the next window). Hard stop of a scheduled task must
+     * do the same (`checkpointParams` is written on scheduled finalize).
      *
      * @param {number} [_allowanceMs]
      */
