@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Task claim order**: pick the earliest due row (`next_run_at` or `past_due`)
+  first; if none are due, pick the highest priority (lowest number). The
+  candidate shuffle that used to randomize the scan window is gone so that
+  order is actually honored. Concurrent workers still serialize on the idle
+  claim update and move to the next row.
+
 ### Added
 - **Deploy section headers**: `logger.notice` before each deploy / provision /
   rollback / remote-SSH step so the upcoming work stands out from the

@@ -33,6 +33,7 @@ import {
     runtimeValuesForSpecs,
 } from "./runtimeParams.js";
 import { maybePruneTaskRetention, seedTaskRetentionRuntime } from "./taskRetention.js";
+import { applyClaimOrder, compareClaimCandidates } from "./claimOrder.js";
 
 /** Sentinel value stored in the `progress` column when a task is paused due to error. */
 const LOCKED_BY_ERROR_MESSAGE = "locked by error";
@@ -108,6 +109,12 @@ export {
     mergeAllowedTasksWithServiceTasks,
     SERVICE_TASK_NAMES,
 } from "./serviceTaskAllowlist.js";
+export {
+    applyClaimOrder,
+    claimDueInstantMs,
+    compareClaimCandidates,
+    isClaimDue,
+} from "./claimOrder.js";
 export {
     applyRuntimeParam,
     applyRuntimePatch,
@@ -418,16 +425,6 @@ function scheduleTaskRetentionPass(context, historyTable) {
     });
 }
 
-/** Fisher–Yates shuffle so concurrent workers don't all try the same candidate row first. */
-function shuffleTaskRowsInPlace(rows) {
-    for (let i = rows.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const t = rows[i];
-        rows[i] = rows[j];
-        rows[j] = t;
-    }
-}
-
 /**
  * Atomically claim one runnable task row matching the caller's service group /
  * identity / allowlist, and return the (now-`running`) row — or `null` when none
@@ -471,16 +468,8 @@ async function claimNextRunnableTask(
         // time on enqueue/completion, so this stays consistent with timeMatcher.
         .where(function () {
             this.whereNull("next_run_at").orWhere("next_run_at", "<=", db.fn.now());
-        })
-        .orderByRaw("CASE WHEN past_due IS NULL THEN 1 ELSE 0 END ASC")
-        .orderBy([{ column: "priority", order: "asc" }])
-        // Fair rotation for recurring tasks:
-        // 1) never-run rows first
-        // 2) then least recently completed rows
-        // 3) then stable created_at order
-        .orderByRaw("CASE WHEN completed_at IS NULL THEN 0 ELSE 1 END ASC")
-        .orderBy([{ column: "completed_at", order: "asc" }, { column: "created_at", order: "asc" }])
-        .limit(scanLimit);
+        });
+    query = applyClaimOrder(query).limit(scanLimit);
     if (taskNames && taskNames.length > 0) {
         query = query.whereIn("name", taskNames);
     }
@@ -503,7 +492,7 @@ async function claimNextRunnableTask(
             .whereNull("server_name");
     }
     const candidates = await query;
-    shuffleTaskRowsInPlace(candidates);
+    candidates.sort(compareClaimCandidates);
 
     for (const row of candidates) {
         if (!row.past_due && row.schedule && !timeMatcher(row.schedule)) {

@@ -54,8 +54,8 @@ function tasksTableSpec(tableNameForIndex) {
             started_at: (t) => t.timestamp("started_at"),
             completed_at: (t) => t.timestamp("completed_at"),
             /*
-             * Priority: lower number = claimed first (see claimNextRunnableTask: ORDER BY priority ASC).
-             * Suggested range 0–100: 0 = most urgent, 100 = least; default 50 for normal work.
+             * Priority: lower number = more urgent (0 first, default 50). Used when no
+             * row is due (`next_run_at` / `past_due`); due rows claim by earliest due.
              */
             priority: (t) => t.integer("priority").notNullable().defaultTo(50),
 

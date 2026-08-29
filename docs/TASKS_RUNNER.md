@@ -63,7 +63,7 @@ When **multiple** runners can process the **same** useful task, we want **load b
 - Supports:
   - one-time tasks (`schedule = null`) -> deleted after execution, copied to history
   - recurring tasks (`schedule != null`) -> retained in queue and reset after each run
-  - `past_due` prioritization when schedule matched but task couldn't run due to conditions
+  - claim order: earliest due (`past_due` / `next_run_at`) first; otherwise highest priority
 
 ## Task schema
 
@@ -100,19 +100,19 @@ History table indices:
 These are useful for:
 
 - fast polling of pending tasks by runner/target
-- prioritizing `past_due` first
+- prioritizing earliest due (`past_due` / `next_run_at`) first, then priority
 - history filtering by target or task
 
 ## Runner behavior (`runTasksLoop`)
 
 Each polling tick:
 
-1. Select pending (`started_at IS NULL`) tasks for `target`
-2. Prioritize `past_due` before normal tasks
-3. For normal scheduled tasks, run only if `timeMatcher(schedule)` is true
+1. Select idle tasks whose targeting matches and whose `next_run_at` is NULL or `<= now`
+2. Claim the earliest due row (`past_due` or `next_run_at`); if none are due, the highest priority (lowest number). Same due instant / non-due ties: priority, then never-run / oldest `completed_at`, then `created_at`
+3. For scheduled rows that are not already `past_due`, run only if `timeMatcher(schedule)` is true
 4. Instantiate task class and call `cantRunReason()`:
    - if reason returned and not already `past_due`, set `past_due = now()` and skip
-5. Claim task atomically (`started_at = now()` where `started_at IS NULL`)
+5. Claim task atomically (`status = running` where still `idle`)
 6. Execute handler
 7. Write record to history
 8. Finalize queue row:
