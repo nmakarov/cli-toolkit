@@ -96,7 +96,7 @@ describe("pauseTask / resumeTask", () => {
 });
 
 describe("loggerTaskLabel", () => {
-    it("includes source and resource when present", () => {
+    it("tags the top-level task and source, not the leaf resource", () => {
         expect(loggerTaskLabel({ name: "retroBackfill", params: { source: "bright" } })).toBe(
             "retroBackfill:bright",
         );
@@ -105,7 +105,23 @@ describe("loggerTaskLabel", () => {
                 name: "fetchByKeys",
                 params: JSON.stringify({ source: "bright", resource: "media" }),
             }),
-        ).toBe("fetchByKeys:bright/media");
+        ).toBe("fetchByKeys:bright");
         expect(loggerTaskLabel({ name: "hostInfo" })).toBe("hostInfo");
+    });
+
+    it("uses the parent logTask or intake opid on leaf rows", () => {
+        expect(
+            loggerTaskLabel({
+                name: "loadHarvested",
+                params: { source: "bright", resource: "media", logTask: "intakeCycle:bright" },
+            }),
+        ).toBe("intakeCycle:bright");
+        expect(
+            loggerTaskLabel({
+                name: "loadHarvested",
+                opid: "intake:bright:abc",
+                params: { source: "bright", resource: "members" },
+            }),
+        ).toBe("intakeCycle:bright");
     });
 });

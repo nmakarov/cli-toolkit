@@ -81,12 +81,8 @@ export function formatLog(struct = {}, options = {}) {
         parts.push(level.toUpperCase().padEnd(MAX_LEVEL_LENGTH));
     }
 
-    const processName = struct.name != null ? String(struct.name).trim() : "";
     const taskName = struct.task != null ? String(struct.task).trim() : "";
-    if (processName) {
-        parts.push(color ? chalk.yellow(`[${processName}]`) : `[${processName}]`);
-    }
-    if (taskName && taskName !== processName) {
+    if (taskName) {
         parts.push(color ? chalk.cyan(`[${taskName}]`) : `[${taskName}]`);
     }
 
@@ -393,9 +389,6 @@ export class Logger  {
             return;
         }
 
-        if (this.options.name && !struct.name) {
-            struct.name = this.options.name;
-        }
         if (this.options.task && !struct.task) {
             struct.task = this.options.task;
         }

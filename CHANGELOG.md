@@ -5,11 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Logger process / task name**: `Logger.init({ name })` (or `--logName`, or
-  pm2 `process.env.name`) prints `[v2intake]` on every line. `logger.child(task)`
-  adds `[retroBackfill:bright]` without mutating the parent — the task runner
-  uses this so concurrent tasks stay distinguishable in pm2 logs. Separate from
-  progress `prefix`.
+- **Logger task tag**: `logger.child(task)` prints `[intakeCycle:bright]` on
+  every line (not the pm2 process name). The runner uses the top-level task
+  (`params.logTask` / intake `opid` on leaf rows), not `loadHarvested:bright/media`.
 - **resumeTask runs now**: unpausing a scheduled row sets `past_due` and
   `next_run_at` so the next claim poll picks it up instead of waiting for the
   next cron slot.

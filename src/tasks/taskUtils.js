@@ -412,27 +412,50 @@ export function createTaskProgressReporter(context, tasksTable, taskId) {
     };
 }
 
+const LEAF_LOG_TASKS = new Set(["loadHarvested", "harvest", "processListingPhotos"]);
+
+function parseTaskParams(raw) {
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+        } catch {
+            /* ignore */
+        }
+    }
+    return null;
+}
+
 /**
- * Compact label for pm2 / console lines: `retroBackfill:bright` or
- * `fetchByKeys:bright/media`.
+ * Top-level task tag for pm2 / console lines (`intakeCycle:bright`).
+ * Child rows (`loadHarvested`, harvest) use `params.logTask` or `opid`
+ * so they still show the parent, not `loadHarvested:bright/media`.
  *
  * @param {object} [row]
  * @returns {string}
  */
 export function loggerTaskLabel(row) {
     const name = String(row?.name || "task").trim() || "task";
-    let params = row?.params;
-    if (typeof params === "string") {
-        try {
-            params = JSON.parse(params);
-        } catch {
-            params = null;
-        }
+    const params = parseTaskParams(row?.params);
+    const explicit = params?.logTask != null ? String(params.logTask).trim() : "";
+    if (explicit) return explicit;
+    if (LEAF_LOG_TASKS.has(name)) {
+        const fromOpid = logTaskFromOpid(row?.opid);
+        if (fromOpid) return fromOpid;
     }
-    if (!params || typeof params !== "object" || Array.isArray(params)) return name;
-    const source = params.source != null ? String(params.source).trim() : "";
-    const resource = params.resource != null ? String(params.resource).trim() : "";
-    if (source && resource) return `${name}:${source}/${resource}`;
+    const source = params?.source != null ? String(params.source).trim() : "";
     if (source) return `${name}:${source}`;
     return name;
+}
+
+/**
+ * @param {unknown} opid
+ * @returns {string|null}
+ */
+export function logTaskFromOpid(opid) {
+    const s = String(opid ?? "").trim();
+    const intake = s.match(/^intake:([^:]+)/);
+    if (intake) return `intakeCycle:${intake[1]}`;
+    return null;
 }
