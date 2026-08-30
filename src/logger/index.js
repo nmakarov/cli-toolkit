@@ -62,7 +62,7 @@ function inspectChunks(chunks, color = true) {
  * Format a log struct for a terminal. Used by Logger and by UIs (tasksmm)
  * that persist structs and render them later.
  *
- * @param {{ level?: string, message?: string, prefix?: string, count?: unknown, total?: unknown,
+ * @param {{ level?: string, message?: string, name?: string, task?: string, prefix?: string, count?: unknown, total?: unknown,
  *           elapsed?: number, remaining?: number, rate?: number, chunks?: unknown[], results?: unknown }} struct
  * @param {{ timestamp?: boolean, showLevel?: boolean, color?: boolean, now?: Date|string|number }} [options]
  */
@@ -79,6 +79,15 @@ export function formatLog(struct = {}, options = {}) {
 
     if (options.showLevel) {
         parts.push(level.toUpperCase().padEnd(MAX_LEVEL_LENGTH));
+    }
+
+    const processName = struct.name != null ? String(struct.name).trim() : "";
+    const taskName = struct.task != null ? String(struct.task).trim() : "";
+    if (processName) {
+        parts.push(color ? chalk.yellow(`[${processName}]`) : `[${processName}]`);
+    }
+    if (taskName && taskName !== processName) {
+        parts.push(color ? chalk.cyan(`[${taskName}]`) : `[${taskName}]`);
     }
 
     if (level === "progress") {
@@ -150,6 +159,9 @@ export class Logger  {
             this.updateTransport();
         }
         if (options.prefix !== undefined) this.options.prefix = options.prefix;
+        if (options.name !== undefined) this.options.name = options.name;
+        if (options.logName !== undefined) this.options.name = options.logName;
+        if (options.task !== undefined) this.options.task = options.task;
         if (options.silent !== undefined) this.options.silent = options.silent;
         if (options.showLevel !== undefined) this.options.showLevel = options.showLevel;
         if (options.timestamp !== undefined) this.options.timestamp = options.timestamp;
@@ -177,6 +189,7 @@ export class Logger  {
             mode: "string default text",
             route: "string default console",
             prefix: "string",
+            logName: "string",
             silent: "boolean default false",
             showLevel: "boolean default true",
             timestamp: "boolean default false",
@@ -187,6 +200,10 @@ export class Logger  {
         };
         const discovered = context.params.getAllForModule("logger", paramDefs);
         const config = { ...discovered, ...options } ;
+        if (!config.name && !config.logName) {
+            const fromEnv = process.env.name || process.env.SERVICE_NAME;
+            if (fromEnv) config.name = fromEnv;
+        }
         const logger = new Logger(context, config);
         context.logger = logger;
         return logger;
@@ -197,6 +214,8 @@ export class Logger  {
             mode: "text",
             route: this.shouldUseIpcRoute() ? "ipc" : "console",
             prefix: undefined,
+            name: undefined,
+            task: undefined,
             silent: false,
             showLevel: false,
             timestamp: false,
@@ -211,6 +230,19 @@ export class Logger  {
         this.transport = this.options.route === "ipc"
             ? new ParentProcessTransport()
             : new ConsoleTransport();
+    }
+
+    /**
+     * Same transport, tagged with a task name on every line. Does not mutate
+     * this instance — safe when maxParallel > 1.
+     *
+     * @param {string} task
+     * @returns {Logger}
+     */
+    child(task) {
+        const next = Object.create(this);
+        next.options = { ...this.options, task: task ? String(task) : this.options.task };
+        return next;
     }
 
     setMode(mode) {
@@ -361,6 +393,12 @@ export class Logger  {
             return;
         }
 
+        if (this.options.name && !struct.name) {
+            struct.name = this.options.name;
+        }
+        if (this.options.task && !struct.task) {
+            struct.task = this.options.task;
+        }
         if (this.options.prefix && !struct.prefix) {
             struct.prefix = this.options.prefix;
         }

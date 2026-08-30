@@ -109,7 +109,7 @@ Each polling tick:
 
 1. Select idle tasks whose targeting matches and whose `next_run_at` is NULL or `<= now`
 2. Claim the earliest due row (`past_due` or `next_run_at`); if none are due, the highest priority (lowest number). Same due instant / non-due ties: priority, then never-run / oldest `completed_at`, then `created_at`
-3. For scheduled rows that are not already `past_due`, run only if `timeMatcher(schedule)` is true
+3. For scheduled rows that are not already `past_due`, run only if `timeMatcher(schedule)` is true. `resumeTask` (and tasksmm run-now) stamp `past_due` so an unpaused scheduled row is claimed immediately.
 4. Instantiate task class and call `cantRunReason()`:
    - if reason returned and not already `past_due`, set `past_due = now()` and skip
 5. Claim task atomically (`status = running` where still `idle`)

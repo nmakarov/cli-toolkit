@@ -9,7 +9,9 @@
  *   - already paused → no-op success
  *
  * resumeTask:
- *   - paused → status=idle (clears pauseRequested); runner may claim again
+ *   - paused → status=idle (clears pauseRequested)
+ *   - stamps `past_due` + `next_run_at` so a scheduled row is claimed on the
+ *     next poll (does not wait for the next cron slot)
  *
  * Both are control-lane tasks so they run even when workers are saturated or
  * the runner itself is paused.
@@ -175,6 +177,7 @@ export async function applyResumeTask(context, taskId) {
     delete progress.pausedAt;
     progress.resumedAt = new Date().toISOString();
 
+    const now = new Date();
     await db(tasksTable).where({ id }).update({
         status: "idle",
         status_changed_at: db.fn.now(),
@@ -186,13 +189,15 @@ export async function applyResumeTask(context, taskId) {
         service_name: null,
         server_name: null,
         instance_number: null,
-        next_run_at: null,
+        // Claim skips scheduled rows until cron matches unless past_due is set.
+        next_run_at: now,
+        past_due: now,
     });
 
-    context.logger?.warn?.(`[resumeTask] paused task ${id} (${row.name}) → idle`);
+    context.logger?.warn?.(`[resumeTask] paused task ${id} (${row.name}) → idle (run now)`);
     return {
         success: true,
-        results: { taskId: id, status: "idle", message: "Task resumed (idle; will be claimed)" },
+        results: { taskId: id, status: "idle", message: "Task resumed (idle; will be claimed now)" },
     };
 }
 

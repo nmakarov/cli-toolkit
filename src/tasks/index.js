@@ -11,6 +11,7 @@ import {
     queueToTableNames,
     taskHistoryInsertFromQueueRow,
     createTaskProgressReporter,
+    loggerTaskLabel,
 } from "./taskUtils.js";
 import { appendTaskIpcLog } from "./taskLogs.js";
 import { nextTimeMatch, timeMatcher } from "./time-matcher.js";
@@ -60,6 +61,7 @@ export {
     taskHistoryInsertFromQueueRow,
     updateTaskProgress,
     createTaskProgressReporter,
+    loggerTaskLabel,
 } from "./taskUtils.js";
 export {
     listServicesRegistry,
@@ -311,9 +313,15 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
     let results = null;
     let taskInstance = null;
     try {
-        taskInstance = new TaskClass(context, row);
+        const taskLogger =
+            typeof context.logger?.child === "function"
+                ? context.logger.child(loggerTaskLabel(row))
+                : context.logger;
+        const taskContext =
+            taskLogger && taskLogger !== context.logger ? { ...context, logger: taskLogger } : context;
+        taskInstance = new TaskClass(taskContext, row);
         runningTaskInstances.set(row.id, taskInstance);
-        const reportProgress = createTaskProgressReporter(context, tasksTable, row.id);
+        const reportProgress = createTaskProgressReporter(taskContext, tasksTable, row.id);
         const runResult = await taskInstance.run(reportProgress);
         success = !!runResult?.success;
         results = runResult?.results ?? null;

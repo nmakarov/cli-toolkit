@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Logger process / task name**: `Logger.init({ name })` (or `--logName`, or
+  pm2 `process.env.name`) prints `[v2intake]` on every line. `logger.child(task)`
+  adds `[retroBackfill:bright]` without mutating the parent — the task runner
+  uses this so concurrent tasks stay distinguishable in pm2 logs. Separate from
+  progress `prefix`.
+- **resumeTask runs now**: unpausing a scheduled row sets `past_due` and
+  `next_run_at` so the next claim poll picks it up instead of waiting for the
+  next cron slot.
+
 ### Changed
 - **Scheduled finalize writes `checkpointParams`**: a successful scheduled
   run that returns `results.checkpointParams` updates the queue row `params`

@@ -287,6 +287,41 @@ describe("Logger CI", () => {
         );
         expect(withTs.startsWith("2026-08-25T15:58:28.000Z INFO")).toBe(true);
     });
+
+    it("formatLog prints process name and task separately from progress prefix", () => {
+        const line = formatLog(
+            { level: "info", name: "v2intake", task: "retroBackfill:bright", message: "harvesting" },
+            { timestamp: false, showLevel: true, color: false },
+        );
+        expect(line).toMatch(/^INFO\s+\[v2intake\] \[retroBackfill:bright\] harvesting$/);
+        const progress = formatLog(
+            {
+                level: "progress",
+                name: "v2intake",
+                task: "loadHarvested:bright/media",
+                prefix: "bright/media",
+                count: 10,
+                total: 20,
+                message: "loading",
+            },
+            { timestamp: false, showLevel: true, color: false },
+        );
+        expect(progress).toContain("[v2intake]");
+        expect(progress).toContain("[loadHarvested:bright/media]");
+        expect(progress).toContain("bright/media");
+    });
+
+    it("child() tags lines without mutating the parent logger", () => {
+        const logger = new Logger(createTestContext(), { name: "v2intake", route: "console", showLevel: false });
+        const child = logger.child("retroBackfill:bright");
+        child.info("window done");
+        logger.info("idle");
+        const [childLine, parentLine] = consoleInfo.mock.calls.map((c) => c[0]);
+        expect(childLine).toContain("[v2intake]");
+        expect(childLine).toContain("[retroBackfill:bright]");
+        expect(parentLine).toContain("[v2intake]");
+        expect(parentLine).not.toContain("retroBackfill");
+    });
 });
 
 

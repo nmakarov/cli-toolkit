@@ -9,6 +9,7 @@ import {
 import { AbstractTask } from "../AbstractTask.js";
 import { TasksRegistry } from "../TasksRegistry.js";
 import { controlLaneTaskNames } from "../runtimeParams.js";
+import { loggerTaskLabel } from "../taskUtils.js";
 
 function makeDb(row) {
     const state = { row };
@@ -89,5 +90,22 @@ describe("pauseTask / resumeTask", () => {
         expect(out.success).toBe(true);
         expect(state.row.status).toBe("idle");
         expect(state.row.service_name).toBe(null);
+        expect(state.row.past_due).toBeInstanceOf(Date);
+        expect(state.row.next_run_at).toBeInstanceOf(Date);
+    });
+});
+
+describe("loggerTaskLabel", () => {
+    it("includes source and resource when present", () => {
+        expect(loggerTaskLabel({ name: "retroBackfill", params: { source: "bright" } })).toBe(
+            "retroBackfill:bright",
+        );
+        expect(
+            loggerTaskLabel({
+                name: "fetchByKeys",
+                params: JSON.stringify({ source: "bright", resource: "media" }),
+            }),
+        ).toBe("fetchByKeys:bright/media");
+        expect(loggerTaskLabel({ name: "hostInfo" })).toBe("hostInfo");
     });
 });

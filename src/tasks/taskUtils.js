@@ -411,3 +411,28 @@ export function createTaskProgressReporter(context, tasksTable, taskId) {
         return pump;
     };
 }
+
+/**
+ * Compact label for pm2 / console lines: `retroBackfill:bright` or
+ * `fetchByKeys:bright/media`.
+ *
+ * @param {object} [row]
+ * @returns {string}
+ */
+export function loggerTaskLabel(row) {
+    const name = String(row?.name || "task").trim() || "task";
+    let params = row?.params;
+    if (typeof params === "string") {
+        try {
+            params = JSON.parse(params);
+        } catch {
+            params = null;
+        }
+    }
+    if (!params || typeof params !== "object" || Array.isArray(params)) return name;
+    const source = params.source != null ? String(params.source).trim() : "";
+    const resource = params.resource != null ? String(params.resource).trim() : "";
+    if (source && resource) return `${name}:${source}/${resource}`;
+    if (source) return `${name}:${source}`;
+    return name;
+}
