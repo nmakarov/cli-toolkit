@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Logger task tag**: `logger.child(task)` prints `[intakeCycle:bright]` on
-  every line (not the pm2 process name). The runner uses the top-level task
-  (`params.logTask` / intake `opid` on leaf rows), not `loadHarvested:bright/media`.
+- **Product plugins**: `setLoggerTaskLabelResolver` and
+  `setGroupMaxInstancesDefaults` so a consuming app can inject log-tag and
+  group-cap rules. The toolkit default is `params.logTask` then `name:source`
+  (no product task names or opid shapes).
+- **Logger task tag**: `logger.child(task)` prints the task tag on every line
+  (not the pm2 process name). Parents stamp `params.logTask` on child rows.
 - **resumeTask runs now**: unpausing a scheduled row sets `past_due` and
   `next_run_at` so the next claim poll picks it up instead of waiting for the
   next cron slot.

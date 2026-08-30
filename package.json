@@ -95,7 +95,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:coverage:open": "vitest --coverage && open coverage/index.html",
-    "test:ci": "vitest run src/args/tests/args.ci.test.js src/params/tests/params.ci.test.js src/errors/tests/errors.ci.test.js src/screen/tests/screen.ci.test.js src/logger/tests/logger.ci.test.js src/filedatabase/tests/filestore.ci.test.js src/filedatabase/tests/synopsis-functions.ci.test.js src/http-client/tests/http-client.ci.test.js src/http-client2/tests/http-client2.ci.test.js src/mock-server/tests/mock-server.ci.test.js src/mock-server/tests/mock-storage.ci.test.js src/db/tests/db.ci.test.js src/utils/tests/format-utils.ci.test.js src/utils/tests/date-utils.ci.test.js src/utils/tests/crypto-utils.ci.test.js src/utils/tests/fs-utils.ci.test.js src/utils/tests/os-utils.ci.test.js src/init/tests/init.ci.test.js src/deploy/tests/log.ci.test.js src/tasks/tests/runtime-params.ci.test.js src/tasks/tests/pause-runner.ci.test.js src/tasks/tests/pause-task.ci.test.js src/tasks/tests/task-logs.ci.test.js src/tasks/tests/task-retention.ci.test.js src/tasks/tests/ensure-task-tables.ci.test.js src/tasks/tests/claim-order.ci.test.js src/tasks/tests/checkpoint-params.ci.test.js --coverage",
+    "test:ci": "vitest run --coverage",
     "test:args": "vitest run src/args/tests",
     "test:args:ci": "vitest run src/args/tests/args.ci.test.js --coverage",
     "test:params": "vitest run src/params/tests",

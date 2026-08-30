@@ -39,19 +39,32 @@ function parseMetadataColumn(value) {
     return {};
 }
 
-/** Default max concurrent *alive* services per group (0 = unlimited). Override with runnerGroupMaxInstances. */
-const DEFAULT_GROUP_MAX_INSTANCES = {
-    intake: 1,
-    harvest: 1,
-    harvester: 0,
-    loader: 0,
-    toolkit: 0,
-    photocare: 0,
-    /** @deprecated use photocare */
-    photos: 0,
-    photosprocessor: 0,
-    ingest: 0,
-};
+/**
+ * Per-group max alive instances (0 = unlimited). Empty by default — product
+ * apps inject their map via {@link setGroupMaxInstancesDefaults}.
+ * An explicit `runnerGroupMaxInstances` override still wins.
+ *
+ * @type {Record<string, number>}
+ */
+let groupMaxInstancesDefaults = Object.create(null);
+
+/**
+ * Replace the per-group instance-cap map. Keys are lowercased group names.
+ * Pass `null` / omit to clear (every group unlimited unless overridden).
+ *
+ * @param {Record<string, number>|null|undefined} map
+ */
+export function setGroupMaxInstancesDefaults(map) {
+    const next = Object.create(null);
+    if (map && typeof map === "object") {
+        for (const [key, value] of Object.entries(map)) {
+            const g = String(key).trim().toLowerCase();
+            if (!g || !Number.isFinite(Number(value))) continue;
+            next[g] = Math.max(0, Math.floor(Number(value)));
+        }
+    }
+    groupMaxInstancesDefaults = next;
+}
 
 /**
  * Produce a DB-safe, human-readable name part: letters / digits / `._-` only,
@@ -81,7 +94,12 @@ function resolveMaxInstances(serviceGroup, override) {
         return Math.max(0, Math.floor(Number(override)));
     }
     const g = serviceGroup.trim().toLowerCase();
-    return DEFAULT_GROUP_MAX_INSTANCES[g] ?? 0;
+    return groupMaxInstancesDefaults[g] ?? 0;
+}
+
+/** @internal exported for tests */
+export function resolveGroupMaxInstances(serviceGroup, override) {
+    return resolveMaxInstances(serviceGroup, override);
 }
 
 /**

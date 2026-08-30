@@ -412,7 +412,19 @@ export function createTaskProgressReporter(context, tasksTable, taskId) {
     };
 }
 
-const LEAF_LOG_TASKS = new Set(["loadHarvested", "harvest", "processListingPhotos"]);
+/** Optional product hook: `(row, { name, params }) => string|null`. */
+let loggerTaskLabelResolver = null;
+
+/**
+ * Inject a product-specific log-tag resolver (MLS leaf names, opid shapes, …).
+ * The toolkit default is `params.logTask`, then `name:source`, then `name`.
+ * Pass `null` to clear.
+ *
+ * @param {((row: object, parsed: { name: string, params: object|null }) => string|null|undefined)|null} fn
+ */
+export function setLoggerTaskLabelResolver(fn) {
+    loggerTaskLabelResolver = typeof fn === "function" ? fn : null;
+}
 
 function parseTaskParams(raw) {
     if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
@@ -428,9 +440,9 @@ function parseTaskParams(raw) {
 }
 
 /**
- * Top-level task tag for pm2 / console lines (`intakeCycle:bright`).
- * Child rows (`loadHarvested`, harvest) use `params.logTask` or `opid`
- * so they still show the parent, not `loadHarvested:bright/media`.
+ * Top-level task tag for logger lines (`name:source`).
+ * Prefer `params.logTask` when a parent stamped the child row.
+ * Product-specific leaf/opid mapping is an injected resolver, not toolkit logic.
  *
  * @param {object} [row]
  * @returns {string}
@@ -440,22 +452,11 @@ export function loggerTaskLabel(row) {
     const params = parseTaskParams(row?.params);
     const explicit = params?.logTask != null ? String(params.logTask).trim() : "";
     if (explicit) return explicit;
-    if (LEAF_LOG_TASKS.has(name)) {
-        const fromOpid = logTaskFromOpid(row?.opid);
-        if (fromOpid) return fromOpid;
+    if (loggerTaskLabelResolver) {
+        const extra = loggerTaskLabelResolver(row, { name, params });
+        if (extra != null && String(extra).trim()) return String(extra).trim();
     }
     const source = params?.source != null ? String(params.source).trim() : "";
     if (source) return `${name}:${source}`;
     return name;
-}
-
-/**
- * @param {unknown} opid
- * @returns {string|null}
- */
-export function logTaskFromOpid(opid) {
-    const s = String(opid ?? "").trim();
-    const intake = s.match(/^intake:([^:]+)/);
-    if (intake) return `intakeCycle:${intake[1]}`;
-    return null;
 }

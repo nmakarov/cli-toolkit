@@ -62,6 +62,7 @@ export {
     updateTaskProgress,
     createTaskProgressReporter,
     loggerTaskLabel,
+    setLoggerTaskLabelResolver,
 } from "./taskUtils.js";
 export {
     listServicesRegistry,
@@ -69,6 +70,8 @@ export {
     touchServicesRegistry,
     unregisterServicesRegistry,
     updateServicesRegistryMetadata,
+    setGroupMaxInstancesDefaults,
+    resolveGroupMaxInstances,
 } from "./servicesRegistry.js";
 /** @deprecated Use registerInServicesRegistry */
 export { registerInServicesRegistry as registerRunnerHeartbeat } from "./servicesRegistry.js";

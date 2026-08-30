@@ -58,7 +58,8 @@ describe("Logger CLI", () => {
         logger.info("json message", { foo: "bar" });
 
         expect(consoleInfo).toHaveBeenCalledTimes(1);
-        const payload = consoleInfo.mock.calls[0][0];
+        const raw = consoleInfo.mock.calls[0][0];
+        const payload = typeof raw === "string" ? JSON.parse(raw) : raw;
         expect(payload.level).toBe("info");
         expect(payload.chunks[0]).toEqual({ foo: "bar" });
     });
