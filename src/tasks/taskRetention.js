@@ -16,12 +16,14 @@ import { getDiskUsage } from "../utils/os-utils.js";
 import { queueToTableNames } from "./taskUtils.js";
 import { ensureTasksRuntime } from "./runtimeParams.js";
 import { pruneIpcLogsOlderThan, tasksLogsRoot } from "./taskLogs.js";
+import { parseRetentionNameRulesRaw, resolveRetentionNameRules } from "./taskRetentionNameRules.js";
+
+export const HISTORY_PRUNE_CHUNK = 2000;
 
 export const DEFAULT_RETENTION_DAYS = 7;
 export const DEFAULT_RETENTION_INTERVAL_MS = 60 * 60 * 1000;
 export const DEFAULT_MIN_FREE_RATIO = 0.1;
 export const DEFAULT_MIN_RETENTION_HOURS = 6;
-export const HISTORY_PRUNE_CHUNK = 2000;
 
 const RETENTION_PARAM_DEFS = {
     tasksRetentionEnabled: "boolean default true",
@@ -29,6 +31,7 @@ const RETENTION_PARAM_DEFS = {
     tasksRetentionIntervalMs: "number default 3600000",
     tasksRetentionMinFreeRatio: "number default 0.1",
     tasksRetentionMinHours: "number default 6",
+    tasksRetentionNameRules: "string",
 };
 
 /**
@@ -61,6 +64,9 @@ export function seedTaskRetentionRuntime(context) {
     }
     if (rt.tasksRetentionMinHours === undefined) {
         rt.tasksRetentionMinHours = Number(fromParams.tasksRetentionMinHours ?? DEFAULT_MIN_RETENTION_HOURS);
+    }
+    if (rt.tasksRetentionNameRules === undefined && fromParams.tasksRetentionNameRules != null) {
+        rt.tasksRetentionNameRules = fromParams.tasksRetentionNameRules;
     }
     return rt;
 }
@@ -120,6 +126,18 @@ export function retentionCutoffIso(days, now = new Date()) {
     return new Date(now.getTime() - ms).toISOString();
 }
 
+/**
+ * @param {number} hours
+ * @param {Date} [now]
+ * @returns {string} ISO cutoff
+ */
+export function retentionCutoffFromHours(hours, now = new Date()) {
+    const ms = Math.max(0, Number(hours) || 0) * 60 * 60 * 1000;
+    return new Date(now.getTime() - ms).toISOString();
+}
+
+export { parseRetentionNameRulesRaw, resolveRetentionNameRules };
+
 export { getDiskUsage as readDiskUsage };
 
 /**
@@ -134,13 +152,14 @@ export { getDiskUsage as readDiskUsage };
 export async function deleteHistoryOlderThan(db, historyTable, cutoff, opts = {}) {
     const chunkSize = Math.max(1, Number(opts.chunkSize) || HISTORY_PRUNE_CHUNK);
     const isStop = typeof opts.isStop === "function" ? opts.isStop : () => false;
+    const name =
+        opts.name != null && String(opts.name).trim() ? String(opts.name).trim() : null;
     let total = 0;
     for (;;) {
         if (isStop()) break;
-        const rows = await db(historyTable)
-            .where("completed_at", "<", cutoff)
-            .select("id")
-            .limit(chunkSize);
+        let q = db(historyTable).where("completed_at", "<", cutoff);
+        if (name) q = q.where({ name });
+        const rows = await q.select("id").limit(chunkSize);
         if (!Array.isArray(rows) || rows.length === 0) break;
         const ids = rows.map((r) => r.id).filter(Boolean);
         if (!ids.length) break;
@@ -193,6 +212,22 @@ export async function pruneTaskRetention(context, options = {}) {
         });
     }
 
+    const nameRules = resolveRetentionNameRules(context.tasksRuntime);
+    const nameRuleResults = [];
+    if (context.db && typeof context.db === "function") {
+        for (const rule of nameRules) {
+            const ruleCutoff = retentionCutoffFromHours(rule.hours, now);
+            const deleted = await deleteHistoryOlderThan(context.db, historyTable, ruleCutoff, {
+                name: rule.name,
+                isStop: () => context.isStop?.() === true,
+            });
+            if (deleted > 0) {
+                nameRuleResults.push({ name: rule.name, hours: rule.hours, cutoff: ruleCutoff, deleted });
+            }
+            historyDeleted += deleted;
+        }
+    }
+
     const summary = {
         skipped: false,
         cutoff,
@@ -202,12 +237,17 @@ export async function pruneTaskRetention(context, options = {}) {
         freeRatio: effective.freeRatio,
         historyTable,
         historyDeleted,
+        nameRules: nameRuleResults,
         logs,
     };
     context.logger?.info?.(
         `[tasks-retention] cutoff=${cutoff} days=${effective.days.toFixed(2)}` +
             `${effective.diskAdjusted ? ` (disk ${(effective.freeRatio * 100).toFixed(1)}% free)` : ""}` +
-            ` history=${historyDeleted} logTables=${logs?.tables ?? 0} logDropped=${logs?.dropped ?? 0}`,
+            ` history=${historyDeleted}` +
+            (nameRuleResults.length
+                ? ` nameRules=${nameRuleResults.map((r) => `${r.name}:${r.deleted}@${r.hours}h`).join(",")}`
+                : "") +
+            ` logTables=${logs?.tables ?? 0} logDropped=${logs?.dropped ?? 0}`,
     );
     return summary;
 }

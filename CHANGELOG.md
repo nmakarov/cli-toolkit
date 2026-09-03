@@ -35,6 +35,14 @@ All notable changes to this project will be documented in this file.
 - **HttpClient2 timeout** default **120000** ms (2 minutes), was 30s.
 
 ### Fixed
+- **getLogs / IPC snapshot**: a truncated data chunk (`000001.json` —
+  `Unexpected end of JSON input`) was skipped every poll and spammed
+  `skipping unreadable IPC log`. Readers now delete that broken file (and
+  an empty version folder) after a 10s mtime grace so a live write is not
+  removed mid-flush.
+- **Task history retention**: high-volume task names can use a shorter window
+  than the global 7-day cutoff via `setTaskRetentionNameRulesDefaults` or
+  runtime `tasksRetentionNameRules` JSON (`name` → hours).
 - **FileDatabase / getLogs**: a truncated `metadata.json` (`Unexpected end of
   JSON input`) aborted the whole read. Readers now rebuild metadata from the
   data files, rewrite that file, and skip a version that is still unreadable

@@ -86,6 +86,12 @@ export const DEFAULT_RUNTIME_PARAM_SPECS = [
         label: "Min retention hours",
         description: "Floor when disk is low (never prune newer than this)",
     },
+    {
+        key: "tasksRetentionNameRules",
+        type: "string",
+        label: "Per-task retention (JSON)",
+        description: 'Shorter windows by task name, e.g. {"processListingPhotos":12} (hours)',
+    },
 ];
 
 /**

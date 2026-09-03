@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtempSync, readdirSync, writeFileSync, rmSync } from "fs";
+import { existsSync, mkdtempSync, readdirSync, utimesSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { filterIpcLogRecords, readTaskIpcLogsSnapshot } from "../taskLogs.js";
@@ -92,7 +92,7 @@ describe("readTaskIpcLogsSnapshot", () => {
         expect(out.records.map((r) => r.payload)).toEqual(["prev", "now"]);
     });
 
-    it("skips a version that is still unreadable and returns the rest", async () => {
+    it("deletes a truncated chunk so the next poll stays quiet", async () => {
         const tmpDir = mkdtempSync(join(tmpdir(), "ipc-snapshot-skip-"));
         tmpDirs.push(tmpDir);
         await writeVersion(tmpDir, [
@@ -102,15 +102,33 @@ describe("readTaskIpcLogsSnapshot", () => {
             { ts: "2026-08-27T21:35:09.000Z", taskId: "live", payload: "gone" },
         ]);
         const latestDir = join(tmpDir, "tasks-logs", "bright", "intake", latest);
-        writeFileSync(join(latestDir, "metadata.json"), '{"version":"', "utf8");
         const chunk = readdirSync(latestDir).find((name) => name.endsWith(".json") && name !== "metadata.json");
-        writeFileSync(join(latestDir, chunk), "[{", "utf8");
+        const chunkPath = join(latestDir, chunk);
+        writeFileSync(chunkPath, "[{", "utf8");
+        const stale = Date.now() - 30_000;
+        utimesSync(chunkPath, stale / 1000, stale / 1000);
 
-        const out = await readTaskIpcLogsSnapshot(makeCtx(tmpDir), {
+        const warns = [];
+        const ctx = {
+            logger: { warn: (m) => warns.push(String(m)), info: () => {} },
+            params: makeCtx(tmpDir).params,
+        };
+        const out = await readTaskIpcLogsSnapshot(ctx, {
             source: "bright",
             resource: "intake",
             fromTs: "2026-08-27T21:00:00.000Z",
         });
         expect(out.records.map((r) => r.payload)).toEqual(["kept"]);
+        expect(warns.join("\n")).toMatch(/deleted unreadable IPC log bright\/intake/);
+        expect(existsSync(chunkPath)).toBe(false);
+
+        warns.length = 0;
+        const again = await readTaskIpcLogsSnapshot(ctx, {
+            source: "bright",
+            resource: "intake",
+            fromTs: "2026-08-27T21:00:00.000Z",
+        });
+        expect(again.records.map((r) => r.payload)).toEqual(["kept"]);
+        expect(warns.join("\n")).not.toMatch(/unreadable IPC log/);
     });
 });

@@ -209,7 +209,9 @@ const legacyData = await db.read();
 A truncated or otherwise unreadable `metadata.json` is rebuilt from the data
 files in that version folder and rewritten so later reads stay quiet. Callers
 that read several versions (IPC `getLogs`, retention prune) skip a version
-that is still unreadable instead of failing the whole table.
+that is still unreadable instead of failing the whole table. IPC log readers
+also delete a truncated data chunk once it is older than a short grace
+period so the next poll does not warn again.
 
 ## Data Types
 

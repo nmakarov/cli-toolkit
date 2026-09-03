@@ -453,6 +453,48 @@ async function removeVersionDir(tableDir, version) {
     await fs.rm(path.join(tableDir, version), { recursive: true, force: true });
 }
 
+/** Live writes are in-place; do not delete a file that may still be flushing. */
+const UNREADABLE_IPC_LOG_GRACE_MS = 10_000;
+
+function ipcLogBrokenFileName(message) {
+    const m = String(message ?? "").match(/Failed to read file ([^:]+):/i);
+    const name = m?.[1]?.trim() ?? "";
+    if (!name || name.includes("/") || name.includes("\\") || name.includes("..")) return null;
+    return name;
+}
+
+/**
+ * Drop a truncated / unparseable IPC chunk (or the whole version if we cannot
+ * name the file). Returns what was removed, or null when the file is too new.
+ */
+async function removeUnreadableIpcLog(fd, version, message) {
+    const dest = fd.getDestinationPath(version);
+    const fileName = ipcLogBrokenFileName(message);
+    const target = fileName ? path.join(dest, fileName) : dest;
+    try {
+        const st = await fs.stat(target);
+        if (Date.now() - Number(st.mtimeMs) < UNREADABLE_IPC_LOG_GRACE_MS) return null;
+    } catch {
+        return null;
+    }
+    if (fileName) {
+        await fs.rm(target, { force: true });
+        let leftover = [];
+        try {
+            leftover = (await fs.readdir(dest)).filter((n) => n !== "metadata.json" && !n.startsWith("."));
+        } catch {
+            leftover = [];
+        }
+        if (leftover.length === 0) {
+            await fs.rm(dest, { recursive: true, force: true });
+            return `${version}/${fileName}`;
+        }
+        return fileName;
+    }
+    await fs.rm(dest, { recursive: true, force: true });
+    return version;
+}
+
 async function readIpcLogVersion(fd, version, logger, tableName) {
     try {
         fd.lastReadMissingFiles = [];
@@ -460,8 +502,15 @@ async function readIpcLogVersion(fd, version, logger, tableName) {
         const missingChunks = Array.isArray(fd.lastReadMissingFiles) ? fd.lastReadMissingFiles.length : 0;
         return { version, records: Array.isArray(raw) ? raw : [], missingChunks };
     } catch (err) {
+        const msg = err?.message ?? String(err);
+        let removed = null;
+        try {
+            removed = await removeUnreadableIpcLog(fd, version, msg);
+        } catch {
+            /* still skip this poll */
+        }
         logger?.warn?.(
-            `[tasks-logs] skipping unreadable IPC log ${tableName}/${version}: ${err?.message ?? err}`,
+            `[tasks-logs] ${removed ? "deleted" : "skipping"} unreadable IPC log ${tableName}/${version}: ${msg}`,
         );
         return { version, records: [], missingChunks: 0 };
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { mkdtempSync, readdirSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, readdirSync, utimesSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -154,7 +154,10 @@ describe("pruneIpcLogsOlderThan", () => {
         const staleDir = join(tmpDir, "tasks-logs", "runner", staleVersion);
         const chunk = readdirSync(staleDir).find((name) => name.endsWith(".json") && name !== "metadata.json");
         expect(chunk).toBeTruthy();
-        writeFileSync(join(staleDir, chunk), '[{"ts":"2026-08-01T00:00:00.000Z"', "utf8");
+        const chunkPath = join(staleDir, chunk);
+        writeFileSync(chunkPath, '[{"ts":"2026-08-01T00:00:00.000Z"', "utf8");
+        const staleAt = Date.now() - 30_000;
+        utimesSync(chunkPath, staleAt / 1000, staleAt / 1000);
 
         const ctx = {
             logger,

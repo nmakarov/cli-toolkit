@@ -99,8 +99,14 @@ export {
     readRetentionConfig,
     effectiveRetentionDays,
     retentionCutoffIso,
+    retentionCutoffFromHours,
     deleteHistoryOlderThan,
 } from "./taskRetention.js";
+export {
+    setTaskRetentionNameRulesDefaults,
+    resolveRetentionNameRules,
+    parseRetentionNameRulesRaw,
+} from "./taskRetentionNameRules.js";
 export { TaskPruneTaskRetention } from "./coreTasks/TaskPruneTaskRetention.js";
 export { runNodeTaskScript } from "./taskScriptRunner.js";
 export { AbstractTask } from "./AbstractTask.js";
