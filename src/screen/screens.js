@@ -464,14 +464,19 @@ export async function showScreen(config) {
             );
         };
 
+        const stdout = createFlickerFreeStdout(process.stdout);
+
         const cleanup = (result) => {
             if (instance) instance.unmount();
+            // Ink's unmount leaves the last frame on screen. Erase it so the
+            // next screen replaces this one instead of painting below the footer.
+            stdout.clearTrackedFrame();
             setTimeout(() => resolve(result), 50);
         };
 
         instance = render(h(Screen), {
             patchConsole: false,
-            stdout: createFlickerFreeStdout(process.stdout),
+            stdout,
         });
     });
 }

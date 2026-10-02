@@ -86,6 +86,16 @@ export function paintFrameDiff(prevLines, nextLines) {
     return out;
 }
 
+/**
+ * Cursor sits on the blank line after the frame. Erase that line and every
+ * content row above it, and leave the cursor on the first row of the frame.
+ */
+export function eraseTrackedFrame(lineCount) {
+    const n = Number(lineCount) || 0;
+    if (n <= 0) return "";
+    return inkEraseLines(n + 1);
+}
+
 function finishWrite(stdout, payload, enc, done) {
     const ok = stdout.write(payload, enc);
     if (typeof done === "function") done();
@@ -98,6 +108,14 @@ function finishWrite(stdout, payload, enc, done) {
  */
 export function createFlickerFreeStdout(stdout = process.stdout) {
     let prevLines = [];
+
+    const clearTrackedFrame = () => {
+        const rows = contentRows(prevLines).length;
+        const payload = eraseTrackedFrame(rows);
+        prevLines = [];
+        if (!payload) return;
+        stdout.write(payload);
+    };
 
     const write = (chunk, encoding, cb) => {
         const done = typeof encoding === "function" ? encoding : cb;
@@ -135,6 +153,7 @@ export function createFlickerFreeStdout(stdout = process.stdout) {
     return new Proxy(stdout, {
         get(target, prop) {
             if (prop === "write") return write;
+            if (prop === "clearTrackedFrame") return clearTrackedFrame;
             const value = Reflect.get(target, prop, target);
             return typeof value === "function" ? value.bind(target) : value;
         },

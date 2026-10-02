@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+    eraseTrackedFrame,
     inkEraseLines,
     splitInkLogWrite,
     splitFrameLines,
@@ -102,6 +103,25 @@ describe("createFlickerFreeStdout", () => {
         columns = 40;
         expect(out.columns).toBe(40);
         expect(out.rows).toBe(40);
+    });
+
+    it("erases the tracked frame and lets the next write start clean", () => {
+        const writes = [];
+        const fake = {
+            write(chunk) {
+                writes.push(String(chunk));
+                return true;
+            },
+        };
+        const out = createFlickerFreeStdout(fake);
+        out.write("one\ntwo\n");
+        writes.length = 0;
+        out.clearTrackedFrame();
+        expect(writes[0]).toBe(eraseTrackedFrame(2));
+        expect(writes[0]).toBe(inkEraseLines(3));
+        writes.length = 0;
+        out.write("next\n");
+        expect(writes[0]).toBe("next\n");
     });
 
     it("does not rewrite later raw multiline writes (not an Ink frame)", () => {
