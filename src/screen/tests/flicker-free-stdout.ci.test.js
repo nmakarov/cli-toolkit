@@ -78,7 +78,7 @@ describe("createFlickerFreeStdout", () => {
         };
         const out = createFlickerFreeStdout(fake);
         out.write("one\ntwo\n");
-        expect(writes[0]).toBe("one\ntwo\n");
+        expect(writes[0]).toBe("\u001b[H\u001b[Jone\ntwo\n");
         writes.length = 0;
 
         out.write(inkEraseLines(3) + "one\nTWO\n");
@@ -121,7 +121,7 @@ describe("createFlickerFreeStdout", () => {
         expect(writes[0]).toBe(inkEraseLines(3));
         writes.length = 0;
         out.write("next\n");
-        expect(writes[0]).toBe("next\n");
+        expect(writes[0]).toBe("\u001b[H\u001b[Jnext\n");
     });
 
     it("does not rewrite later raw multiline writes (not an Ink frame)", () => {

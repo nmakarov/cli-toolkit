@@ -12,6 +12,12 @@ const ESC = "\u001b[";
 const ERASE_LINE = `${ESC}2K`;
 const CURSOR_UP = `${ESC}1A`;
 const CURSOR_LEFT = `${ESC}G`;
+/**
+ * Cursor home + erase below. A new screen's first paint must not continue
+ * from wherever the previous frame left the cursor — a one-row miss makes
+ * the next in-place update write a second copy of the status line.
+ */
+const HOME_AND_CLEAR = `${ESC}H${ESC}J`;
 
 /** Same formula as ansi-escapes `eraseLines(count)`. */
 export function inkEraseLines(count) {
@@ -137,7 +143,7 @@ export function createFlickerFreeStdout(stdout = process.stdout) {
             const nextLines = splitFrameLines(parsed.body);
             if (prevLines.length === 0) {
                 prevLines = nextLines;
-                return finishWrite(stdout, parsed.body, enc, done);
+                return finishWrite(stdout, HOME_AND_CLEAR + parsed.body, enc, done);
             }
             const painted = paintFrameDiff(prevLines, nextLines);
             prevLines = nextLines;
@@ -146,6 +152,7 @@ export function createFlickerFreeStdout(stdout = process.stdout) {
 
         if (prevLines.length === 0 && parsed.body.includes("\n")) {
             prevLines = splitFrameLines(parsed.body);
+            return finishWrite(stdout, HOME_AND_CLEAR + parsed.body, enc, done);
         }
         return stdout.write(chunk, encoding, cb);
     };
