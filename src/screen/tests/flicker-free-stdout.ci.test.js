@@ -89,6 +89,23 @@ describe("createFlickerFreeStdout", () => {
         expect(frame).not.toContain(inkEraseLines(3));
     });
 
+    it("redraws from the top when the frame height changes", () => {
+        const writes = [];
+        const fake = {
+            write(chunk) {
+                writes.push(String(chunk));
+                return true;
+            },
+        };
+        const out = createFlickerFreeStdout(fake);
+        out.write("title\nrunning…\n");
+        writes.length = 0;
+        out.write(inkEraseLines(3) + "title\nrows\nbucket\n");
+        expect(writes[0].startsWith("\u001b[H\u001b[J")).toBe(true);
+        expect(writes[0]).toContain("title\nrows\nbucket\n");
+        expect(writes[0]).not.toContain("running…");
+    });
+
     it("exposes live columns/rows getters from the real stream", () => {
         let columns = 120;
         const fake = {

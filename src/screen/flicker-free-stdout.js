@@ -13,9 +13,9 @@ const ERASE_LINE = `${ESC}2K`;
 const CURSOR_UP = `${ESC}1A`;
 const CURSOR_LEFT = `${ESC}G`;
 /**
- * Cursor home + erase below. A new screen's first paint must not continue
- * from wherever the previous frame left the cursor — a one-row miss makes
- * the next in-place update write a second copy of the status line.
+ * Cursor home + erase below. Used when we cannot trust an in-place update:
+ * the first paint of a screen, and any paint that changes the frame height.
+ * A one-row miss otherwise leaves the previous status line on screen.
  */
 const HOME_AND_CLEAR = `${ESC}H${ESC}J`;
 
@@ -141,7 +141,12 @@ export function createFlickerFreeStdout(stdout = process.stdout) {
                 return finishWrite(stdout, str, enc, done);
             }
             const nextLines = splitFrameLines(parsed.body);
-            if (prevLines.length === 0) {
+            const prevHeight = contentRows(prevLines).length;
+            const nextHeight = contentRows(nextLines).length;
+            // Same height: rewrite changed rows in place. A taller or shorter
+            // frame (running… → result rows) is redrawn from the top so the
+            // old status line cannot stay above the new body.
+            if (prevHeight === 0 || prevHeight !== nextHeight) {
                 prevLines = nextLines;
                 return finishWrite(stdout, HOME_AND_CLEAR + parsed.body, enc, done);
             }
