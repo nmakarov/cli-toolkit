@@ -468,9 +468,8 @@ export async function showScreen(config) {
 
         const cleanup = (result) => {
             if (instance) instance.unmount();
-            // Ink's unmount leaves the last frame on screen. Erase it so the
-            // next screen replaces this one instead of painting below the footer.
-            stdout.clearTrackedFrame();
+            // Leave the last frame in the scrollback. The next screen prints
+            // below it, so earlier forms stay visible when you scroll up.
             setTimeout(() => resolve(result), 50);
         };
 
