@@ -78,7 +78,7 @@ describe("createFlickerFreeStdout", () => {
         };
         const out = createFlickerFreeStdout(fake);
         out.write("one\ntwo\n");
-        expect(writes[0]).toBe("\u001b[H\u001b[Jone\ntwo\n");
+        expect(writes[0]).toBe("one\ntwo\n");
         writes.length = 0;
 
         out.write(inkEraseLines(3) + "one\nTWO\n");
@@ -87,23 +87,6 @@ describe("createFlickerFreeStdout", () => {
         expect(frame).toContain("TWO");
         expect(frame).toContain("\u001b[2A");
         expect(frame).not.toContain(inkEraseLines(3));
-    });
-
-    it("redraws from the top when the frame height changes", () => {
-        const writes = [];
-        const fake = {
-            write(chunk) {
-                writes.push(String(chunk));
-                return true;
-            },
-        };
-        const out = createFlickerFreeStdout(fake);
-        out.write("title\nrunning…\n");
-        writes.length = 0;
-        out.write(inkEraseLines(3) + "title\nrows\nbucket\n");
-        expect(writes[0].startsWith("\u001b[H\u001b[J")).toBe(true);
-        expect(writes[0]).toContain("title\nrows\nbucket\n");
-        expect(writes[0]).not.toContain("running…");
     });
 
     it("exposes live columns/rows getters from the real stream", () => {
@@ -138,7 +121,7 @@ describe("createFlickerFreeStdout", () => {
         expect(writes[0]).toBe(inkEraseLines(3));
         writes.length = 0;
         out.write("next\n");
-        expect(writes[0]).toBe("\u001b[H\u001b[Jnext\n");
+        expect(writes[0]).toBe("next\n");
     });
 
     it("does not rewrite later raw multiline writes (not an Ink frame)", () => {

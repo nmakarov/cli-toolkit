@@ -12,12 +12,6 @@ const ESC = "\u001b[";
 const ERASE_LINE = `${ESC}2K`;
 const CURSOR_UP = `${ESC}1A`;
 const CURSOR_LEFT = `${ESC}G`;
-/**
- * Cursor home + erase below. Used when we cannot trust an in-place update:
- * the first paint of a screen, and any paint that changes the frame height.
- * A one-row miss otherwise leaves the previous status line on screen.
- */
-const HOME_AND_CLEAR = `${ESC}H${ESC}J`;
 
 /** Same formula as ansi-escapes `eraseLines(count)`. */
 export function inkEraseLines(count) {
@@ -141,14 +135,9 @@ export function createFlickerFreeStdout(stdout = process.stdout) {
                 return finishWrite(stdout, str, enc, done);
             }
             const nextLines = splitFrameLines(parsed.body);
-            const prevHeight = contentRows(prevLines).length;
-            const nextHeight = contentRows(nextLines).length;
-            // Same height: rewrite changed rows in place. A taller or shorter
-            // frame (running… → result rows) is redrawn from the top so the
-            // old status line cannot stay above the new body.
-            if (prevHeight === 0 || prevHeight !== nextHeight) {
+            if (prevLines.length === 0) {
                 prevLines = nextLines;
-                return finishWrite(stdout, HOME_AND_CLEAR + parsed.body, enc, done);
+                return finishWrite(stdout, parsed.body, enc, done);
             }
             const painted = paintFrameDiff(prevLines, nextLines);
             prevLines = nextLines;
@@ -157,7 +146,6 @@ export function createFlickerFreeStdout(stdout = process.stdout) {
 
         if (prevLines.length === 0 && parsed.body.includes("\n")) {
             prevLines = splitFrameLines(parsed.body);
-            return finishWrite(stdout, HOME_AND_CLEAR + parsed.body, enc, done);
         }
         return stdout.write(chunk, encoding, cb);
     };
