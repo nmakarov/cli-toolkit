@@ -41,8 +41,8 @@ const LOCKED_BY_ERROR_MESSAGE = "locked by error";
 
 /**
  * Next `params` to persist on the queue row. Long-running tasks return
- * `results.checkpointParams` so pause, hard stop, and the next scheduled
- * tick resume from the same cursor (offset / pending unit) instead of
+ * `results.checkpointParams` so pause, hard stop, and the next claim
+ * resume from the same cursor (offset / pending unit) instead of
  * starting the next window.
  *
  * @param {object|null|undefined} results
@@ -52,6 +52,19 @@ export function checkpointParamsFromResults(results) {
     if (!results || typeof results !== "object") return null;
     const next = results.checkpointParams;
     return next && typeof next === "object" && !Array.isArray(next) ? next : null;
+}
+
+/**
+ * A scheduled hard stop that saved a cursor must be claimed on the next poll.
+ * `next_run_at <= now` is not enough: the claim loop skips a scheduled row
+ * until `past_due` is set or the cron matches. A clean success leaves both
+ * alone so the row waits for the next cron slot.
+ *
+ * @param {object|null|undefined} results
+ * @returns {boolean}
+ */
+export function scheduledStopResumesImmediately(results) {
+    return results?.stopped === true && checkpointParamsFromResults(results) != null;
 }
 
 export {
@@ -402,20 +415,31 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
         });
     } else if (row.schedule) {
         if (success) {
+            const resumeNow = scheduledStopResumesImmediately(results);
+            const now = new Date();
             let nextRunAt = null;
-            try {
-                nextRunAt = nextTimeMatch(row.schedule, new Date());
-            } catch (e) {
-                context.logger?.warn?.(`[tasks] nextTimeMatch after success for task ${row.id}: ${e?.message ?? String(e)}`);
+            if (resumeNow) {
+                nextRunAt = now;
+            } else {
+                try {
+                    nextRunAt = nextTimeMatch(row.schedule, now);
+                } catch (e) {
+                    context.logger?.warn?.(`[tasks] nextTimeMatch after success for task ${row.id}: ${e?.message ?? String(e)}`);
+                }
             }
             const checkpointParams = checkpointParamsFromResults(results);
+            if (resumeNow) {
+                context.logger?.info?.(
+                    `[tasks] ${row.name} id=${row.id} stopped with a checkpoint — due now`,
+                );
+            }
             await db(tasksTable).where({ id: row.id }).update({
                 started_at: null,
                 completed_at: new Date(),
                 success,
                 results: toJsonColumn(results),
                 progress: null,
-                past_due: null,
+                past_due: resumeNow ? now : null,
                 status: "idle",
                 status_changed_at: db.fn.now(),
                 next_run_at: nextRunAt,

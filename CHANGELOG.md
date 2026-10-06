@@ -16,6 +16,11 @@ All notable changes to this project will be documented in this file.
   next cron slot.
 
 ### Changed
+- **Hard stop of a scheduled task is due now**: when a successful run returns
+  `stopped: true` and `checkpointParams`, finalize sets `past_due` and
+  `next_run_at` to now. The claim loop skips a scheduled row until the cron
+  matches unless `past_due` is set, so a redeploy mid-unit no longer waits
+  for the next cron slot. A clean success still does.
 - **Scheduled finalize writes `checkpointParams`**: a successful scheduled
   run that returns `results.checkpointParams` updates the queue row `params`
   so the next tick resumes from that cursor (load offset, pending unit).

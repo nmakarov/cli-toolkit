@@ -193,8 +193,11 @@ work — not skip ahead to the next window.
    mid-unit would lose the harvest you just finished.
 2. On pause return `{ success: true, results: { taskPaused: true, checkpointParams } }`.
    The runner copies `checkpointParams` onto the row.
-3. On hard stop of a **scheduled** task, return `checkpointParams` the same way.
-   Finalize now writes those params even when the row goes back to `idle`.
+3. On hard stop of a **scheduled** task, return `{ stopped: true, checkpointParams }`.
+   Finalize writes those params, sets the row **idle**, and stamps `past_due` plus
+   `next_run_at` to now so the next poll continues that unit. A clean success
+   still waits for the next cron match (`past_due` stays null, so a future
+   `next_run_at` is not claimed early).
 4. On the next `run()`, read `params.checkpoint` / offset **first** and finish
    that unit before planning new work. Clear the cursor when the unit completes.
 
