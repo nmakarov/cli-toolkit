@@ -294,6 +294,22 @@ function isErrorPayload(payload) {
  * @param {unknown} payload
  * @returns {object} `{ ts, opid, taskId, taskName, target, source, resource, payload }`
  */
+function ipcLogDirMissing(error) {
+    const msg = String(error?.message ?? error);
+    return error?.code === "ENOENT" || /ENOENT|no such file or directory/i.test(msg);
+}
+
+/** Drop the dead version so the next line creates a folder instead of warning forever. */
+function reopenIpcLogWriter(state) {
+    const db = state?.db;
+    if (!db) return;
+    db.currentVersion = null;
+    db.currentFileNumber = 0;
+    if (typeof db.getDefaultMetadata === "function") {
+        db.metadata = db.getDefaultMetadata();
+    }
+}
+
 function buildLogRecord(task, payload) {
     const params = task.params && typeof task.params === "object" ? task.params : {};
     return {
@@ -335,6 +351,7 @@ export function appendTaskIpcLog(context, task, payload, target) {
             })
             .catch((error) => {
                 context.logger.warn?.("[tasks] failed to persist IPC log entry (targeted):", error);
+                if (ipcLogDirMissing(error)) reopenIpcLogWriter(state);
             });
         return;
     }
@@ -356,6 +373,7 @@ export function appendTaskIpcLog(context, task, payload, target) {
         })
         .catch((error) => {
             context.logger.warn?.("[tasks] failed to persist IPC log entry:", error);
+            if (ipcLogDirMissing(error)) reopenIpcLogWriter(state);
         });
 }
 
@@ -408,7 +426,12 @@ export function planIpcLogPrune(versions, cutoff) {
     const deleteVersions = [];
     let dropped = 0;
     let needsRewrite = false;
-    for (const { version, records, missingChunks } of versions ?? []) {
+    let leftUnread = false;
+    for (const { version, records, missingChunks, unreadable } of versions ?? []) {
+        if (unreadable) {
+            leftUnread = true;
+            continue;
+        }
         const arr = Array.isArray(records) ? records : [];
         const live = arr.filter((r) => typeof r?.ts === "string" && r.ts >= cut);
         dropped += arr.length - live.length;
@@ -421,7 +444,7 @@ export function planIpcLogPrune(versions, cutoff) {
         dropped,
         deleteVersions,
         rewrite: needsRewrite,
-        deleteAll: kept.length === 0 && (versions?.length ?? 0) > 0,
+        deleteAll: kept.length === 0 && (versions?.length ?? 0) > 0 && !leftUnread,
     };
 }
 
@@ -455,6 +478,13 @@ async function removeVersionDir(tableDir, version) {
 
 /** Live writes are in-place; do not delete a file that may still be flushing. */
 const UNREADABLE_IPC_LOG_GRACE_MS = 10_000;
+
+/**
+ * A version another process may still be appending to. Retention must not
+ * remove that folder: the writer then fails every later page with ENOENT
+ * and logs the same warning forever.
+ */
+export const IPC_LOG_LIVE_VERSION_GRACE_MS = 60_000;
 
 function ipcLogBrokenFileName(message) {
     const m = String(message ?? "").match(/Failed to read file ([^:]+):/i);
@@ -512,8 +542,37 @@ async function readIpcLogVersion(fd, version, logger, tableName) {
         logger?.warn?.(
             `[tasks-logs] ${removed ? "deleted" : "skipping"} unreadable IPC log ${tableName}/${version}: ${msg}`,
         );
-        return { version, records: [], missingChunks: 0 };
+        // A failed read is not an empty version. Treating it as empty made
+        // retention delete the folder a live writer was still using.
+        return { version, records: [], missingChunks: 0, unreadable: true };
     }
+}
+
+async function versionWrittenRecently(tableDir, version, graceMs = IPC_LOG_LIVE_VERSION_GRACE_MS) {
+    const dir = path.join(tableDir, version);
+    let newest = 0;
+    try {
+        const st = await fs.stat(dir);
+        newest = Number(st.mtimeMs) || 0;
+        const names = await fs.readdir(dir);
+        for (const name of names) {
+            try {
+                const s = await fs.stat(path.join(dir, name));
+                if (Number(s.mtimeMs) > newest) newest = Number(s.mtimeMs);
+            } catch {
+                /* vanished while scanning */
+            }
+        }
+    } catch {
+        return false;
+    }
+    return Date.now() - newest < graceMs;
+}
+
+async function removeIdleVersionDir(tableDir, version) {
+    if (await versionWrittenRecently(tableDir, version)) return false;
+    await removeVersionDir(tableDir, version);
+    return true;
 }
 
 async function compactIpcLogTable(context, tableName, cutoff) {
@@ -540,22 +599,33 @@ async function compactIpcLogTable(context, tableName, cutoff) {
     const plan = planIpcLogPrune(loaded, cutoff);
     const tableDir = resolveIpcFileLogsDir(context, { tableName, basePath, namespace });
 
+    const latest = versions[versions.length - 1];
+    const latestLive = latest ? await versionWrittenRecently(tableDir, latest) : false;
+
     if (plan.deleteAll) {
-        for (const version of versions) await removeVersionDir(tableDir, version);
-        return { table: tableName, dropped: plan.dropped, deletedVersions: versions.length };
+        let deletedVersions = 0;
+        for (const version of versions) {
+            if (await removeIdleVersionDir(tableDir, version)) deletedVersions += 1;
+        }
+        return { table: tableName, dropped: plan.dropped, deletedVersions };
     }
 
-    if (plan.rewrite) {
+    if (plan.rewrite && !latestLive) {
         await fd.write(plan.kept, { forceNewVersion: true });
         const keep = fd.currentVersion;
+        let deletedVersions = 0;
         for (const version of await fd.getVersions()) {
-            if (version !== keep) await removeVersionDir(tableDir, version);
+            if (version === keep) continue;
+            if (await removeIdleVersionDir(tableDir, version)) deletedVersions += 1;
         }
-        return { table: tableName, dropped: plan.dropped, deletedVersions: versions.length, rewritten: true };
+        return { table: tableName, dropped: plan.dropped, deletedVersions, rewritten: true };
     }
 
-    for (const version of plan.deleteVersions) await removeVersionDir(tableDir, version);
-    return { table: tableName, dropped: plan.dropped, deletedVersions: plan.deleteVersions.length };
+    let deletedVersions = 0;
+    for (const version of plan.deleteVersions) {
+        if (await removeIdleVersionDir(tableDir, version)) deletedVersions += 1;
+    }
+    return { table: tableName, dropped: plan.dropped, deletedVersions };
 }
 
 function invalidateIpcLogWriter(context, tableName) {

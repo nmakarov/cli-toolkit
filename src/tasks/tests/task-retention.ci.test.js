@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { mkdtempSync, readdirSync, utimesSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, readdirSync, statSync, utimesSync, writeFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import {
@@ -107,6 +107,16 @@ describe("planIpcLogPrune", () => {
         expect(plan.deleteVersions).toEqual([]);
     });
 
+    it("does not delete a version that could not be read", () => {
+        const plan = planIpcLogPrune(
+            [{ version: "live", records: [], unreadable: true }],
+            cutoff,
+        );
+        expect(plan.deleteAll).toBe(false);
+        expect(plan.deleteVersions).toEqual([]);
+        expect(plan.kept).toEqual([]);
+    });
+
     it("treats unreadable versions as empty so they are deleted", () => {
         const plan = planIpcLogPrune(
             [
@@ -120,6 +130,19 @@ describe("planIpcLogPrune", () => {
         expect(plan.deleteAll).toBe(false);
     });
 });
+
+function ageTree(dir, msAgo) {
+    const when = (Date.now() - msAgo) / 1000;
+    const walk = (p) => {
+        utimesSync(p, when, when);
+        for (const name of readdirSync(p, { withFileTypes: true })) {
+            const child = join(p, name.name);
+            if (name.isDirectory()) walk(child);
+            else utimesSync(child, when, when);
+        }
+    };
+    walk(dir);
+}
 
 describe("pruneIpcLogsOlderThan", () => {
     const tmpDirs = [];
@@ -213,6 +236,7 @@ describe("pruneIpcLogsOlderThan", () => {
         const chunk = readdirSync(versionDir).find((name) => name === "000002.json");
         expect(chunk).toBeTruthy();
         rmSync(join(versionDir, chunk));
+        ageTree(versionDir, 120_000);
 
         const ctx = {
             logger,
@@ -244,6 +268,40 @@ describe("pruneIpcLogsOlderThan", () => {
         for (const file of fd2.getMetadata().files ?? []) {
             expect(onDisk).toContain(file.fileName);
         }
+    });
+
+    it("does not delete a version that was written in the last minute", async () => {
+        const tmpDir = mkdtempSync(join(tmpdir(), "ipc-prune-live-"));
+        tmpDirs.push(tmpDir);
+        const params = {
+            tasksLogsBasePath: tmpDir,
+            tasksLogsNamespace: "tasks-logs",
+        };
+        const logger = { warn: vi.fn(), info: vi.fn() };
+        const fd = new FileDatabase({
+            basePath: tmpDir,
+            namespace: "tasks-logs",
+            tableName: "bright/properties",
+            versioned: true,
+            useMetadata: true,
+            maxVersions: 30,
+            pageSize: 2000,
+            logger,
+        });
+        await fd.write([{ ts: "2020-01-01T00:00:00.000Z", msg: "still writing" }], { forceNewVersion: true });
+        const [version] = await fd.getVersions();
+        const versionDir = join(tmpDir, "tasks-logs", "bright", "properties", version);
+        expect(statSync(versionDir).isDirectory()).toBe(true);
+
+        const ctx = {
+            logger,
+            params: { get: (key) => params[key] },
+        };
+        const out = await pruneIpcLogsOlderThan(ctx, "2026-08-17T00:00:00.000Z");
+        expect(out.details[0].error).toBeUndefined();
+        expect(statSync(versionDir).isDirectory()).toBe(true);
+        const kept = await fd.read({ version });
+        expect(kept.some((r) => r.msg === "still writing")).toBe(true);
     });
 });
 

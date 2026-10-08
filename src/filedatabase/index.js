@@ -575,6 +575,7 @@ export class FileDatabase {
             metadataFile = path.join(this.getDestinationPath(), "metadata.json");
         }
 
+        await ensurePath(path.dirname(metadataFile));
         await fs.promises.writeFile(metadataFile, JSON.stringify(metadataToSave, null, 4), "utf8");
     }
 
@@ -797,6 +798,7 @@ export class FileDatabase {
     async safeWrite(filePath, data) {
         const serializedData = serializeData(data);
         const dir = path.dirname(filePath);
+        await ensurePath(dir);
         const requiredBytes = Buffer.byteLength(serializedData, "utf8");
 
         // Check disk space
