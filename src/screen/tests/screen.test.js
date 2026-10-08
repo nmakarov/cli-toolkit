@@ -64,6 +64,9 @@ describe("Screen footer hotkeys", () => {
             expect(cap.props).toMatchObject(FOOTER_MUTED_STYLE);
             expect(cap.props.dimColor).toBeUndefined();
         }
+        expect(visibleOf(ScreenFooter({ hotkeys, captionPrefix: " " }))).toBe(
+            "esc/← go back, enter inspect, r refresh",
+        );
     });
 
     it("omits captions in short mode and renders toggle values", () => {

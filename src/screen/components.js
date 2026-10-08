@@ -125,7 +125,7 @@ export function normalizeFooterHotkey(item) {
     };
 }
 
-function renderHotkeyPieces(item, reactKey) {
+function renderHotkeyPieces(item, reactKey, captionPrefix = " to ") {
     const normalized = normalizeFooterHotkey(item);
     if (!normalized) return [];
     if (normalized.node && React.isValidElement(normalized.node)) {
@@ -145,7 +145,7 @@ function renderHotkeyPieces(item, reactKey) {
     });
 
     if (normalized.caption) {
-        pieces.push(h(Text, { key: `${reactKey}-cap`, ...FOOTER_MUTED_STYLE }, ` to ${normalized.caption}`));
+        pieces.push(h(Text, { key: `${reactKey}-cap`, ...FOOTER_MUTED_STYLE }, `${captionPrefix}${normalized.caption}`));
     }
 
     if (normalized.kind === "toggle" && normalized.value) {
@@ -172,7 +172,7 @@ function renderHotkeyPieces(item, reactKey) {
  *
  * Extra status lines (not hotkeys) still go in `lines`.
  */
-export function ScreenFooter({ hotkeys, lines, textStyle }) {
+export function ScreenFooter({ hotkeys, lines, textStyle, captionPrefix = " to " }) {
     const defaultTextStyle = {
         dimColor: true,
         color: "white"
@@ -215,7 +215,7 @@ export function ScreenFooter({ hotkeys, lines, textStyle }) {
         if (idx > 0) {
             hotkeyPieces.push(h(Text, { key: `hk-join-${idx}`, ...FOOTER_MUTED_STYLE }, ", "));
         }
-        hotkeyPieces.push(...renderHotkeyPieces(item, `hk-${idx}`));
+        hotkeyPieces.push(...renderHotkeyPieces(item, `hk-${idx}`, captionPrefix));
     });
 
     const extraRows = (lines && lines.length)

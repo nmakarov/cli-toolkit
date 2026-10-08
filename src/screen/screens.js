@@ -235,7 +235,8 @@ export async function showScreen(config) {
     const {
         title,
         onRender,
-        parentData = {}
+        parentData = {},
+        footerCaptionPrefix = " to ",
     } = config;
 
 
@@ -460,6 +461,7 @@ export async function showScreen(config) {
                 h(ScreenFooter, {
                     hotkeys: footerHotkeys,
                     lines: customFooterItems,
+                    captionPrefix: footerCaptionPrefix,
                 })
             );
         };
