@@ -111,7 +111,10 @@ describe("coverage gaps", () => {
             params: paramsFrom({ name: "pauseTask", taskId: "t1" }),
             tasksQueueName: "tasks",
         };
-        expect(await TaskPauseTask.resolveCustomParams(ctx, { params: { taskId: "t1" } })).toEqual({ taskId: "t1" });
+        expect(await TaskPauseTask.resolveCustomParams(ctx, { params: { taskId: "t1" } })).toEqual({
+            taskId: "t1",
+            stopAllowance: 30,
+        });
         expect(await TaskResumeTask.resolveCustomParams(ctx, { params: { taskId: "t1" } })).toEqual({ taskId: "t1" });
         await new TaskPauseTask(ctx, { params: { taskId: "t1" } }).run();
         await new TaskResumeTask(ctx, { params: { taskId: "t1" } }).run();
