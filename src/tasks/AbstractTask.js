@@ -80,10 +80,18 @@ export class AbstractTask {
      * from that point (not the next window). Hard stop of a scheduled task must
      * do the same (`checkpointParams` is written on scheduled finalize).
      *
-     * @param {number} [_allowanceMs]
+     * @param {number} [allowanceSec] Seconds to finish the current unit. Default 30.
      */
-    requestPause(_allowanceMs) {
+    requestPause(allowanceSec) {
         this._pauseRequested = true;
+        const n = Number(allowanceSec);
+        this._pauseStopAllowanceSec = Number.isFinite(n) && n > 0 ? n : 30;
+    }
+
+    /** Seconds the task may spend finishing the current unit after pause. Default 30. */
+    pauseStopAllowanceSec() {
+        const n = Number(this._pauseStopAllowanceSec);
+        return Number.isFinite(n) && n > 0 ? n : 30;
     }
 
     /** @returns {boolean} */

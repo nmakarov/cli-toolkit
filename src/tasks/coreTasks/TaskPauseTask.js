@@ -51,7 +51,7 @@ function parseProgressObject(progress) {
  * @param {string} taskId
  * @returns {Promise<{ success: boolean, results: object }>}
  */
-export async function applyPauseTask(context, taskId) {
+export async function applyPauseTask(context, taskId, options = {}) {
     const db = context.db;
     if (!db) throw new Error("pauseTask: context.db is required");
     const id = String(taskId ?? "").trim();
@@ -70,7 +70,7 @@ export async function applyPauseTask(context, taskId) {
         };
     }
 
-    if (row.status === "idle") {
+    if (row.status === "idle" || row.status === "waiting") {
         const progress = parseProgressObject(row.progress);
         progress.pauseRequested = true;
         progress.pausedAt = new Date().toISOString();
@@ -79,24 +79,31 @@ export async function applyPauseTask(context, taskId) {
             status_changed_at: db.fn.now(),
             progress: toJsonColumn(progress),
         });
-        context.logger?.warn?.(`[pauseTask] idle task ${id} (${row.name}) → paused`);
+        context.logger?.warn?.(`[pauseTask] ${row.status} task ${id} (${row.name}) → paused`);
         return {
             success: true,
-            results: { taskId: id, status: "paused", message: "Idle task paused" },
+            results: {
+                taskId: id,
+                status: "paused",
+                message: row.status === "waiting" ? "Waiting task paused" : "Idle task paused",
+            },
         };
     }
 
     if (row.status === "running") {
+        const allowance = Number(options.stopAllowance);
+        const stopAllowance = Number.isFinite(allowance) && allowance > 0 ? allowance : 30;
         const progress = parseProgressObject(row.progress);
         progress.pauseRequested = true;
         progress.pauseRequestedAt = new Date().toISOString();
+        progress.stopAllowance = stopAllowance;
         await db(tasksTable).where({ id }).update({
             progress: toJsonColumn(progress),
         });
 
         const inst = context.runningTaskInstances?.get?.(id);
         if (inst && typeof inst.requestPause === "function") {
-            await inst.requestPause();
+            await inst.requestPause(stopAllowance);
             context.logger?.warn?.(
                 `[pauseTask] signaled running task ${id} (${row.name}) to pause after current unit`,
             );
@@ -210,16 +217,22 @@ export class TaskPauseTask extends AbstractTask {
         const merged = AbstractTask._mergeTypedParams(
             context,
             "task-pause-task",
-            { taskId: "string" },
+            { taskId: "string", stopAllowance: "number default 30" },
             overrides,
         );
         const taskId = typeof merged.taskId === "string" ? merged.taskId.trim() : "";
         if (!taskId) throw new ParamError('pauseTask: param "taskId" is required');
-        return { taskId };
+        const allowance = Number(merged.stopAllowance);
+        return {
+            taskId,
+            stopAllowance: Number.isFinite(allowance) && allowance > 0 ? allowance : 30,
+        };
     }
 
     async run() {
-        return applyPauseTask(this.context, this.task?.params?.taskId);
+        return applyPauseTask(this.context, this.task?.params?.taskId, {
+            stopAllowance: this.task?.params?.stopAllowance,
+        });
     }
 }
 

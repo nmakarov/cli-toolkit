@@ -29,6 +29,27 @@ function getDb(context) {
  * @param {string} queueName
  * @returns {{ tasksTable: string, historyTable: string, registryTable: string }}
  */
+/** Queue status while `cantRunReason` is blocking a claim. Not free to run. */
+export const TASK_STATUS_WAITING = "waiting";
+
+/**
+ * Fields to write when a candidate cannot run yet. Empty when the row already
+ * shows this same wait, so the claim loop does not update every poll.
+ *
+ * @param {object} row
+ * @param {unknown} reason
+ * @returns {Record<string, unknown>|null}
+ */
+export function waitingHoldPatch(row, reason) {
+    const message = String(reason ?? "").trim();
+    if (!message) return null;
+    const patch = {};
+    if (row?.status !== TASK_STATUS_WAITING) patch.status = TASK_STATUS_WAITING;
+    if (String(row?.progress ?? "") !== message) patch.progress = message;
+    if (!row?.past_due) patch.past_due = true;
+    return Object.keys(patch).length ? patch : null;
+}
+
 export function queueToTableNames(queueName) {
     return {
         tasksTable: queueName,

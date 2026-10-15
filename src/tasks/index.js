@@ -12,6 +12,8 @@ import {
     taskHistoryInsertFromQueueRow,
     createTaskProgressReporter,
     loggerTaskLabel,
+    TASK_STATUS_WAITING,
+    waitingHoldPatch,
 } from "./taskUtils.js";
 import { appendTaskIpcLog } from "./taskLogs.js";
 import { nextTimeMatch, timeMatcher } from "./time-matcher.js";
@@ -513,7 +515,7 @@ async function claimNextRunnableTask(
     // Targeting: NULL on the task row means "any" for that field. Rows must match the runner's
     // service_group and identity (when provided) for each non-null task column.
     let query = db(tasksTable)
-        .where({ status: "idle" })
+        .whereIn("status", ["idle", TASK_STATUS_WAITING])
         .where(function () {
             this.whereNull("service_group").orWhere({ service_group: serviceGroup });
         })
@@ -563,11 +565,14 @@ async function claimNextRunnableTask(
         const taskInstance = new TaskClass(context, row);
         const reason = taskInstance.cantRunReason ? await taskInstance.cantRunReason() : null;
         if (reason) {
-            if (!row.past_due) {
-                await db(tasksTable).where({ id: row.id }).update({
-                    past_due: db.fn.now(),
-                    progress: String(reason),
-                });
+            const patch = waitingHoldPatch(row, reason);
+            if (patch) {
+                if (patch.status) patch.status_changed_at = db.fn.now();
+                if (patch.past_due) patch.past_due = db.fn.now();
+                await db(tasksTable).where({ id: row.id, status: row.status }).update(patch);
+                if (patch.status) row.status = patch.status;
+                if (patch.progress) row.progress = patch.progress;
+                if (patch.past_due) row.past_due = patch.past_due;
             }
             continue;
         }
@@ -584,7 +589,8 @@ async function claimNextRunnableTask(
         }
 
         const updated = await db(tasksTable)
-            .where({ id: row.id, status: "idle" })
+            .where({ id: row.id })
+            .whereIn("status", ["idle", TASK_STATUS_WAITING])
             .update(claimPatch)
             .returning("*");
 
