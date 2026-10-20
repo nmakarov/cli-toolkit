@@ -1,4 +1,5 @@
 import { ParamError } from "../errors.js";
+import { normalizeAllowedTasks } from "./serviceTaskAllowlist.js";
 import { updateServicesRegistryMetadata } from "./servicesRegistry.js";
 
 /** Keys the tasks loop re-reads every tick from `context.tasksRuntime`. */
@@ -178,6 +179,27 @@ const CONTROL_LANE_TASK_NAMES = [
  * @param {string|string[]|undefined|null} [extra]
  * @returns {string[]}
  */
+/**
+ * Extra claim lanes that do not consume `maxParallel`. Each lane only claims
+ * its own task names, up to its own cap, so long jobs of different kinds can
+ * run beside the worker lane.
+ *
+ * @param {unknown} raw
+ * @returns {{ names: string[], maxParallel: number }[]}
+ */
+export function normalizeSideLanes(raw) {
+    if (!raw) return [];
+    const list = Array.isArray(raw) ? raw : [raw];
+    const lanes = [];
+    for (const lane of list) {
+        const names = normalizeAllowedTasks(lane?.tasks ?? lane?.names);
+        if (!names?.length) continue;
+        const maxParallel = Math.max(1, Math.floor(Number(lane?.maxParallel) || 1));
+        lanes.push({ names, maxParallel });
+    }
+    return lanes;
+}
+
 export function controlLaneTaskNames(extra) {
     const names = [...CONTROL_LANE_TASK_NAMES];
     if (extra == null || extra === "") return names;

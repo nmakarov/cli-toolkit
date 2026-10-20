@@ -156,11 +156,14 @@ export {
     compareClaimCandidates,
     isClaimDue,
 } from "./claimOrder.js";
+import { normalizeSideLanes } from "./runtimeParams.js";
+
 export {
     applyRuntimeParam,
     applyRuntimePatch,
     coerceRuntimeValue,
     controlLaneTaskNames,
+    normalizeSideLanes,
     ensureTasksRuntime,
     readLoopRuntime,
     mergeRuntimeParamSpecs,
@@ -499,6 +502,7 @@ function scheduleTaskRetentionPass(context, historyTable) {
  * @param {number} scanLimit How many candidate rows to pull before attempting claim.
  * @param {string[]|undefined} taskNames When set, only claim rows with `name IN taskNames`.
  * @param {{ service_name: string, server_name: string, instance_number: number }|null} runnerIdentity
+ * @param {string[]|undefined} [excludeTaskNames] Skip these names (they have their own lane).
  * @returns {Promise<object|null>} The claimed row, or `null` when nothing is ready.
  */
 async function claimNextRunnableTask(
@@ -508,7 +512,8 @@ async function claimNextRunnableTask(
     registry,
     scanLimit,
     taskNames,
-    runnerIdentity
+    runnerIdentity,
+    excludeTaskNames,
 ) {
     const db = getDb(context);
 
@@ -529,6 +534,9 @@ async function claimNextRunnableTask(
     query = applyClaimOrder(query).limit(scanLimit);
     if (taskNames && taskNames.length > 0) {
         query = query.whereIn("name", taskNames);
+    }
+    if (excludeTaskNames?.length) {
+        query = query.whereNotIn("name", excludeTaskNames);
     }
     if (runnerIdentity) {
         query = query
@@ -606,6 +614,7 @@ async function claimNextRunnableTask(
  * the queue, claiming up to `maxParallel` tasks at a time plus one extra
  * "control lane" for `stop` / `pause` / `unpause` / `setRuntimeParam` (and
  * optional `controlLaneTasks`) so those can run even when workers are saturated.
+ * `sideLanes` claim only their own task names and do not consume `maxParallel`.
  * When `context.tasksRuntime.paused` is true, in-flight worker tasks finish but
  * no new worker-lane claims are made until unpause.
  *
@@ -628,6 +637,7 @@ async function claimNextRunnableTask(
  *   scanLimit?: number,
  *   allowedTasks?: string | string[],
  *   controlLaneTasks?: string | string[],
+ *   sideLanes?: { tasks?: string[] | string, names?: string[] | string, maxParallel?: number }[],
  *   registry?: TasksRegistry | Record<string, Function>,
  *   runnerServiceGroup?: string,
  *   runnerServiceName?: string,
@@ -647,6 +657,11 @@ export async function runTasksLoop(context, options) {
     const target = options.target;
     const allowedTasks = normalizeAllowedTasks(options.allowedTasks);
     const controlLaneNames = controlLaneTaskNames(options.controlLaneTasks);
+    const sideLanes = normalizeSideLanes(options.sideLanes).map((lane) => ({
+        ...lane,
+        running: new Set(),
+    }));
+    const sideLaneNames = [...new Set(sideLanes.flatMap((lane) => lane.names))];
     const registry = normalizeRegistry(options.registry);
     const { tasksTable, historyTable } = queueToTableNames(queueName);
 
@@ -772,6 +787,40 @@ export async function runTasksLoop(context, options) {
             // Worker lane: skip new claims while paused (in-flight work still drains).
             const paused = context.tasksRuntime?.paused === true;
             if (!paused) {
+                for (const lane of sideLanes) {
+                    while (lane.running.size < lane.maxParallel) {
+                        const claimedSide = await claimNextRunnableTask(
+                            context,
+                            tasksTable,
+                            target,
+                            registry,
+                            scanLimit,
+                            lane.names,
+                            runnerIdentity,
+                        );
+                        if (!claimedSide) break;
+                        const sidePromise = executeClaimedTask(
+                            context,
+                            tasksTable,
+                            historyTable,
+                            claimedSide,
+                            registry,
+                            runningTaskInstances,
+                        )
+                            .then(async (outcome) => {
+                                if (outcome.stopRunnerRequested && !stopRequested) {
+                                    stopRequested = true;
+                                    stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
+                                    context.tasksRunnerStop = true;
+                                    await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
+                                }
+                            })
+                            .finally(() => {
+                                lane.running.delete(sidePromise);
+                            });
+                        lane.running.add(sidePromise);
+                    }
+                }
                 while (runningPromises.size < maxParallel) {
                     const claimed = await claimNextRunnableTask(
                         context,
@@ -780,7 +829,8 @@ export async function runTasksLoop(context, options) {
                         registry,
                         scanLimit,
                         allowedTasks,
-                        runnerIdentity
+                        runnerIdentity,
+                        sideLaneNames,
                     );
                     if (!claimed) break;
 
@@ -808,6 +858,9 @@ export async function runTasksLoop(context, options) {
             }
 
             const wakePromises = [...runningPromises];
+            for (const lane of sideLanes) {
+                for (const sidePromise of lane.running) wakePromises.push(sidePromise);
+            }
             if (runningControlPromise) {
                 wakePromises.push(runningControlPromise);
             }
@@ -828,18 +881,22 @@ export async function runTasksLoop(context, options) {
             await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
         }
 
-        if (runningPromises.size > 0) {
+        const inflight = [
+            ...runningPromises,
+            ...sideLanes.flatMap((lane) => [...lane.running]),
+        ];
+        if (inflight.length > 0) {
             if (stopRequested) {
                 await Promise.race([
-                    Promise.allSettled(Array.from(runningPromises)),
+                    Promise.allSettled(inflight),
                     sleepMs(stopAllowanceMs).then(() => {
                         context.logger.warn?.(
-                            `[tasks] stop allowance (${stopAllowanceMs}ms) reached; ${runningPromises.size} task(s) still running`
+                            `[tasks] stop allowance (${stopAllowanceMs}ms) reached; ${inflight.length} task(s) still running`
                         );
                     }),
                 ]);
             } else {
-                await Promise.allSettled(Array.from(runningPromises));
+                await Promise.allSettled(inflight);
             }
         }
     } finally {

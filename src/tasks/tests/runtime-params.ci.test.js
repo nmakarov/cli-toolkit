@@ -7,6 +7,7 @@ import {
     ensureTasksRuntime,
     readLoopRuntime,
     controlLaneTaskNames,
+    normalizeSideLanes,
     mergeRuntimeParamSpecs,
     runtimeValuesForSpecs,
     runtimeParamSpecsFromMetadata,
@@ -46,6 +47,17 @@ describe("runtimeParams", () => {
         expect(rt.maxParallel).toBe(8);
         expect(rt.pollMs).toBe(250);
         expect(readLoopRuntime(ctx).maxParallel).toBe(8);
+    });
+
+    it("normalizes side lanes that do not share maxParallel", () => {
+        expect(normalizeSideLanes(null)).toEqual([]);
+        expect(normalizeSideLanes({
+            tasks: ["refreshMlsgridPhotos", ""],
+            maxParallel: 8,
+        })).toEqual([{ names: ["refreshMlsgridPhotos"], maxParallel: 8 }]);
+        expect(normalizeSideLanes([{ names: "a,b", maxParallel: 0 }])).toEqual([
+            { names: ["a", "b"], maxParallel: 1 },
+        ]);
     });
 
     it("coerceRuntimeValue validates maxParallel / pollMs", () => {
