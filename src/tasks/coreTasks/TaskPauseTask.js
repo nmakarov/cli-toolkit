@@ -12,6 +12,8 @@
  *   - paused → status=idle (clears pauseRequested)
  *   - stamps `past_due` + `next_run_at` so a scheduled row is claimed on the
  *     next poll (does not wait for the next cron slot)
+ *   - drops pauseTask rows still queued for this id, including one left
+ *     `running` when the runner died
  *
  * Both are control-lane tasks so they run even when workers are saturated or
  * the runner itself is paused.
@@ -23,9 +25,21 @@ import { AbstractTask } from "../AbstractTask.js";
 import { queueToTableNames } from "../taskUtils.js";
 
 /**
- * @param {unknown} progress
- * @returns {Record<string, unknown>}
+ * A pause enqueued before resume must not park the run the operator just
+ * started. `resumedAt` is written by resumeTask and survives progress updates
+ * that keep the previous object.
+ *
+ * @param {object} row
+ * @param {unknown} requestedAt pauseTask row `created_at`
+ * @returns {boolean}
  */
+function pauseWasSuperseded(row, requestedAt) {
+    const resumedMs = Date.parse(parseProgressObject(row?.progress).resumedAt);
+    const requestedMs = requestedAt instanceof Date ? requestedAt.getTime() : Date.parse(requestedAt);
+    if (!Number.isFinite(resumedMs) || !Number.isFinite(requestedMs)) return false;
+    return resumedMs > requestedMs;
+}
+
 function parseProgressObject(progress) {
     if (progress == null || progress === "") return {};
     if (typeof progress === "object" && !Array.isArray(progress)) {
@@ -61,6 +75,21 @@ export async function applyPauseTask(context, taskId, options = {}) {
     const row = await db(tasksTable).where({ id }).first();
     if (!row) {
         return { success: false, results: { error: `Task ${id} not found`, taskId: id } };
+    }
+
+    if (pauseWasSuperseded(row, options.requestedAt)) {
+        context.logger?.warn?.(
+            `[pauseTask] ${id} (${row.name}) was resumed after this pause — left ${row.status}`,
+        );
+        return {
+            success: true,
+            results: {
+                taskId: id,
+                status: row.status,
+                skipped: true,
+                message: "Pause ignored — task was resumed after this pause",
+            },
+        };
     }
 
     if (row.status === "paused") {
@@ -201,11 +230,47 @@ export async function applyResumeTask(context, taskId) {
         past_due: now,
     });
 
-    context.logger?.warn?.(`[resumeTask] paused task ${id} (${row.name}) → idle (run now)`);
+    const dropped = await dropEarlierPauseCommands(context, tasksTable, id);
+    const droppedNote = dropped > 0 ? `; dropped ${dropped} earlier pause command(s)` : "";
+    context.logger?.warn?.(`[resumeTask] paused task ${id} (${row.name}) → idle (run now)${droppedNote}`);
     return {
         success: true,
-        results: { taskId: id, status: "idle", message: "Task resumed (idle; will be claimed now)" },
+        results: {
+            taskId: id,
+            status: "idle",
+            droppedPauseCommands: dropped,
+            message: "Task resumed (idle; will be claimed now)",
+        },
     };
+}
+
+/**
+ * Pause commands still in the queue (including one stuck `running` on a dead
+ * runner) would park this task again after it is claimed.
+ *
+ * @returns {Promise<number>}
+ */
+async function dropEarlierPauseCommands(context, tasksTable, taskId) {
+    const db = context.db;
+    try {
+        const dropped = await db(tasksTable)
+            .where({ name: "pauseTask" })
+            .whereIn("status", ["idle", "waiting", "running"])
+            .whereRaw("(params->>'taskId') = ?", [taskId])
+            .delete();
+        const n = Number(dropped) || 0;
+        if (n > 0) {
+            context.logger?.warn?.(
+                `[resumeTask] dropped ${n} earlier pause command(s) for ${taskId}`,
+            );
+        }
+        return n;
+    } catch (err) {
+        context.logger?.warn?.(
+            `[resumeTask] could not drop earlier pause commands for ${taskId}: ${err?.message ?? err}`,
+        );
+        return 0;
+    }
 }
 
 export class TaskPauseTask extends AbstractTask {
@@ -232,6 +297,7 @@ export class TaskPauseTask extends AbstractTask {
     async run() {
         return applyPauseTask(this.context, this.task?.params?.taskId, {
             stopAllowance: this.task?.params?.stopAllowance,
+            requestedAt: this.task?.created_at,
         });
     }
 }

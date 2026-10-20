@@ -11,14 +11,17 @@ import { TasksRegistry } from "../TasksRegistry.js";
 import { controlLaneTaskNames } from "../runtimeParams.js";
 
 function makeDb(row) {
-    const state = { row };
+    const state = { row, deleted: 0 };
     const chain = {
         where: vi.fn(() => chain),
+        whereIn: vi.fn(() => chain),
+        whereRaw: vi.fn(() => chain),
         first: vi.fn(async () => state.row),
         update: vi.fn(async (patch) => {
             state.row = { ...state.row, ...patch };
             return 1;
         }),
+        delete: vi.fn(async () => state.deleted),
     };
     const db = vi.fn(() => chain);
     db.fn = { now: () => new Date() };
@@ -78,7 +81,7 @@ describe("pauseTask / resumeTask", () => {
     });
 
     it("applyResumeTask moves paused → idle", async () => {
-        const { db, state } = makeDb({
+        const { db, state, chain } = makeDb({
             id: "t3",
             name: "retroBackfill",
             status: "paused",
@@ -91,5 +94,44 @@ describe("pauseTask / resumeTask", () => {
         expect(state.row.service_name).toBe(null);
         expect(state.row.past_due).toBeInstanceOf(Date);
         expect(state.row.next_run_at).toBeInstanceOf(Date);
+        expect(chain.delete).toHaveBeenCalled();
+    });
+
+    it("applyPauseTask ignores a pause requested before resume", async () => {
+        const { db, state } = makeDb({
+            id: "t4",
+            name: "refreshMlsgridPhotos",
+            status: "running",
+            progress: { resumedAt: "2026-10-20T01:29:22.000Z", message: "refreshing" },
+        });
+        const inst = new AbstractTask({}, { id: "t4" });
+        const spy = vi.spyOn(inst, "requestPause");
+        const out = await applyPauseTask(
+            { db, tasksQueueName: "tasks", logger: {}, runningTaskInstances: new Map([["t4", inst]]) },
+            "t4",
+            { requestedAt: "2026-10-20T01:27:00.000Z" },
+        );
+        expect(out.success).toBe(true);
+        expect(out.results.skipped).toBe(true);
+        expect(spy).not.toHaveBeenCalled();
+        expect(state.row.status).toBe("running");
+    });
+
+    it("applyPauseTask still pauses when resume is older than the pause", async () => {
+        const { db } = makeDb({
+            id: "t5",
+            name: "refreshMlsgridPhotos",
+            status: "running",
+            progress: { resumedAt: "2026-10-20T01:20:00.000Z" },
+        });
+        const inst = new AbstractTask({}, { id: "t5" });
+        const spy = vi.spyOn(inst, "requestPause");
+        const out = await applyPauseTask(
+            { db, tasksQueueName: "tasks", logger: {}, runningTaskInstances: new Map([["t5", inst]]) },
+            "t5",
+            { requestedAt: "2026-10-20T01:31:40.000Z" },
+        );
+        expect(out.results.signaled).toBe(true);
+        expect(spy).toHaveBeenCalled();
     });
 });
