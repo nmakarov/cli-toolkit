@@ -22,6 +22,29 @@ describe("signalStopForDeletedQueueRows", () => {
         expect(requestStop).toHaveBeenCalledTimes(1);
         expect(stillThere).not.toHaveBeenCalled();
         expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/gone.*deleted/));
+
+        await signalStopForDeletedQueueRows({ db, logger }, "tasks", running);
+        expect(requestStop).toHaveBeenCalledTimes(1);
+        expect(logger.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it("signals again after the row comes back and is deleted once more", async () => {
+        const requestStop = vi.fn();
+        const running = new Map([["gone", { requestStop }]]);
+        let present = false;
+        const db = () => ({
+            whereIn: () => ({
+                select: async () => (present ? [{ id: "gone" }] : []),
+            }),
+        });
+        const logger = { warn: vi.fn() };
+        await signalStopForDeletedQueueRows({ db, logger }, "tasks", running);
+        present = true;
+        await signalStopForDeletedQueueRows({ db, logger }, "tasks", running);
+        present = false;
+        await signalStopForDeletedQueueRows({ db, logger }, "tasks", running);
+        expect(requestStop).toHaveBeenCalledTimes(2);
+        expect(logger.warn).toHaveBeenCalledTimes(2);
     });
 
     it("no-ops when the map is empty", async () => {

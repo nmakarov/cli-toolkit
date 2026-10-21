@@ -238,10 +238,18 @@ export async function enqueueStopTask(context, serviceGroup, queueName = "tasks"
  * @param {number} allowanceMs
  * @returns {Promise<void>}
  */
+/** Ids we already told to stop after their queue row disappeared. Keyed by the runner's map. */
+const deletedRowStopSignaled = new WeakMap();
+
 /**
  * If an operator deleted a queue row while the task is still running, ask that
  * instance to stop. Delete is a different process (tasksmm) and cannot call
  * requestStop itself.
+ *
+ * The runner polls this every tick. A task that does not exit (stuck in a
+ * fetch or a log write) would otherwise log and call requestStop again on
+ * every poll. Signal each id once, until it leaves the running map or the
+ * row comes back.
  *
  * @param {object} context
  * @param {string} tasksTable
@@ -259,8 +267,21 @@ export async function signalStopForDeletedQueueRows(context, tasksTable, running
     } catch {
         return;
     }
+    let signaled = deletedRowStopSignaled.get(runningTaskInstances);
+    if (!signaled) {
+        signaled = new Set();
+        deletedRowStopSignaled.set(runningTaskInstances, signaled);
+    }
+    for (const id of signaled) {
+        if (!runningTaskInstances.has(id)) signaled.delete(id);
+    }
     for (const [id, inst] of runningTaskInstances) {
-        if (alive.has(id)) continue;
+        if (alive.has(id)) {
+            signaled.delete(id);
+            continue;
+        }
+        if (signaled.has(id)) continue;
+        signaled.add(id);
         context.logger?.warn?.(`[tasks] queue row ${id} deleted — requesting stop`);
         if (typeof inst.requestStop === "function") {
             try {
