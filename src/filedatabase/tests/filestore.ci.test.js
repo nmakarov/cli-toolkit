@@ -31,6 +31,19 @@ describe("FileDatabase CI", () => {
             logger: testLogger,} )).toThrow("basePath is required");
     });
 
+    it("replaces a page via rename so a reader never sees a truncated body", async () => {
+        const store = new FileDatabase({
+            basePath: testBasePath,
+            logger: testLogger,
+        });
+        const dest = path.join(testBasePath, "page.json");
+        const body = [{ note: "x".repeat(2000) }];
+        await store.safeWrite(dest, body);
+        expect(JSON.parse(fs.readFileSync(dest, "utf8"))).toEqual(body);
+        const names = await fs.promises.readdir(testBasePath);
+        expect(names.filter((name) => name.endsWith(".tmp"))).toEqual([]);
+    });
+
     it("creates FileDatabase instance with minimal config", () => {
         const store = new FileDatabase({
             basePath: testBasePath,

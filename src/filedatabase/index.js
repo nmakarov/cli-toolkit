@@ -815,10 +815,20 @@ export class FileDatabase {
             }
         }
 
+        // writeFile truncates the destination first. A reader parsing that
+        // path mid-write sees an unterminated JSON string. Write a temp file
+        // in the same directory and rename over the target so readers see
+        // either the previous complete file or the new one.
+        const tmpPath = path.join(
+            dir,
+            `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`,
+        );
         try {
-            await fs.promises.writeFile(filePath, serializedData, "utf8");
+            await fs.promises.writeFile(tmpPath, serializedData, "utf8");
+            await fs.promises.rename(tmpPath, filePath);
             this.logger.silly?.(`[FileDatabase] Wrote ${bytesToHumanReadable(requiredBytes)} to ${filePath}`);
         } catch (error) {
+            await fs.promises.rm(tmpPath, { force: true }).catch(() => {});
             throw new FileDatabaseError(`Failed to write file ${filePath}: ${(error ).message}`);
         }
     }
