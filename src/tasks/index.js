@@ -30,6 +30,7 @@ import { TasksRegistry } from "./TasksRegistry.js";
 import { normalizeAllowedTasks } from "./serviceTaskAllowlist.js";
 import {
     controlLaneTaskNames,
+    immediateControlTaskNames,
     ensureTasksRuntime,
     readLoopRuntime,
     mergeRuntimeParamSpecs,
@@ -524,6 +525,7 @@ function scheduleTaskRetentionPass(context, historyTable) {
  * @param {string[]|undefined} taskNames When set, only claim rows with `name IN taskNames`.
  * @param {{ service_name: string, server_name: string, instance_number: number }|null} runnerIdentity
  * @param {string[]|undefined} [excludeTaskNames] Skip these names (they have their own lane).
+ * @param {string[]|undefined} [leadTaskNames] Claim these names before the rest of `taskNames`.
  * @returns {Promise<object|null>} The claimed row, or `null` when nothing is ready.
  */
 async function claimNextRunnableTask(
@@ -535,6 +537,7 @@ async function claimNextRunnableTask(
     taskNames,
     runnerIdentity,
     excludeTaskNames,
+    leadTaskNames,
 ) {
     const db = getDb(context);
 
@@ -552,6 +555,13 @@ async function claimNextRunnableTask(
         .where(function () {
             this.whereNull("next_run_at").orWhere("next_run_at", "<=", db.fn.now());
         });
+    if (leadTaskNames?.length) {
+        const slots = leadTaskNames.map(() => "?").join(", ");
+        query = query.orderByRaw(
+            `CASE WHEN name IN (${slots}) THEN 0 ELSE 1 END ASC`,
+            leadTaskNames,
+        );
+    }
     query = applyClaimOrder(query).limit(scanLimit);
     if (taskNames && taskNames.length > 0) {
         query = query.whereIn("name", taskNames);
@@ -578,7 +588,17 @@ async function claimNextRunnableTask(
             .whereNull("server_name");
     }
     const candidates = await query;
-    candidates.sort(compareClaimCandidates);
+    if (leadTaskNames?.length) {
+        const lead = new Set(leadTaskNames);
+        candidates.sort((a, b) => {
+            const aLead = lead.has(a.name) ? 0 : 1;
+            const bLead = lead.has(b.name) ? 0 : 1;
+            if (aLead !== bLead) return aLead - bLead;
+            return compareClaimCandidates(a, b);
+        });
+    } else {
+        candidates.sort(compareClaimCandidates);
+    }
 
     for (const row of candidates) {
         if (!row.past_due && row.schedule && !timeMatcher(row.schedule)) {
@@ -632,9 +652,11 @@ async function claimNextRunnableTask(
 
 /**
  * Main runner loop. Registers in the services registry (optional), then polls
- * the queue, claiming up to `maxParallel` tasks at a time plus one extra
- * "control lane" for `stop` / `pause` / `unpause` / `setRuntimeParam` (and
- * optional `controlLaneTasks`) so those can run even when workers are saturated.
+ * the queue, claiming up to `maxParallel` tasks at a time. Pause, unpause, and
+ * stop of the runner (and of one work task) are claimed on their own pass,
+ * before and between worker claims, so a full worker refill cannot hide them.
+ * Other control tasks (`setRuntimeParam`, probes, …) use one extra lane and
+ * still run when workers are saturated.
  * `sideLanes` claim only their own task names and do not consume `maxParallel`.
  * When `context.tasksRuntime.paused` is true, in-flight worker tasks finish but
  * no new worker-lane claims are made until unpause.
@@ -678,6 +700,9 @@ export async function runTasksLoop(context, options) {
     const target = options.target;
     const allowedTasks = normalizeAllowedTasks(options.allowedTasks);
     const controlLaneNames = controlLaneTaskNames(options.controlLaneTasks);
+    const immediate = immediateControlTaskNames(controlLaneNames);
+    const immediateNameSet = new Set([...immediate.runner, ...immediate.task]);
+    const deferredControlNames = controlLaneNames.filter((n) => !immediateNameSet.has(n));
     const sideLanes = normalizeSideLanes(options.sideLanes).map((lane) => ({
         ...lane,
         running: new Set(),
@@ -705,6 +730,7 @@ export async function runTasksLoop(context, options) {
     // Expose so control-lane pauseTask can signal in-process workers.
     context.runningTaskInstances = runningTaskInstances;
     let runningControlPromise = null;
+    let runningImmediatePromise = null;
     let stopRequested = false;
     let stopAllowanceMs = Number(context.stopAllowanceMs) > 0 ? Number(context.stopAllowanceMs) : 60_000;
     context.tasksRunnerStop = false;
@@ -762,20 +788,74 @@ export async function runTasksLoop(context, options) {
         }, hbIntervalMs);
     }
 
+    const noteStop = async (outcome) => {
+        if (outcome.stopRunnerRequested && !stopRequested) {
+            stopRequested = true;
+            stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
+            context.tasksRunnerStop = true;
+            await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
+        }
+    };
+
+    /**
+     * Claim one pause / unpause / stop and wait until it has landed.
+     * Runner commands win over a pause of a single task. Neither waits
+     * behind probes or a worker refill.
+     */
+    async function claimImmediateCommand() {
+        if (runningImmediatePromise || stopRequested || context.tasksRunnerStop === true) return false;
+        const names = [...immediate.runner, ...immediate.task];
+        if (!names.length) return false;
+        const claimed = await claimNextRunnableTask(
+            context,
+            tasksTable,
+            target,
+            registry,
+            20,
+            names,
+            runnerIdentity,
+            undefined,
+            immediate.runner,
+        );
+        if (!claimed) return false;
+        runningImmediatePromise = executeClaimedTask(
+            context,
+            tasksTable,
+            historyTable,
+            claimed,
+            registry,
+            runningTaskInstances,
+        )
+            .then(noteStop)
+            .finally(() => {
+                runningImmediatePromise = null;
+            });
+        await runningImmediatePromise;
+        return true;
+    }
+
+    const runnerStillClaiming = () =>
+        context.tasksRuntime?.paused !== true
+        && !stopRequested
+        && context.tasksRunnerStop !== true
+        && !context.isStop();
+
     try {
         while (!context.isStop() && !stopRequested && context.tasksRunnerStop !== true) {
             const { maxParallel, pollMs, claimJitterMs, scanLimit } = readLoopRuntime(context);
             await signalStopForDeletedQueueRows(context, tasksTable, runningTaskInstances);
 
-            // Control lane: stop / setRuntimeParam / extras even when workers are saturated.
-            if (!runningControlPromise) {
+            await claimImmediateCommand();
+
+            // Probes and param changes. They do not share the pause slot.
+            if (runnerStillClaiming() && !runningControlPromise && deferredControlNames.length) {
                 const claimedControlTask = await claimNextRunnableTask(
                     context,
                     tasksTable,
                     target,
                     registry,
                     10,
-                    controlLaneNames,
+                    deferredControlNames,
                     runnerIdentity
                 );
                 if (claimedControlTask) {
@@ -787,29 +867,24 @@ export async function runTasksLoop(context, options) {
                         registry,
                         runningTaskInstances
                     )
-                        .then(async (outcome) => {
-                            if (outcome.stopRunnerRequested && !stopRequested) {
-                                stopRequested = true;
-                                stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
-                                context.tasksRunnerStop = true;
-                                await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
-                            }
-                        })
+                        .then(noteStop)
                         .finally(() => {
                             runningControlPromise = null;
                         });
                 }
             }
 
-            if (claimJitterMs > 0) {
+            if (claimJitterMs > 0 && runnerStillClaiming()) {
                 await sleepMs(Math.floor(Math.random() * (claimJitterMs + 1)));
             }
 
             // Worker lane: skip new claims while paused (in-flight work still drains).
-            const paused = context.tasksRuntime?.paused === true;
-            if (!paused) {
+            // Recheck pause before every claim so a refill cannot hide it.
+            if (runnerStillClaiming()) {
                 for (const lane of sideLanes) {
-                    while (lane.running.size < lane.maxParallel) {
+                    while (lane.running.size < lane.maxParallel && runnerStillClaiming()) {
+                        await claimImmediateCommand();
+                        if (!runnerStillClaiming()) break;
                         const claimedSide = await claimNextRunnableTask(
                             context,
                             tasksTable,
@@ -828,21 +903,16 @@ export async function runTasksLoop(context, options) {
                             registry,
                             runningTaskInstances,
                         )
-                            .then(async (outcome) => {
-                                if (outcome.stopRunnerRequested && !stopRequested) {
-                                    stopRequested = true;
-                                    stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
-                                    context.tasksRunnerStop = true;
-                                    await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
-                                }
-                            })
+                            .then(noteStop)
                             .finally(() => {
                                 lane.running.delete(sidePromise);
                             });
                         lane.running.add(sidePromise);
                     }
                 }
-                while (runningPromises.size < maxParallel) {
+                while (runningPromises.size < maxParallel && runnerStillClaiming()) {
+                    await claimImmediateCommand();
+                    if (!runnerStillClaiming()) break;
                     const claimed = await claimNextRunnableTask(
                         context,
                         tasksTable,
@@ -863,14 +933,7 @@ export async function runTasksLoop(context, options) {
                         registry,
                         runningTaskInstances
                     )
-                        .then(async (outcome) => {
-                            if (outcome.stopRunnerRequested && !stopRequested) {
-                                stopRequested = true;
-                                stopAllowanceMs = outcome.stopAllowanceMs || stopAllowanceMs;
-                                context.tasksRunnerStop = true;
-                                await signalRunningTasksStop(context, runningTaskInstances, stopAllowanceMs);
-                            }
-                        })
+                        .then(noteStop)
                         .finally(() => {
                             runningPromises.delete(p);
                         });
@@ -884,6 +947,9 @@ export async function runTasksLoop(context, options) {
             }
             if (runningControlPromise) {
                 wakePromises.push(runningControlPromise);
+            }
+            if (runningImmediatePromise) {
+                wakePromises.push(runningImmediatePromise);
             }
             if (wakePromises.length === 0) {
                 scheduleTaskRetentionPass(context, historyTable);
@@ -1021,6 +1087,11 @@ export async function waitForTaskResult(context, taskId, options = {}) {
         const pending = await db(tasksTable).where({ id: taskId }).first();
         if (pending) {
             cachedNameOpid = { name: pending.name, opid: pending.opid };
+            // Still queued. History is written only when it leaves the queue,
+            // and scanning tasks_history on every poll is what made a pause
+            // look stuck for the whole timeout.
+            await sleepMs(pollMs);
+            continue;
         }
 
         if (cachedNameOpid) {

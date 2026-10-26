@@ -7,6 +7,7 @@ import {
     ensureTasksRuntime,
     readLoopRuntime,
     controlLaneTaskNames,
+    immediateControlTaskNames,
     normalizeSideLanes,
     mergeRuntimeParamSpecs,
     runtimeValuesForSpecs,
@@ -112,6 +113,15 @@ describe("runtimeParams", () => {
                 "setRunnerParam",
             ])
         );
+    });
+
+    it("claims runner pause ahead of probes", () => {
+        const names = controlLaneTaskNames(["info", "stopTask"]);
+        const immediate = immediateControlTaskNames(names);
+        expect(immediate.runner).toEqual(expect.arrayContaining(["pauseRunner", "unpauseRunner"]));
+        expect(immediate.task).toEqual(expect.arrayContaining(["pauseTask", "stopTask"]));
+        expect(immediate.runner).not.toContain("info");
+        expect(immediate.task).not.toContain("setRuntimeParam");
     });
 
     it("control lane merges optional extras (deduped)", () => {

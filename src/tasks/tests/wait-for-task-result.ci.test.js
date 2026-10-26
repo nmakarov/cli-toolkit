@@ -95,4 +95,68 @@ describe("waitForTaskResult fast-complete race", () => {
 
         expect(done).toEqual(historyRow);
     });
+
+    it("does not scan history by opid while the queue row is still there", async () => {
+        const taskId = "pause-1";
+        let seen = 0;
+        const historyRow = {
+            id: "hist-1",
+            name: "pauseRunner",
+            opid: taskId,
+            success: true,
+            completed_at: new Date(),
+        };
+
+        const makeHistoryQuery = () => {
+            const filters = {};
+            const api = {
+                where(...args) {
+                    if (args.length === 1 && args[0] && typeof args[0] === "object") {
+                        Object.assign(filters, args[0]);
+                    } else if (typeof args[0] === "string") {
+                        filters[args[0]] = args[2];
+                    }
+                    return api;
+                },
+                whereNull(col) {
+                    filters[col] = null;
+                    return api;
+                },
+                orderBy() {
+                    return api;
+                },
+                async first() {
+                    if (filters.id === taskId) return undefined;
+                    if (seen < 2) throw new Error("scanned history by opid while queued");
+                    if (filters.opid === taskId) return historyRow;
+                    return undefined;
+                },
+            };
+            return api;
+        };
+
+        const db = (table) => {
+            if (table === "tasks") {
+                return {
+                    where: () => ({
+                        first: async () => {
+                            seen += 1;
+                            if (seen === 1) return { id: taskId, name: "pauseRunner", opid: null };
+                            return null;
+                        },
+                    }),
+                };
+            }
+            if (table === "tasks_history") return makeHistoryQuery();
+            throw new Error(`unexpected table ${table}`);
+        };
+
+        const done = await waitForTaskResult({ db }, taskId, {
+            timeoutMs: 2_000,
+            pollMs: 5,
+            name: "pauseRunner",
+        });
+        expect(done).toEqual(historyRow);
+        expect(seen).toBeGreaterThanOrEqual(2);
+    });
 });

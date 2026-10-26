@@ -172,6 +172,45 @@ const CONTROL_LANE_TASK_NAMES = [
 ];
 
 /**
+ * Pause / unpause / stop of this process. Claimed on their own pass, ahead of
+ * probes and ahead of filling worker slots.
+ */
+export const RUNNER_COMMAND_TASK_NAMES = [
+    "stopRunner",
+    "stop",
+    "pauseRunner",
+    "pause",
+    "unpauseRunner",
+    "unpause",
+];
+
+/**
+ * Pause / resume / stop of one work task. Same immediate pass as a runner
+ * command, after any runner command that is already waiting.
+ */
+export const TASK_COMMAND_TASK_NAMES = [
+    "pauseTask",
+    "resumeTask",
+    "stopTask",
+];
+
+/**
+ * Names from `controlNames` that the loop must claim without waiting for a
+ * worker refill or for a probe (`info`, `setRuntimeParam`, …).
+ *
+ * @param {string[]|undefined|null} controlNames
+ * @returns {{ runner: string[], task: string[] }}
+ */
+export function immediateControlTaskNames(controlNames) {
+    const allowed = new Set(controlNames ?? []);
+    const pick = (names) => names.filter((n) => allowed.has(n));
+    return {
+        runner: pick(RUNNER_COMMAND_TASK_NAMES),
+        task: pick(TASK_COMMAND_TASK_NAMES),
+    };
+}
+
+/**
  * Task names claimed on the dedicated control lane (even when workers are saturated).
  * Pass `extra` from `runTasksLoop({ controlLaneTasks })` for app-specific ops
  * probes (e.g. v2 `hostInfo`) that must run while regular workers are full.
