@@ -33,6 +33,9 @@ export function bindingMatchesInput(binding, input, key) {
         keyMatches = true;
     } else if (key?.name === binding.key) {
         keyMatches = true;
+    } else if (binding.key === "space" && input === " ") {
+        // Ink's useInput has no key.space and drops key.name. Space arrives as " ".
+        keyMatches = true;
     }
     if (!keyMatches) return false;
 

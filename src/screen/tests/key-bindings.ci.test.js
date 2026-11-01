@@ -29,4 +29,13 @@ describe("bindingMatchesInput", () => {
             }),
         ).toBe(false);
     });
+
+    it("matches a space binding from the space character Ink passes", () => {
+        expect(bindingMatchesInput({ key: "space", action: "toggle" }, " ", {})).toBe(true);
+        expect(bindingMatchesInput({ key: " ", action: "toggle" }, " ", {})).toBe(true);
+        expect(
+            bindingMatchesInput({ key: "space", action: "toggle" }, " ", { meta: true }),
+        ).toBe(false);
+        expect(bindingMatchesInput({ key: "space", action: "toggle" }, "x", {})).toBe(false);
+    });
 });
