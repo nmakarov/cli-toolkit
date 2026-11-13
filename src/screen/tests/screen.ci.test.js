@@ -558,7 +558,7 @@ describe("Screen CI", () => {
         expect(rows).toHaveLength(2);
         const firstRowTextContent = collectText(rows[0]).join("");
         expect(firstRowTextContent).toContain("Alpha");
-        expect(firstRowTextContent.length).toBeGreaterThan(0);
+        expect(firstRowTextContent).toMatch(/Alpha\s+[|#]$/);
     });
 
     it("ListComponent uses custom renderer and indicators", () => {

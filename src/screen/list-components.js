@@ -4,26 +4,20 @@
 
 import React, { useState, useEffect, useRef, createElement } from "react";
 import { Box, Text } from "ink";
-import { ScreenRow, ScreenDivider } from "./components.js";
+import { ScreenRow, ScreenDivider, getScreenWidth } from "./components.js";
 import {
     BAR_THUMB,
     BAR_TRACK,
     PAGE_SCROLL_KEY_BINDINGS,
     scrollbarGlyphs,
 } from "./scrollbar.js";
+import { padEndVisible, visibleWidth } from "./visible-text.js";
 
 const h = createElement;
 
-/**
- * Make room for a 1-cell scrollbar. Full-width table rows are padEnd'd (trailing
- * space) — trim one cell. Short labels are left alone (bar just appends).
- */
-function clipNameForScrollbar(name, needsBar) {
-    if (!needsBar || name == null) return name;
-    const s = String(name);
-    if (s.length <= 1) return s;
-    if (/\s$/.test(s)) return s.slice(0, -1);
-    return s;
+/** Inner width of a bordered screen, matching ScrollableText. */
+function listContentCols() {
+    return Math.max(20, getScreenWidth() - 4);
 }
 
 // TODO: Define proper context type interface
@@ -482,14 +476,16 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
         ? scrollbarGlyphs(effectiveMaxHeight, displayItems.length, clampedScrollOffset)
         : null;
 
+    const contentCols = listContentCols();
     const appendBar = (rowContent, displayIndex) => {
         if (!barGlyphs) return rowContent;
         const glyph = barGlyphs[displayIndex] ?? BAR_TRACK;
+        const textWidth = Math.max(8, contentCols - 1);
         return h(
             Box,
-            { flexDirection: "row" },
-            rowContent,
-            h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph),
+            { flexDirection: "row", width: contentCols, flexShrink: 0 },
+            h(Box, { width: textWidth, flexShrink: 0 }, rowContent),
+            h(Box, { width: 1, flexShrink: 0 }, h(Text, { color: glyph === BAR_THUMB ? "cyan" : "gray" }, glyph)),
         );
     };
 
@@ -506,9 +502,12 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
 
         const selectionPrefix = isSelected
             ? selectionMarker
-            : " ".repeat(selectionMarker.length);
+            : " ".repeat(visibleWidth(selectionMarker) || 1);
 
-        const label = clipNameForScrollbar(item.name, needsBar);
+        const nameCols = needsBar
+            ? Math.max(1, contentCols - 1 - visibleWidth(arrowPrefix) - visibleWidth(selectionPrefix))
+            : null;
+        const label = nameCols == null ? item.name : padEndVisible(item.name ?? "", nameCols);
 
         return h(
             Box,
@@ -551,16 +550,12 @@ export function ListComponent({ items, ctx, selectedIndexRef, renderItem, getTit
                     ? selectionMarker
                     : " ".repeat(selectionMarker.length);
 
-                const clipped = needsBar
-                    ? { ...item, name: clipNameForScrollbar(item.name, true) }
-                    : item;
-
                 const row = h(
                     Box,
                     { flexDirection: "row" },
                     h(Text, { key: "arrow", color: "white" }, arrowPrefix),
                     h(Text, { key: "marker", color: "white" }, selectionPrefix),
-                    renderItem(clipped, isSelected, displayIndex),
+                    renderItem(item, isSelected, displayIndex),
                 );
 
                 return h(ScreenRow, {
