@@ -560,14 +560,16 @@ describe("Db CI", () => {
         });
 
         it("should not treat pool acquire timeout as a dead connection", () => {
-            // Knex: all pool slots busy — reconnect would make contention worse.
-            expect(
-                db.isConnectionError(
-                    new Error(
-                        "Knex: Timeout acquiring a connection. The pool is probably full. Are you missing a .transacting(trx) call?"
-                    )
-                )
-            ).toBe(false);
+            const err = new Error(
+                "Knex: Timeout acquiring a connection. The pool is probably full. Are you missing a .transacting(trx) call?"
+            );
+            expect(db.isConnectionError(err)).toBe(false);
+            expect(db.isPoolExhausted(err)).toBe(true);
+        });
+
+        it("should ignore ordinary errors when checking a full pool", () => {
+            expect(db.isPoolExhausted(new Error("permission denied for table"))).toBe(false);
+            expect(db.isPoolExhausted(null)).toBe(false);
         });
     });
 

@@ -695,6 +695,59 @@ async function claimNextRunnableTask(
  * }} options
  * @returns {Promise<void>}
  */
+/**
+ * A restarted runner keeps the same service name and a fresh heartbeat, so
+ * the stale-service reap never sees it. Tasks that process left `running`
+ * stay claimed forever. This process has not started them (the in-memory
+ * set is still empty), so put them back to idle for any worker to claim.
+ *
+ * @returns {Promise<string[]>} released task ids
+ */
+export async function releaseOrphanedRunningTasks(context, tasksTable, identity) {
+    const serviceName = identity?.service_name;
+    if (!serviceName || typeof context?.db !== "function") return [];
+    const db = context.db;
+    let rows;
+    try {
+        rows = await db(tasksTable)
+            .where({
+                status: "running",
+                service_name: serviceName,
+                server_name: identity.server_name,
+                instance_number: identity.instance_number,
+            })
+            .select("id", "name");
+    } catch (err) {
+        context.logger?.warn?.(
+            `[tasks] could not list orphaned tasks for ${serviceName}: ${err?.message ?? err}`,
+        );
+        return [];
+    }
+    if (!rows?.length) return [];
+    const ids = rows.map((row) => row.id);
+    await db(tasksTable)
+        .whereIn("id", ids)
+        .where({ status: "running" })
+        .update({
+            status: "idle",
+            status_changed_at: db.fn.now(),
+            started_at: null,
+            completed_at: null,
+            success: null,
+            progress: toJsonColumn({
+                message: "queued again — previous worker restarted",
+            }),
+            service_name: null,
+            server_name: null,
+            instance_number: null,
+        });
+    const names = [...new Set(rows.map((row) => row.name))].join(", ");
+    context.logger?.warn?.(
+        `[tasks] released ${ids.length} running task(s) left by a previous ${serviceName}: ${names}`,
+    );
+    return ids;
+}
+
 export async function runTasksLoop(context, options) {
     const queueName = options.queueName ?? "tasks";
     const target = options.target;
@@ -781,6 +834,7 @@ export async function runTasksLoop(context, options) {
             server_name: os.hostname(),
             instance_number: registryReg.instanceNumber,
         };
+        await releaseOrphanedRunningTasks(context, tasksTable, runnerIdentity);
         registryInterval = setInterval(() => {
             void touchServicesRegistry(context, registryReg).catch((err) => {
                 context.logger.warn?.(`[services-registry] touch failed: ${err?.message ?? String(err)}`);

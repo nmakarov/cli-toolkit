@@ -42,10 +42,12 @@ const CONNECTION_ERROR_CODES = new Set([
     "57P03",
 ]);
 
-// Note: "Timeout acquiring a connection" is pool contention (all slots busy),
-// not a dead socket — reconnecting destroys healthy clients and makes it worse.
 const CONNECTION_ERROR_MESSAGE_RE =
     /connection (terminated|ended|closed|destroyed|reset|refused|not open)|Connection (terminated|ended) unexpectedly|Client has encountered a connection error|server closed the connection|Cannot use a pool after calling end|This socket has been ended|connect ECONNRESET/i;
+
+// A full pool is not a dead socket. Wait once for a slot; if the next acquire
+// still times out, the checkouts are stuck and a fresh pool is the recovery.
+const POOL_EXHAUSTED_MESSAGE_RE = /timeout acquiring a connection|pool is probably full/i;
 
 export class Db {
     static async init(context, options = {}) {
@@ -412,6 +414,7 @@ export class Db {
                     "raw",
                     "withConnectionRetry",
                     "isConnectionError",
+                    "isPoolExhausted",
                     "getQueryLog",
                     "getKnex",
                     "isConnectedToDb",
@@ -609,6 +612,63 @@ export class Db {
     }
 
     /**
+     * Knex acquire timeout: every pool slot is checked out (or leaked).
+     * Not a dead socket, so {@link isConnectionError} stays false.
+     */
+    isPoolExhausted(error) {
+        if (!error) {
+            return false;
+        }
+        if (error instanceof AggregateError && Array.isArray(error.errors)) {
+            return error.errors.some((e) => this.isPoolExhausted(e));
+        }
+        const msg = error instanceof Error ? error.message : String(error);
+        return POOL_EXHAUSTED_MESSAGE_RE.test(msg);
+    }
+
+    /** used / free / pending, for the pool-busy log line. */
+    poolSnapshot() {
+        const pool = this.knexInstance?.client?.pool;
+        if (!pool) {
+            return "no pool";
+        }
+        const n = (name) => (typeof pool[name] === "function" ? pool[name]() : "?");
+        return `used ${n("numUsed")} free ${n("numFree")} pending ${n("numPendingAcquires")}`;
+    }
+
+    async _pauseForPoolSlot(ms = 500) {
+        await new Promise((resolve) => {
+            const t = setTimeout(resolve, ms);
+            t.unref?.();
+        });
+    }
+
+    /**
+     * Re-run a builder that already failed. Clone keeps the SQL; the client
+     * is the current knex so a reconnect is picked up.
+     */
+    async _rerunBuilder(builder, protoThen) {
+        if (!this.knexInstance) {
+            throw new Error("Db: Not connected. Call connect() first.");
+        }
+        if (typeof builder?.clone === "function") {
+            const retry = builder.clone();
+            retry.client = this.knexInstance.client;
+            return protoThen.call(retry);
+        }
+        if (typeof builder?.toSQL === "function") {
+            const sql = builder.toSQL();
+            const statements = Array.isArray(sql) ? sql : [sql];
+            let last;
+            for (const stmt of statements) {
+                last = await this.knexInstance.raw(stmt.sql, stmt.bindings);
+            }
+            return last;
+        }
+        throw new Error("Db: cannot retry query after a pool timeout");
+    }
+
+    /**
      * Destroy the current knex pool and open a new one. Concurrent callers share one attempt.
      * No-ops once disconnect() has closed the handle.
      */
@@ -718,31 +778,45 @@ export class Db {
                 try {
                     return await protoThen.call(builder);
                 } catch (error) {
-                    if (inst._closed || !inst.isConnectionError(error)) {
+                    if (inst._closed) {
+                        throw error;
+                    }
+                    if (inst.isPoolExhausted(error)) {
+                        inst.logger.warn?.(
+                            `[Db] Pool busy (${inst.poolSnapshot()}) — waiting for a free connection`
+                        );
+                        await inst._pauseForPoolSlot();
+                        if (inst._closed || !inst.knexInstance) {
+                            throw error;
+                        }
+                        try {
+                            return await inst._rerunBuilder(builder, protoThen);
+                        } catch (again) {
+                            if (inst._closed || !inst.isPoolExhausted(again)) {
+                                throw again;
+                            }
+                            inst.logger.warn?.(
+                                `[Db] Pool still exhausted (${inst.poolSnapshot()}) — reconnecting…`
+                            );
+                            try {
+                                await inst.reconnect();
+                            } catch {
+                                throw again;
+                            }
+                            if (inst._closed || !inst.knexInstance) {
+                                throw again;
+                            }
+                            return await inst._rerunBuilder(builder, protoThen);
+                        }
+                    }
+                    if (!inst.isConnectionError(error)) {
                         throw error;
                     }
                     await inst.reconnectAfterConnectionError(error);
                     if (inst._closed || !inst.knexInstance) {
                         throw error;
                     }
-
-                    if (typeof builder.clone === "function") {
-                        const retry = builder.clone();
-                        retry.client = inst.knexInstance.client;
-                        return await protoThen.call(retry);
-                    }
-
-                    if (typeof builder.toSQL === "function" && inst.knexInstance) {
-                        const sql = builder.toSQL();
-                        const statements = Array.isArray(sql) ? sql : [sql];
-                        let last;
-                        for (const stmt of statements) {
-                            last = await inst.knexInstance.raw(stmt.sql, stmt.bindings);
-                        }
-                        return last;
-                    }
-
-                    throw error;
+                    return await inst._rerunBuilder(builder, protoThen);
                 }
             };
             return run().then(onFulfilled, onRejected);
