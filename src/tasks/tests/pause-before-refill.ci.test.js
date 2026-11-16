@@ -41,6 +41,9 @@ function fakeDb({ onNames }) {
                 if (col === "name") b._names = vals;
                 return b;
             },
+            whereRaw() {
+                return b;
+            },
             whereNotIn() {
                 return b;
             },
@@ -86,6 +89,15 @@ function fakeDb({ onNames }) {
         return b;
     }
     builder.fn = { now: () => new Date() };
+    builder.raw = async (sql, bindings = []) => {
+        // The ready claim tries this group, then rows with no group. Count the
+        // group query once so a pause still lands after the first work claim.
+        if (String(sql).includes("service_group IS NULL")) return { rows: [] };
+        const names = bindings.filter((value) => typeof value === "string" && value !== "photocare");
+        const rows = onNames(names);
+        if (rows[0]) lastRow = rows[0];
+        return { rows: rows.map((row) => ({ ...row, status: "running" })) };
+    };
     return builder;
 }
 
