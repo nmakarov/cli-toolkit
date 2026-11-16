@@ -67,7 +67,7 @@ export function queueToTableNames(queueName) {
  * @param {string} tableNameForIndex Used to name indexes uniquely per table.
  * @returns {import("../db/ensure.js").TableSpec}
  */
-function tasksTableSpec(tableNameForIndex) {
+function tasksTableSpec(tableNameForIndex, { dueIndex = false } = {}) {
     return {
         columns: {
             id: (t, db) => t.uuid("id").primary().defaultTo(db.raw("uuid_generate_v4()")),
@@ -106,6 +106,16 @@ function tasksTableSpec(tableNameForIndex) {
                 columns: ["service_group", "status", "priority", "created_at"],
                 name: `${tableNameForIndex}_claim_idx`,
             },
+            // Due / scheduled rows only. Claiming probes this before the idle
+            // walk, so an empty due set is an index lookup. History does not
+            // claim, so it does not get this index.
+            ...(dueIndex
+                ? [{
+                    columns: ["service_group", "priority", "created_at"],
+                    name: `${tableNameForIndex}_claim_due_idx`,
+                    where: "status IN ('idle', 'waiting') AND (past_due IS NOT NULL OR next_run_at IS NOT NULL OR schedule IS NOT NULL)",
+                }]
+                : []),
             { columns: ["service_group", "name"], name: `${tableNameForIndex}_group_name_idx` },
             { columns: ["completed_at"], name: `${tableNameForIndex}_completed_at_idx` },
             { columns: ["name", "completed_at"], name: `${tableNameForIndex}_name_completed_at_idx` },
@@ -165,7 +175,7 @@ export function tasksSchemaSpec(queueName = "tasks") {
     return {
         extensions: ["uuid-ossp"],
         tables: {
-            [tasksTable]: tasksTableSpec(tasksTable),
+            [tasksTable]: tasksTableSpec(tasksTable, { dueIndex: true }),
             [historyTable]: tasksTableSpec(historyTable),
             [registryTable]: registryTableSpec(registryTable),
         },

@@ -85,6 +85,8 @@ describe("ensureTaskTables", () => {
         expect(db.tables[historyTable]).toContain("results");
         expect(db.tables[registryTable]).toContain("last_seen_at");
         expect(db.indexes).toContain("tasks_claim_idx");
+        expect(db.indexes).toContain("tasks_claim_due_idx");
+        expect(db.indexes).not.toContain("tasks_history_claim_due_idx");
         expect(db.indexes).toContain("tasks_history_completed_at_idx");
         expect(db.indexes).toContain("tasks_services_registry_queue_name_service_name_uniq");
     });

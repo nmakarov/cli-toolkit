@@ -528,6 +528,242 @@ function scheduleTaskRetentionPass(context, historyTable) {
  * @param {string[]|undefined} [leadTaskNames] Claim these names before the rest of `taskNames`.
  * @returns {Promise<object|null>} The claimed row, or `null` when nothing is ready.
  */
+/** Due, delayed, or cron rows. The partial claim_due index covers exactly this. */
+const SPECIAL_CLAIM_SQL =
+    "(past_due IS NOT NULL OR next_run_at IS NOT NULL OR schedule IS NOT NULL)";
+
+function quoteTaskTable(tasksTable) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(String(tasksTable ?? ""))) {
+        throw new Error(`claim: invalid tasks table "${tasksTable}"`);
+    }
+    return `"${tasksTable}"`;
+}
+
+/**
+ * True when this group has a row the expression sort must see (due, delayed,
+ * or cron). Two index lookups. An empty due set does not sort the idle pile.
+ */
+async function groupHasSpecialClaim(db, tasksTable, serviceGroup) {
+    const probe = (groupSql, bindings) =>
+        db(tasksTable)
+            .whereIn("status", ["idle", TASK_STATUS_WAITING])
+            .whereRaw(groupSql, bindings)
+            .whereRaw(SPECIAL_CLAIM_SQL)
+            .first("id");
+    if (await probe("service_group = ?", [serviceGroup])) return true;
+    return !!(await probe("service_group IS NULL", []));
+}
+
+/**
+ * Claim one ordinary idle row (no due time, no cron) with the
+ * (service_group, status, priority, created_at) index. One row, skip-locked,
+ * so five runners fill their slots instead of each sorting the whole queue.
+ */
+async function claimManyReadyRows(db, tasksTable, { serviceGroup, taskNames, excludeTaskNames, runnerIdentity, nullGroup = false, limit = 1 }) {
+    const table = quoteTaskTable(tasksTable);
+    const where = [
+        "status = 'idle'",
+        "past_due IS NULL",
+        "next_run_at IS NULL",
+        "schedule IS NULL",
+        nullGroup ? "service_group IS NULL" : "service_group = ?",
+    ];
+    const whereBindings = nullGroup ? [] : [serviceGroup];
+    if (taskNames?.length) {
+        where.push(`name IN (${taskNames.map(() => "?").join(", ")})`);
+        whereBindings.push(...taskNames);
+    }
+    if (excludeTaskNames?.length) {
+        where.push(`name NOT IN (${excludeTaskNames.map(() => "?").join(", ")})`);
+        whereBindings.push(...excludeTaskNames);
+    }
+    if (runnerIdentity) {
+        where.push("(service_name IS NULL OR service_name = ?)");
+        where.push("(instance_number IS NULL OR instance_number = ?)");
+        where.push("(server_name IS NULL OR server_name = ?)");
+        whereBindings.push(
+            runnerIdentity.service_name,
+            runnerIdentity.instance_number,
+            runnerIdentity.server_name,
+        );
+    } else {
+        where.push("service_name IS NULL", "instance_number IS NULL", "server_name IS NULL");
+    }
+    const setBindings = [];
+    let setSql = "started_at = now(), status = 'running', status_changed_at = now()";
+    if (runnerIdentity) {
+        setSql += ", service_name = ?, server_name = ?, instance_number = ?";
+        setBindings.push(
+            runnerIdentity.service_name,
+            runnerIdentity.server_name,
+            runnerIdentity.instance_number,
+        );
+    }
+    const take = Math.max(1, Math.min(Math.floor(Number(limit) || 1), 64));
+    const result = await db.raw(
+        `UPDATE ${table}
+         SET ${setSql}
+         WHERE id IN (
+             SELECT id FROM ${table}
+             WHERE ${where.join(" AND ")}
+             ORDER BY priority ASC, created_at ASC
+             LIMIT ?
+             FOR UPDATE SKIP LOCKED
+         )
+         RETURNING *`,
+        [...setBindings, ...whereBindings, take],
+    );
+    return result.rows ?? [];
+}
+
+async function claimOneReadyRow(db, tasksTable, options) {
+    const rows = await claimManyReadyRows(db, tasksTable, { ...options, limit: 1 });
+    return rows[0] ?? null;
+}
+
+async function releaseReadyClaim(db, tasksTable, id) {
+    await db(tasksTable).where({ id, status: "running" }).update({
+        status: "idle",
+        status_changed_at: db.fn.now(),
+        started_at: null,
+        service_name: null,
+        server_name: null,
+        instance_number: null,
+    });
+}
+
+async function parkReadyClaim(db, tasksTable, row, reason) {
+    const patch = waitingHoldPatch(row, reason) ?? {};
+    patch.started_at = null;
+    patch.service_name = null;
+    patch.server_name = null;
+    patch.instance_number = null;
+    if (patch.status) patch.status_changed_at = db.fn.now();
+    if (patch.past_due) patch.past_due = db.fn.now();
+    await db(tasksTable).where({ id: row.id, status: "running" }).update(patch);
+}
+
+/**
+ * Ordinary idle rows. Tries this group, then rows any group may run.
+ * A row this runner cannot start is parked and the next one is taken.
+ */
+async function claimReadyTask(
+    context,
+    tasksTable,
+    serviceGroup,
+    registry,
+    scanLimit,
+    taskNames,
+    runnerIdentity,
+    excludeTaskNames,
+) {
+    const db = getDb(context);
+    const attempts = Math.max(1, Math.min(Number(scanLimit) || 1, 50));
+    for (let i = 0; i < attempts; i++) {
+        let row = await claimOneReadyRow(db, tasksTable, {
+            serviceGroup,
+            taskNames,
+            excludeTaskNames,
+            runnerIdentity,
+            nullGroup: false,
+        });
+        if (!row) {
+            row = await claimOneReadyRow(db, tasksTable, {
+                serviceGroup,
+                taskNames,
+                excludeTaskNames,
+                runnerIdentity,
+                nullGroup: true,
+            });
+        }
+        if (!row) return null;
+
+        const TaskClass = registry.get(row.name);
+        if (!TaskClass) {
+            await releaseReadyClaim(db, tasksTable, row.id);
+            continue;
+        }
+        const taskInstance = new TaskClass(context, row);
+        const reason = taskInstance.cantRunReason ? await taskInstance.cantRunReason() : null;
+        if (reason) {
+            await parkReadyClaim(db, tasksTable, row, reason);
+            continue;
+        }
+        return row;
+    }
+    return null;
+}
+
+/**
+ * Fill every free worker slot in one round trip. One-at-a-time claims cannot
+ * keep 32 short photo tasks in flight: each claim waits on the database, and
+ * the listing finishes before the next claim returns.
+ */
+async function claimWorkerBatch(
+    context,
+    tasksTable,
+    serviceGroup,
+    registry,
+    scanLimit,
+    taskNames,
+    runnerIdentity,
+    excludeTaskNames,
+    leadTaskNames,
+    limit,
+) {
+    const db = getDb(context);
+    if (await groupHasSpecialClaim(db, tasksTable, serviceGroup)) {
+        const claimed = await claimCandidateTask(
+            context,
+            tasksTable,
+            serviceGroup,
+            registry,
+            scanLimit,
+            taskNames,
+            runnerIdentity,
+            excludeTaskNames,
+            leadTaskNames,
+            true,
+        );
+        if (claimed) return [claimed];
+    }
+    const take = Math.max(1, Math.min(Math.floor(Number(limit) || 1), 64));
+    let rows = await claimManyReadyRows(db, tasksTable, {
+        serviceGroup,
+        taskNames,
+        excludeTaskNames,
+        runnerIdentity,
+        nullGroup: false,
+        limit: take,
+    });
+    if (!rows.length) {
+        rows = await claimManyReadyRows(db, tasksTable, {
+            serviceGroup,
+            taskNames,
+            excludeTaskNames,
+            runnerIdentity,
+            nullGroup: true,
+            limit: take,
+        });
+    }
+    const kept = [];
+    for (const row of rows) {
+        const TaskClass = registry.get(row.name);
+        if (!TaskClass) {
+            await releaseReadyClaim(db, tasksTable, row.id);
+            continue;
+        }
+        const taskInstance = new TaskClass(context, row);
+        const reason = taskInstance.cantRunReason ? await taskInstance.cantRunReason() : null;
+        if (reason) {
+            await parkReadyClaim(db, tasksTable, row, reason);
+            continue;
+        }
+        kept.push(row);
+    }
+    return kept;
+}
+
 async function claimNextRunnableTask(
     context,
     tasksTable,
@@ -538,6 +774,46 @@ async function claimNextRunnableTask(
     runnerIdentity,
     excludeTaskNames,
     leadTaskNames,
+) {
+    const db = getDb(context);
+    if (await groupHasSpecialClaim(db, tasksTable, serviceGroup)) {
+        const claimed = await claimCandidateTask(
+            context,
+            tasksTable,
+            serviceGroup,
+            registry,
+            scanLimit,
+            taskNames,
+            runnerIdentity,
+            excludeTaskNames,
+            leadTaskNames,
+            true,
+        );
+        if (claimed) return claimed;
+    }
+    return claimReadyTask(
+        context,
+        tasksTable,
+        serviceGroup,
+        registry,
+        scanLimit,
+        taskNames,
+        runnerIdentity,
+        excludeTaskNames,
+    );
+}
+
+async function claimCandidateTask(
+    context,
+    tasksTable,
+    serviceGroup,
+    registry,
+    scanLimit,
+    taskNames,
+    runnerIdentity,
+    excludeTaskNames,
+    leadTaskNames,
+    specialOnly,
 ) {
     const db = getDb(context);
 
@@ -555,6 +831,7 @@ async function claimNextRunnableTask(
         .where(function () {
             this.whereNull("next_run_at").orWhere("next_run_at", "<=", db.fn.now());
         });
+    if (specialOnly) query = query.whereRaw(SPECIAL_CLAIM_SQL);
     if (leadTaskNames?.length) {
         const slots = leadTaskNames.map(() => "?").join(", ");
         query = query.orderByRaw(
@@ -967,7 +1244,8 @@ export async function runTasksLoop(context, options) {
                 while (runningPromises.size < maxParallel && runnerStillClaiming()) {
                     await claimImmediateCommand();
                     if (!runnerStillClaiming()) break;
-                    const claimed = await claimNextRunnableTask(
+                    const room = maxParallel - runningPromises.size;
+                    const claimedRows = await claimWorkerBatch(
                         context,
                         tasksTable,
                         target,
@@ -976,22 +1254,25 @@ export async function runTasksLoop(context, options) {
                         allowedTasks,
                         runnerIdentity,
                         sideLaneNames,
+                        undefined,
+                        room,
                     );
-                    if (!claimed) break;
-
-                    const p = executeClaimedTask(
-                        context,
-                        tasksTable,
-                        historyTable,
-                        claimed,
-                        registry,
-                        runningTaskInstances
-                    )
-                        .then(noteStop)
-                        .finally(() => {
-                            runningPromises.delete(p);
-                        });
-                    runningPromises.add(p);
+                    if (!claimedRows.length) break;
+                    for (const claimed of claimedRows) {
+                        const p = executeClaimedTask(
+                            context,
+                            tasksTable,
+                            historyTable,
+                            claimed,
+                            registry,
+                            runningTaskInstances
+                        )
+                            .then(noteStop)
+                            .finally(() => {
+                                runningPromises.delete(p);
+                            });
+                        runningPromises.add(p);
+                    }
                 }
             }
 

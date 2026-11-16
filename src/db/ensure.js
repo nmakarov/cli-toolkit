@@ -38,7 +38,7 @@
  * touching the database.
  */
 
-/** @typedef {{ columns: Record<string, Function>, indexes?: Array<{ columns: string[], name: string, unique?: boolean }> }} TableSpec */
+/** @typedef {{ columns: Record<string, Function>, indexes?: Array<{ columns: string[], name: string, unique?: boolean, where?: string }> }} TableSpec */
 /** @typedef {{ extensions?: string[], tables?: Record<string, TableSpec> }} SchemaSpec */
 
 const dbLabel = (db) => db?.config?.name ?? "db";
@@ -122,18 +122,28 @@ export async function ensureTable(db, tableName, spec, options = {}) {
  *
  * @param {Function} db
  * @param {string} tableName
- * @param {{ columns: string[], name: string, unique?: boolean }} index
+ * @param {{ columns: string[], name: string, unique?: boolean, where?: string }} index
  * @param {{ dryRun?: boolean, logger?: object }} [options]
  * @returns {Promise<string[]>}
  */
+function indexWhereSql(where) {
+    if (where == null || where === "") return "";
+    const text = String(where).trim();
+    if (!text || /[;]/.test(text)) {
+        throw new Error("ensureIndex: partial index predicate is empty or unsafe");
+    }
+    return ` WHERE ${text}`;
+}
+
 export async function ensureIndex(db, tableName, index, options = {}) {
     const { dryRun = false } = options;
     const kind = index.unique ? "UNIQUE INDEX" : "INDEX";
     const cols = index.columns.map((c) => `"${c}"`).join(", ");
+    const whereSql = indexWhereSql(index.where);
     const isPg = String(db?.config?.connectionString ?? "").startsWith("postgresql");
 
     if (isPg) {
-        const sql = `CREATE ${kind} IF NOT EXISTS "${index.name}" ON "${tableName}" (${cols})`;
+        const sql = `CREATE ${kind} IF NOT EXISTS "${index.name}" ON "${tableName}" (${cols})${whereSql}`;
         const { rows } = await db.raw(`SELECT 1 FROM pg_indexes WHERE indexname = ?`, [index.name]);
         if (rows.length > 0) return [];
         if (!dryRun) await db.raw(sql);
@@ -141,7 +151,7 @@ export async function ensureIndex(db, tableName, index, options = {}) {
     }
 
     // Non-pg fallback: try, and treat "already exists" as success.
-    const sql = `CREATE ${kind} ${index.name} ON ${tableName} (${cols})`;
+    const sql = `CREATE ${kind} ${index.name} ON ${tableName} (${cols})${whereSql}`;
     if (!dryRun) {
         try {
             await db.raw(sql);
