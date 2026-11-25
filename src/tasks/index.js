@@ -16,7 +16,7 @@ import {
     waitingHoldPatch,
 } from "./taskUtils.js";
 import { appendTaskIpcLog } from "./taskLogs.js";
-import { nextTimeMatch, timeMatcher } from "./time-matcher.js";
+import { nextTimeMatch } from "./time-matcher.js";
 export {
     timeMatcher,
     nextTimeMatch,
@@ -37,7 +37,7 @@ import {
     runtimeValuesForSpecs,
 } from "./runtimeParams.js";
 import { maybePruneTaskRetention, seedTaskRetentionRuntime } from "./taskRetention.js";
-import { applyClaimOrder, compareClaimCandidates } from "./claimOrder.js";
+import { applyClaimOrder, compareClaimCandidates, scheduledClaimReady } from "./claimOrder.js";
 
 /** Sentinel value stored in the `progress` column when a task is paused due to error. */
 const LOCKED_BY_ERROR_MESSAGE = "locked by error";
@@ -878,7 +878,7 @@ async function claimCandidateTask(
     }
 
     for (const row of candidates) {
-        if (!row.past_due && row.schedule && !timeMatcher(row.schedule)) {
+        if (!scheduledClaimReady(row)) {
             continue;
         }
 

@@ -3,6 +3,7 @@ import {
     claimDueInstantMs,
     compareClaimCandidates,
     isClaimDue,
+    scheduledClaimReady,
 } from "../claimOrder.js";
 
 function sortRows(rows) {
@@ -79,5 +80,18 @@ describe("claim order", () => {
             },
         ]);
         expect(ids).toEqual(["better-pri", "never-run", "done-earlier"]);
+    });
+
+    it("starts a cron row once next_run_at is due, even off the matching second", () => {
+        const offSecond = new Date("2026-11-25T05:22:41.000Z");
+        const due = {
+            schedule: "0 7,22,37,52 * * * *",
+            next_run_at: "2026-11-25T05:22:00.000Z",
+            past_due: null,
+        };
+        expect(scheduledClaimReady(due, offSecond)).toBe(true);
+        expect(scheduledClaimReady({ ...due, next_run_at: "2026-11-25T05:37:00.000Z" }, offSecond)).toBe(false);
+        expect(scheduledClaimReady({ schedule: "0 7,22,37,52 * * * *", past_due: offSecond }, offSecond)).toBe(true);
+        expect(scheduledClaimReady({ schedule: null, next_run_at: null }, offSecond)).toBe(true);
     });
 });

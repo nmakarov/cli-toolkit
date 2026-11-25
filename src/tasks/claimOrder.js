@@ -1,3 +1,5 @@
+import { timeMatcher } from "./time-matcher.js";
+
 /**
  * Claim order for idle queue rows:
  *   1. Due tasks first, earliest due instant wins
@@ -28,6 +30,27 @@ export function claimDueInstantMs(row) {
 
 export function isClaimDue(row) {
     return claimDueInstantMs(row) != null;
+}
+
+/**
+ * A cron row whose `next_run_at` is already due starts on the next poll.
+ * Matching the cron's exact second is only for a schedule that has no
+ * `next_run_at` yet. `past_due` always starts.
+ *
+ * @param {object} row
+ * @param {Date} [now]
+ * @returns {boolean}
+ */
+export function scheduledClaimReady(row, now = new Date()) {
+    if (row?.past_due) return true;
+    if (!row?.schedule) return true;
+    const nextRun = toMs(row.next_run_at);
+    if (nextRun != null && nextRun <= now.getTime()) return true;
+    try {
+        return timeMatcher(String(row.schedule), now);
+    } catch {
+        return false;
+    }
 }
 
 /**
