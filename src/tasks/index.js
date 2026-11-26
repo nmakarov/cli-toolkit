@@ -58,16 +58,30 @@ export function checkpointParamsFromResults(results) {
 }
 
 /**
- * A scheduled hard stop that saved a cursor must be claimed on the next poll.
+ * A hard stop that saved a cursor must be claimed on the next poll.
  * `next_run_at <= now` is not enough: the claim loop skips a scheduled row
  * until `past_due` is set or the cron matches. A clean success leaves both
  * alone so the row waits for the next cron slot.
+ *
+ * One-off rows use the same rule. Deleting them dropped the cursor.
  *
  * @param {object|null|undefined} results
  * @returns {boolean}
  */
 export function scheduledStopResumesImmediately(results) {
     return results?.stopped === true && checkpointParamsFromResults(results) != null;
+}
+
+/**
+ * A successful hard stop with a cursor stays in the queue and is due now.
+ * A failure still follows the scheduled-error or one-off-delete path.
+ *
+ * @param {boolean} success
+ * @param {object|null|undefined} results
+ * @returns {boolean}
+ */
+export function successStopResumesImmediately(success, results) {
+    return success === true && scheduledStopResumesImmediately(results);
 }
 
 export {
@@ -440,7 +454,7 @@ async function executeClaimedTask(context, tasksTable, historyTable, row, regist
             server_name: null,
             instance_number: null,
         });
-    } else if (row.schedule) {
+    } else if (row.schedule || successStopResumesImmediately(success, results)) {
         if (success) {
             const resumeNow = scheduledStopResumesImmediately(results);
             const now = new Date();

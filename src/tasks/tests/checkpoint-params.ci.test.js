@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { checkpointParamsFromResults, scheduledStopResumesImmediately } from "../index.js";
+import {
+    checkpointParamsFromResults,
+    scheduledStopResumesImmediately,
+    successStopResumesImmediately,
+} from "../index.js";
 
 describe("checkpointParamsFromResults", () => {
     it("returns the object tasks persist so the next claim resumes", () => {
@@ -27,6 +31,17 @@ describe("checkpointParamsFromResults", () => {
             stopped: false,
             checkpointParams: { ...cursor, checkpoint: null },
         })).toBe(false);
+    });
+
+    it("keeps a successful one-off that stopped with a cursor", () => {
+        const results = {
+            stopped: true,
+            checkpointParams: { source: "demo", checkpoint: { pending: ["alpha"] } },
+        };
+        expect(successStopResumesImmediately(true, results)).toBe(true);
+        expect(successStopResumesImmediately(false, results)).toBe(false);
+        expect(successStopResumesImmediately(true, { stopped: true })).toBe(false);
+        expect(successStopResumesImmediately(true, { skipped: true, checkpointParams: results.checkpointParams })).toBe(false);
     });
 
     it("ignores missing or non-object payloads", () => {
